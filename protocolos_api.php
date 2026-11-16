@@ -10,6 +10,15 @@ if ($prtMet === 'GET') {
     switch ($action) {
         case 'protocolos_painel': respond(['ok' => true] + prt_painel(prt_read(), read_items()));
         case 'protocolos_arquivo': prt_doc_servir(prt_read());
+        case 'protocolos_pdf': case 'protocolos_csv':
+            $id = (string)($_GET['id'] ?? ''); $d = prt_read();
+            foreach ($d['protocolos'] as $p) if ($p['id'] === $id) {
+                $csv = $action === 'protocolos_csv'; $corpo = $csv ? prt_csv($p) : prt_pdf($p);
+                header('Content-Type: ' . ($csv ? 'text/csv; charset=utf-8' : 'application/pdf')); header('X-Content-Type-Options: nosniff'); header('Cache-Control: no-store');
+                header('Content-Disposition: attachment; filename="Protocolo-' . $p['id'] . ($csv ? '.csv' : '.pdf') . '"'); header('Content-Length: ' . strlen($corpo));
+                echo $corpo; exit;
+            }
+            http_response_code(404); exit('Protocolo não encontrado');
         case 'protocolos_imprimir':
             $id = (string)($_GET['id'] ?? ''); $d = prt_read();
             foreach ($d['protocolos'] as $p) if ($p['id'] === $id) {

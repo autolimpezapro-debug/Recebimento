@@ -395,7 +395,7 @@ function rd_rota(string $action): ?array {
             'estoque_baixa_perda' => ['estoque', 'editar'], 'estoque_estorno' => ['estoque', 'aprovar'],
             'estoque_sap_historico' => ['estoque', 'listar'], 'estoque_sap_previa' => ['estoque', 'criar'],
             'estoque_sap_importar' => ['estoque', 'aprovar'],
-            'protocolos_painel' => ['pedidos', 'listar'], 'protocolos_arquivo' => ['pedidos', 'baixar'], 'protocolos_imprimir' => ['pedidos', 'baixar'],
+            'protocolos_painel' => ['pedidos', 'listar'], 'protocolos_arquivo' => ['pedidos', 'baixar'], 'protocolos_imprimir' => ['pedidos', 'baixar'], 'protocolos_pdf' => ['pedidos', 'baixar'], 'protocolos_csv' => ['pedidos', 'baixar'],
             'protocolos_criar' => ['pedidos', 'editar'], 'protocolos_status' => ['pedidos', 'editar'], 'protocolos_doc_enviar' => ['pedidos', 'anexar'],
             'locacoes_painel' => ['estoque', 'listar'], 'locacoes_csv' => ['estoque', 'listar'],
             'locacoes_salvar' => ['estoque', 'editar'], 'locacoes_transferir' => ['estoque', 'criar'], 'locacoes_desfazer_transferencia' => ['estoque', 'editar'],

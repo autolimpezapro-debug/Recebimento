@@ -247,6 +247,136 @@ function prt_html_impressao(array $p): string {
         . 'footer{margin-top:16px;border-top:1px dashed #999;padding-top:6px;color:#555;font-size:10px;text-align:center}'
         . '@media print{body{background:#fff}.bar{display:none}.via{margin:0;box-shadow:none;width:auto;min-height:277mm;page-break-after:always;break-after:page}.via:last-child{page-break-after:auto;break-after:auto}@page{size:A4;margin:10mm}}'
         . '@media(max-width:800px){.via{width:auto;margin:8px;padding:12px;min-height:0}.meta{grid-template-columns:1fr 1fr}table{font-size:10px}}'
-        . '</style></head><body><div class="bar"><span>Protocolo ' . $e($p['id']) . ' — 2 vias (Financeiro e Recebimento). Use "Imprimir" e escolha A4.</span><button onclick="window.print()">🖨 Imprimir</button></div>'
+        . '</style></head><body><div class="bar"><span>Protocolo ' . $e($p['id']) . ' — 2 vias (Financeiro e Recebimento). Use "Imprimir" e escolha A4.</span><span style="display:flex;gap:8px"><a href="api.php?action=protocolos_pdf&id=' . $e(rawurlencode($p['id'])) . '" download style="background:#37474f;color:#fff;border-radius:6px;padding:8px 16px;font-size:14px;text-decoration:none">⬇ Baixar PDF</a><button onclick="window.print()">🖨 Imprimir</button></span></div>'
         . $via('1ª via — Financeiro') . $via('2ª via — Recebimento (arquivo)') . '</body></html>';
+}
+
+/* ===================== PDF para download (v3.36.1) — gerador mínimo, sem biblioteca externa ===================== */
+class PrtPdf {
+    const W = 595.28, H = 841.89;
+    private array $pages = []; private string $cur = ''; private bool $aberta = false;
+    // larguras Helvetica / Helvetica-Bold (milésimos de em) para os caracteres 32..126
+    private const W1 = [278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584];
+    private const W2 = [278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584];
+    public function page(): void { if ($this->aberta) $this->pages[] = $this->cur; $this->cur = ''; $this->aberta = true; }
+    private static function cp(string $s): string { $r = @iconv('UTF-8', 'CP1252//TRANSLIT//IGNORE', $s); return $r === false ? preg_replace('/[^\x20-\x7E]/', '?', $s) : $r; }
+    public function w(string $s, float $size, bool $b = false): float {
+        $t = $b ? self::W2 : self::W1; $n = 0;
+        foreach (str_split(self::cp($s)) as $c) { $o = ord($c); $n += ($o >= 32 && $o <= 126) ? $t[$o - 32] : 556; }
+        return $n * $size / 1000;
+    }
+    public function fit(string $s, float $size, bool $b, float $max): string {
+        if ($this->w($s, $size, $b) <= $max) return $s;
+        while ($s !== '' && $this->w($s . '...', $size, $b) > $max) $s = mb_substr($s, 0, -1);
+        return rtrim($s) . '...';
+    }
+    /** Quebra em linhas que cabem em $max pontos. */
+    public function wrap(string $s, float $size, bool $b, float $max): array {
+        $out = []; $l = '';
+        foreach (preg_split('/\s+/u', trim($s)) as $w) {
+            $t = $l === '' ? $w : $l . ' ' . $w;
+            if ($l !== '' && $this->w($t, $size, $b) > $max) { $out[] = $l; $l = $w; } else $l = $t;
+        }
+        if ($l !== '') $out[] = $l; return $out ?: [''];
+    }
+    public function t(float $x, float $yTop, string $s, float $size = 10, bool $b = false, string $al = 'L', float $box = 0): void {
+        if ($s === '') return;
+        $w = $this->w($s, $size, $b);
+        if ($al === 'R') $x += $box - $w; elseif ($al === 'C') $x += ($box - $w) / 2;
+        $e = str_replace(['\\', '(', ')', "\r", "\n"], ['\\\\', '\\(', '\\)', '', ' '], self::cp($s));
+        $this->cur .= sprintf("BT /%s %.2f Tf %.2f %.2f Td (%s) Tj ET\n", $b ? 'F2' : 'F1', $size, $x, self::H - $yTop, $e);
+    }
+    public function line(float $x1, float $y1, float $x2, float $y2, float $lw = 0.6): void {
+        $this->cur .= sprintf("%.2f w %.2f %.2f m %.2f %.2f l S\n", $lw, $x1, self::H - $y1, $x2, self::H - $y2);
+    }
+    public function rect(float $x, float $y, float $w, float $h, float $lw = 0.6, ?float $gray = null): void {
+        if ($gray !== null) $this->cur .= sprintf("%.2f g %.2f %.2f %.2f %.2f re f 0 g\n", $gray, $x, self::H - $y - $h, $w, $h);
+        $this->cur .= sprintf("%.2f w %.2f %.2f %.2f %.2f re S\n", $lw, $x, self::H - $y - $h, $w, $h);
+    }
+    public function out(): string {
+        if ($this->aberta) { $this->pages[] = $this->cur; $this->aberta = false; $this->cur = ''; }
+        $n = count($this->pages); $o = [];
+        $o[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+        $kids = []; for ($i = 0; $i < $n; $i++) $kids[] = (5 + $i * 2) . ' 0 R';
+        $o[2] = '<< /Type /Pages /Kids [' . implode(' ', $kids) . '] /Count ' . $n . ' >>';
+        $o[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
+        $o[4] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+        foreach ($this->pages as $i => $c) {
+            $pg = 5 + $i * 2; $ct = $pg + 1; $z = gzcompress($c, 6);
+            $o[$pg] = sprintf('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %.2f %.2f] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents %d 0 R >>', self::W, self::H, $ct);
+            $o[$ct] = ['<< /Length ' . strlen($z) . ' /Filter /FlateDecode >>', $z];
+        }
+        $pdf = "%PDF-1.4\n%\xE2\xE3\xCF\xD3\n"; $off = [];
+        ksort($o);
+        foreach ($o as $id => $v) {
+            $off[$id] = strlen($pdf);
+            $pdf .= $id . " 0 obj\n" . (is_array($v) ? $v[0] . "\nstream\n" . $v[1] . "\nendstream" : $v) . "\nendobj\n";
+        }
+        $x = strlen($pdf); $max = max(array_keys($o));
+        $pdf .= "xref\n0 " . ($max + 1) . "\n0000000000 65535 f \n";
+        for ($i = 1; $i <= $max; $i++) $pdf .= sprintf("%010d 00000 n \n", $off[$i]);
+        return $pdf . "trailer\n<< /Size " . ($max + 1) . " /Root 1 0 R >>\nstartxref\n$x\n%%EOF";
+    }
+}
+function prt_pdf(array $p): string {
+    $v = prt_view($p); $pdf = new PrtPdf(); $W = PrtPdf::W; $H = PrtPdf::H; $mx = 40; $cw = $W - 2 * $mx;
+    $fmtD = function ($s) { $s = substr((string)$s, 0, 10); return preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $s, $m) ? "$m[3]/$m[2]/$m[1]" : $s; };
+    $money = fn($f) => 'R$ ' . number_format($f, 2, ',', '.');
+    $col = [['#', 22, 'C'], ['NF / série', 78, 'L'], ['Pedido', 46, 'C'], ['Fornecedor', 0, 'L'], ['Emissão', 56, 'C'], ['Recebido', 56, 'C'], ['Valor da NF', 72, 'R'], ['Conf.', 30, 'C']];
+    $fixo = 0; foreach ($col as $c) $fixo += $c[1]; foreach ($col as &$c) if ($c[1] === 0) $c[1] = $cw - $fixo; unset($c);
+    $vias = ['1ª via — Financeiro', '2ª via — Recebimento (arquivo)'];
+    foreach ($vias as $via) {
+        $pdf->page(); $y = 44;
+        $cab = function () use ($pdf, $mx, $cw, &$y, $p, $via) {
+            $pdf->t($mx, $y + 14, 'DRILLING DO BRASIL', 17, true); $pdf->t($mx, $y + 28, 'Recebimento de materiais', 9);
+            $pdf->t($mx, $y + 8, $via, 8.5, false, 'R', $cw); $pdf->t($mx, $y + 28, $p['id'], 17, true, 'R', $cw);
+            $pdf->line($mx, $y + 36, $mx + $cw, $y + 36, 1.4); $y += 50;
+        };
+        $cab();
+        $pdf->t($mx, $y + 8, 'PROTOCOLO DE ENTREGA DE NOTAS FISCAIS', 14, true, 'C', $cw); $y += 26;
+        $bw = ($cw - 18) / 4; $met = [['DE', 'Recebimento'], ['PARA', $p['destinatario']], ['DATA DE EMISSÃO', date('d/m/Y', strtotime((string)$p['criado_em']))], ['EMITIDO POR', $p['criado_por']]];
+        foreach ($met as $i => [$k, $val]) { $bx = $mx + $i * ($bw + 6); $pdf->rect($bx, $y, $bw, 32); $pdf->t($bx + 5, $y + 10, $k, 6.8); $pdf->t($bx + 5, $y + 24, $pdf->fit($val, 10, true, $bw - 10), 10, true); }
+        $y += 44;
+        foreach ($pdf->wrap('Encaminhamos ao setor ' . $p['destinatario'] . ' as notas fiscais abaixo, referentes a materiais já conferidos e recebidos. A assinatura deste protocolo confirma o recebimento dos documentos listados.', 9.5, false, $cw) as $ln) { $pdf->t($mx, $y + 9, $ln, 9.5); $y += 13; }
+        $y += 6;
+        $cabTab = function () use ($pdf, $mx, &$y, $col, $cw) {
+            $pdf->rect($mx, $y, $cw, 17, 0.6, 0.92); $x = $mx;
+            foreach ($col as [$t, $w, $al]) { $pdf->t($x + 3, $y + 12, $t, 8, true, $al === 'R' ? 'R' : ($al === 'C' ? 'C' : 'L'), $w - 6); $x += $w; }
+            $y += 17;
+        };
+        $cabTab();
+        foreach ($p['linhas'] as $i => $l) {
+            if ($y + 18 > $H - 50) { $pdf->page(); $y = 44; $cab(); $cabTab(); }
+            $val = prt_valor($l['valorNF'] ?? '');
+            $cel = [(string)($i + 1), $l['numeroNF'] . ($l['serieNF'] !== '' ? ' / s.' . $l['serieNF'] : ''), (string)$l['pc'], $l['fornecedor'], $fmtD($l['emissaoNF']), $fmtD($l['data']), $val > 0 ? $money($val) : '—', ''];
+            $x = $mx; $pdf->rect($mx, $y, $cw, 18, 0.4);
+            foreach ($col as $k => [$t, $w, $al]) {
+                if ($k > 0) $pdf->line($x, $y, $x, $y + 18, 0.4);
+                $s = $pdf->fit($cel[$k], 8.5, $k === 1, $w - 6);
+                $pdf->t($x + 3, $y + 12.5, $s, 8.5, $k === 1, $al === 'R' ? 'R' : ($al === 'C' ? 'C' : 'L'), $w - 6); $x += $w;
+            }
+            $y += 18;
+        }
+        $pdf->rect($mx, $y, $cw, 19, 0.6, 0.96);
+        $pdf->t($mx, $y + 13, $v['qtd_nfs'] . ' nota(s) fiscal(is)', 9, true, 'R', $cw - 72 - 30 - 4);
+        $pdf->t($mx + $cw - 72 - 30, $y + 13, $money($v['total_valor']), 9, true, 'R', 72 - 6); $y += 27;
+        if ($v['linhas_sem_valor']) { $pdf->t($mx, $y + 8, '* ' . $v['linhas_sem_valor'] . ' nota(s) sem valor informado no sistema; o total considera só as que têm valor.', 7.5); $y += 14; }
+        if ($p['obs'] !== '') { foreach ($pdf->wrap('Observações: ' . $p['obs'], 9, false, $cw) as $ln) { $pdf->t($mx, $y + 9, $ln, 9); $y += 12; } $y += 4; }
+        $sig = $H - 150; if ($y > $sig - 10) { $pdf->page(); $y = 44; $cab(); }
+        $hw = ($cw - 30) / 2;
+        foreach ([['Entregue por (Recebimento)', 'Nome, assinatura e data'], ['Recebido por (' . $p['destinatario'] . ')', 'Nome, assinatura, data e hora']] as $i => [$a, $b]) {
+            $bx = $mx + $i * ($hw + 30); $pdf->line($bx, $sig, $bx + $hw, $sig, 0.8);
+            $pdf->t($bx, $sig + 13, $pdf->fit($a, 9.5, true, $hw), 9.5, true); $pdf->t($bx, $sig + 24, $b, 8);
+        }
+        $pdf->line($mx, $H - 62, $mx + $cw, $H - 62, 0.4);
+        $pdf->t($mx, $H - 50, 'Protocolo ' . $p['id'] . ' · ' . $via . ' · guarde a via assinada junto ao Recebimento.', 7.5, false, 'C', $cw);
+    }
+    return $pdf->out();
+}
+/** CSV do protocolo (Excel-BR: separador ";" e BOM UTF-8). */
+function prt_csv(array $p): string {
+    $q = fn($v) => '"' . str_replace('"', '""', (string)$v) . '"';
+    $o = "\xEF\xBB\xBF" . implode(';', array_map($q, ['Protocolo', 'Item', 'NF', 'Série', 'Pedido (PC)', 'Fornecedor', 'Emissão', 'Recebido em', 'Valor da NF', 'Chave de acesso'])) . "\r\n";
+    foreach ($p['linhas'] as $i => $l) $o .= implode(';', array_map($q, [$p['id'], $i + 1, $l['numeroNF'], $l['serieNF'], $l['pc'], $l['fornecedor'], $l['emissaoNF'], $l['data'], $l['valorNF'], $l['chaveNF']])) . "\r\n";
+    return $o;
 }

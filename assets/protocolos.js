@@ -112,10 +112,19 @@ function prtGerar() {
     try {
       const r = await prtPost('protocolos_criar', { destinatario: prtVal(bg, 'destinatario'), obs: prtVal(bg, 'obs'), linhas: sel.map(c => ({ pc: c.pc })) });
       bg.remove(); PRT.sel.clear(); prtToast(`Protocolo ${r.protocolo.id} gerado`);
-      prtImprimir(r.protocolo.id); PRT.aba = 'protocolos'; document.querySelectorAll('[data-prt-aba]').forEach(b => b.classList.toggle('active', b.dataset.prtAba === 'protocolos'));
-      await protocolosInit();
+      PRT.aba = 'protocolos'; document.querySelectorAll('[data-prt-aba]').forEach(b => b.classList.toggle('active', b.dataset.prtAba === 'protocolos'));
+      await protocolosInit(); prtPronto(r.protocolo);
     } catch (e) { prtToast(e.message, true); this.disabled = false; }
   };
+}
+function prtPronto(p) {
+  const id = encodeURIComponent(p.id);
+  const bg = prtModal(`Protocolo ${prtH(p.id)} gerado`, `<p><b>${p.qtd_nfs}</b> nota(s)${p.total_valor ? ' · ' + prtR(p.total_valor) : ''}. Imprima em 2 vias para o ${prtH(p.destinatario)} assinar, ou baixe o arquivo.</p>
+    <div class="prt-pronto"><button type="button" class="button primary" data-imp>🖨 Imprimir (2 vias)</button>
+    <a class="button ghost" href="api.php?action=protocolos_pdf&id=${id}" download>⬇ Baixar PDF</a>
+    <a class="button ghost" href="api.php?action=protocolos_csv&id=${id}" download>⬇ Excel (CSV)</a></div>
+    <div class="rd-ass-acoes"><button type="button" class="button ghost" data-x2>Fechar</button></div>`, 480);
+  bg.querySelector('[data-imp]').onclick = () => prtImprimir(p.id);
 }
 function prtImprimir(id) { window.open(`api.php?action=protocolos_imprimir&id=${encodeURIComponent(id)}`, '_blank'); }
 
@@ -132,7 +141,7 @@ function prtCard(p) {
   const atraso = p.dias_aberto != null && p.dias_aberto >= 3 ? `<span class="prt-atraso">há ${p.dias_aberto} dias sem fechar</span>` : '';
   return `<article class="panel prt-card ${p.status === 'CANCELADO' ? 'prt-cancelado' : ''}"><div class="prt-top"><div><h3>${prtH(p.id)} <span class="prt-badge ${cls}">${prtH(rot)}</span> ${atraso}</h3>
     <p class="muted">${prtD(p.criado_em)} · ${prtH(p.criado_por)} → <b>${prtH(p.destinatario)}</b> · ${p.qtd_nfs} NF(s)${p.total_valor ? ' · ' + prtR(p.total_valor) : ''}${p.recebido_por ? ' · recebido por <b>' + prtH(p.recebido_por) + '</b>' : ''}${p.entregue_em ? ' em ' + prtD(p.entregue_em) : ''}</p></div>
-    <div class="prt-acoes">${p.status !== 'CANCELADO' ? `<button class="button ghost" onclick="prtImprimir('${p.id}')">🖨 Imprimir</button>` : ''}${prtAcoes(p)}</div></div>
+    <div class="prt-acoes">${p.status !== 'CANCELADO' ? `<button class="button ghost" onclick="prtImprimir('${p.id}')">🖨 Imprimir</button><a class="button ghost" href="api.php?action=protocolos_pdf&id=${encodeURIComponent(p.id)}" download>⬇ Baixar PDF</a><a class="button ghost" href="api.php?action=protocolos_csv&id=${encodeURIComponent(p.id)}" download>⬇ Excel (CSV)</a>` : ''}${prtAcoes(p)}</div></div>
     <details class="prt-det"><summary>Ver as ${p.qtd_nfs} nota(s)</summary><div class="prt-scroll"><table class="orders-table"><thead><tr><th>NF</th><th>PC</th><th>Fornecedor</th><th>Emissão</th><th>Valor</th></tr></thead><tbody>
       ${p.linhas.map(l => `<tr><td><b>${prtH(l.numeroNF)}</b>${l.serieNF ? ' <small class="muted">s.' + prtH(l.serieNF) + '</small>' : ''}</td><td>${prtH(l.pc)}</td><td>${prtH(l.fornecedor)}</td><td>${prtD(l.emissaoNF)}</td><td>${prtNum(l.valorNF) ? prtR(prtNum(l.valorNF)) : '—'}</td></tr>`).join('')}</tbody></table></div>
       ${p.obs ? `<p class="muted"><b>Obs.:</b> ${prtH(p.obs)}</p>` : ''}${p.motivo_cancelamento ? `<p class="muted"><b>Cancelado:</b> ${prtH(p.motivo_cancelamento)}</p>` : ''}

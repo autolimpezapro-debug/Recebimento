@@ -35,3 +35,5 @@
 }
 .prt-scroll{overflow-x:auto;max-width:100%}
 @media(max-width:700px){.prt-tab td{background:transparent!important}.prt-tab tr.prt-on{background:rgba(56,120,237,.16)}}
+.prt-pronto{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.prt-pronto .button{flex:1 1 auto;justify-content:center;text-decoration:none}
+.prt-acoes a.button{text-decoration:none}
