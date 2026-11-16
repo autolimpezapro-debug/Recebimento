@@ -1,3 +1,10 @@
+v3.38.0 — Assinatura digital do Protocolo de NFs
+ * Protocolos gerados: novo botão "✍ Assinar no sistema". Quem recebe (Financeiro) assina na tela com o
+   dedo, caneta ou mouse, informa nome/cargo e confirma o recebimento. O protocolo vai direto para
+   "Assinado e arquivado", sem precisar imprimir. É uma 2ª opção: a via em papel assinada continua valendo.
+ * A assinatura aparece na impressão e no PDF (2 vias), com nome, data/hora e código de verificação.
+ * Fica no histórico; ao reabrir o protocolo, a assinatura anterior é registrada e liberada para nova assinatura.
+
 v3.37.0 — Filtro por insumo/SKU + auditoria completa
  * Pedidos: novo campo "Filtrar por insumo ou SKU". Mostra todo pedido que tenha o item (nome ou código),
    destaca o item encontrado e soma quantidades pedidas/recebidas/pendentes.

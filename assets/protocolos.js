@@ -145,6 +145,7 @@ function prtCard(p) {
     <details class="prt-det"><summary>Ver as ${p.qtd_nfs} nota(s)</summary><div class="prt-scroll"><table class="orders-table"><thead><tr><th>NF</th><th>PC</th><th>Fornecedor</th><th>Emissão</th><th>Valor</th></tr></thead><tbody>
       ${p.linhas.map(l => `<tr><td><b>${prtH(l.numeroNF)}</b>${l.serieNF ? ' <small class="muted">s.' + prtH(l.serieNF) + '</small>' : ''}</td><td>${prtH(l.pc)}</td><td>${prtH(l.fornecedor)}</td><td>${prtD(l.emissaoNF)}</td><td>${prtNum(l.valorNF) ? prtR(prtNum(l.valorNF)) : '—'}</td></tr>`).join('')}</tbody></table></div>
       ${p.obs ? `<p class="muted"><b>Obs.:</b> ${prtH(p.obs)}</p>` : ''}${p.motivo_cancelamento ? `<p class="muted"><b>Cancelado:</b> ${prtH(p.motivo_cancelamento)}</p>` : ''}
+      ${p.assinatura_digital ? `<div class="prt-digi"><svg viewBox="0 0 600 200" class="prt-sigsvg"><path d="${prtTracoD(p.assinatura_digital.tracos)}" fill="none" stroke="#0b1f5c" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b>✍ Assinado digitalmente</b> por ${prtH(p.assinatura_digital.nome)}${p.assinatura_digital.cargo ? ' (' + prtH(p.assinatura_digital.cargo) + ')' : ''}<br><span class="muted">${prtD(p.assinatura_digital.em)} ${prtH(String(p.assinatura_digital.em).slice(11, 16))} · código ${prtH(p.assinatura_digital.codigo)}</span></div></div>` : ''}
       <div class="prt-docs">${(p.documentos || []).map(a => `<a href="${prtH(a.url)}" target="_blank" rel="noopener">📎 ${prtH(a.nome)}</a> <a href="${prtH(a.url)}&baixar=1" class="muted">baixar</a>`).join(' · ') || '<span class="muted">Nenhuma via assinada anexada.</span>'}</div>
       <details class="prt-hist"><summary>Histórico</summary><ul>${(p.historico || []).map(h => `<li>${prtD(h.em)} ${prtH(String(h.em).slice(11, 16))} · ${prtH(h.por)} — ${prtH(h.acao)}</li>`).join('')}</ul></details></details></article>`;
 }
@@ -152,6 +153,7 @@ function prtAcoes(p) {
   if (!prtPode('editar') && !prtPode('anexar')) return '';
   const b = [];
   if (p.status === 'GERADO' && prtPode('editar')) b.push(`<button class="button primary" onclick="prtEntregar('${p.id}')">Marcar entregue</button>`);
+  if (['GERADO', 'ENTREGUE'].includes(p.status) && prtPode('editar')) b.push(`<button class="button primary" onclick="prtAssinarDigital('${p.id}')">✍ Assinar no sistema</button>`);
   if (['GERADO', 'ENTREGUE'].includes(p.status) && prtPode('anexar')) b.push(`<label class="button ghost prt-up">📎 Anexar via assinada<input type="file" accept="application/pdf,image/*" hidden onchange="prtUpload('${p.id}',this)"></label>`);
   if (['GERADO', 'ENTREGUE'].includes(p.status) && prtPode('editar') && (p.documentos || []).length) b.push(`<button class="button primary" onclick="prtAssinar('${p.id}')">Arquivar como assinado</button>`);
   if (p.status === 'ASSINADO' && prtPode('editar')) b.push(`<button class="button ghost" onclick="prtMotivo('${p.id}','reabrir','Reabrir protocolo')">Reabrir</button>`);
@@ -193,4 +195,26 @@ function prtRenderSemNf() {
   prtEl('prtConteudo').innerHTML = L.length ? `<div class="panel"><p class="muted">Pedidos já recebidos que <b>não têm número de NF</b> cadastrado. Abra o pedido em <b>Pedidos</b>, informe a NF e eles aparecem aqui na tela de novo protocolo.${PRT.p.kpis.sem_nf > L.length ? ` (mostrando ${L.length} de ${PRT.p.kpis.sem_nf})` : ''}</p>
     <div class="prt-scroll"><table class="orders-table"><thead><tr><th>Pedido (PC)</th><th>Fornecedor</th><th>Recebido em</th></tr></thead><tbody>${L.map(x => `<tr><td><b>${prtH(x.pc)}</b></td><td>${prtH(x.fornecedor)}</td><td>${prtD(x.data)}</td></tr>`).join('')}</tbody></table></div></div>`
     : '<div class="empty">Todos os pedidos recebidos têm número de NF.</div>';
+}
+
+/* ---- Assinatura digital (v3.37.0): desenhada na tela (dedo, caneta ou mouse), guardada como traços vetoriais ---- */
+function prtTracoD(tr) { return (tr || []).map(t => 'M' + t[0][0] + ' ' + t[0][1] + t.slice(1).map(q => 'L' + q[0] + ' ' + q[1]).join('') + (t.length === 1 ? 'l0.1 0' : '')).join(''); }
+function prtAssinarDigital(id) {
+  const p = (PRT.p && PRT.p.protocolos || []).find(x => x.id === id) || {};
+  const bg = prtModal('Assinar protocolo no sistema', `<p>Protocolo <b>${prtH(id)}</b> · ${p.qtd_nfs || ''} NF(s)${p.total_valor ? ' · ' + prtR(p.total_valor) : ''}. Quem recebe as notas assina abaixo com o dedo, a caneta ou o mouse.</p>
+    <div class="rd-ass-campos"><label>Nome de quem recebeu*<input name="recebido_por" maxlength="80" placeholder="Nome completo" value="${prtH(p.recebido_por || '')}"></label><label>Cargo / setor<input name="cargo" maxlength="60" placeholder="Ex.: Financeiro"></label></div>
+    <div class="prt-sigwrap"><canvas class="prt-sigpad" width="600" height="200"></canvas><span class="prt-sigdica">Assine aqui</span></div>
+    <label class="prt-sigok"><input type="checkbox" name="ciente"> Confirmo o recebimento das notas fiscais listadas neste protocolo.</label>
+    <div class="rd-ass-acoes"><button type="button" class="button ghost" data-x2>Voltar</button><button type="button" class="button ghost" data-limpar>Limpar</button><button type="button" class="button primary" data-ok>Assinar e arquivar</button></div>`, 560);
+  const cv = bg.querySelector('.prt-sigpad'), cx = cv.getContext('2d'); let tracos = [], atual = null;
+  const pos = e => { const r = cv.getBoundingClientRect(); return [Math.round((e.clientX - r.left) * 600 / r.width), Math.round((e.clientY - r.top) * 200 / r.height)]; };
+  const pinta = () => { cx.clearRect(0, 0, 600, 200); cx.strokeStyle = '#0b1f5c'; cx.lineWidth = 4; cx.lineCap = cx.lineJoin = 'round'; tracos.forEach(t => { cx.beginPath(); cx.moveTo(t[0][0], t[0][1]); t.slice(1).forEach(q => cx.lineTo(q[0], q[1])); if (t.length === 1) cx.lineTo(t[0][0] + .1, t[0][1]); cx.stroke(); }); bg.querySelector('.prt-sigdica').style.display = tracos.length ? 'none' : ''; };
+  cv.addEventListener('pointerdown', e => { e.preventDefault(); cv.setPointerCapture(e.pointerId); atual = [pos(e)]; tracos.push(atual); pinta(); });
+  cv.addEventListener('pointermove', e => { if (!atual) return; e.preventDefault(); const q = pos(e), u = atual[atual.length - 1]; if (Math.abs(q[0] - u[0]) + Math.abs(q[1] - u[1]) >= 2 && atual.length < 1500) { atual.push(q); pinta(); } });
+  ['pointerup', 'pointercancel'].forEach(ev => cv.addEventListener(ev, () => { atual = null; }));
+  bg.querySelector('[data-limpar]').onclick = () => { tracos = []; atual = null; pinta(); };
+  bg.querySelector('[data-ok]').onclick = () => {
+    if (!bg.querySelector('[name=ciente]').checked) return prtToast('Marque a confirmação de recebimento.', true);
+    prtStatus(bg, { id, acao: 'assinar_digital', recebido_por: prtVal(bg, 'recebido_por'), cargo: prtVal(bg, 'cargo'), tracos }, 'Protocolo assinado e arquivado');
+  };
 }

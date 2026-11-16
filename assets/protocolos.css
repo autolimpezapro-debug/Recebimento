@@ -37,3 +37,10 @@
 @media(max-width:700px){.prt-tab td{background:transparent!important}.prt-tab tr.prt-on{background:rgba(56,120,237,.16)}}
 .prt-pronto{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.prt-pronto .button{flex:1 1 auto;justify-content:center;text-decoration:none}
 .prt-acoes a.button{text-decoration:none}
+
+.prt-sigwrap{position:relative;margin:10px 0;border:2px dashed var(--line,#4a5568);border-radius:10px;background:#fff;touch-action:none}
+.prt-sigpad{display:block;width:100%;height:auto;aspect-ratio:3/1;touch-action:none;cursor:crosshair}
+.prt-sigdica{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#9aa4b2;font-size:15px;pointer-events:none}
+.prt-sigok{display:flex;gap:8px;align-items:flex-start;font-size:13px;margin:6px 0}
+.prt-digi{display:flex;gap:12px;align-items:center;background:rgba(46,125,50,.1);border:1px solid rgba(46,125,50,.4);border-radius:8px;padding:6px 10px;margin:8px 0;font-size:13px}
+.prt-sigsvg{width:120px;height:40px;background:#fff;border-radius:6px;flex:0 0 auto}

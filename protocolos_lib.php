@@ -144,6 +144,29 @@ function &prt_get(array &$d, string $id) {
     foreach ($d['protocolos'] as $k => &$p) if ($p['id'] === $id) return $p;
     prt_fail('Protocolo não encontrado.', 404);
 }
+/** Valida os traços da assinatura desenhada (lista de traços; cada traço = lista de [x,y] em 0..600 x 0..200). */
+function prt_tracos($raw): array {
+    if (!is_array($raw)) prt_fail('Assine no quadro antes de confirmar.');
+    $out = []; $pts = 0;
+    foreach (array_slice($raw, 0, 80) as $t) {
+        if (!is_array($t)) continue; $o = [];
+        foreach (array_slice($t, 0, 1500) as $pt) {
+            if (!is_array($pt) || count($pt) < 2 || !is_numeric($pt[0]) || !is_numeric($pt[1])) continue;
+            $o[] = [max(0, min(600, (int)round((float)$pt[0]))), max(0, min(200, (int)round((float)$pt[1])))]; $pts++;
+            if ($pts > 6000) break 2;
+        }
+        if ($o) $out[] = $o;
+    }
+    $comp = 0.0;
+    foreach ($out as $t) for ($i = 1; $i < count($t); $i++) $comp += hypot($t[$i][0] - $t[$i - 1][0], $t[$i][1] - $t[$i - 1][1]);
+    if ($pts < 12 || $comp < 80) prt_fail('A assinatura ficou muito curta. Assine no quadro com o dedo ou o mouse.');
+    return $out;
+}
+function prt_ass_svg(array $tracos, string $style = ''): string {
+    $d = '';
+    foreach ($tracos as $t) { $d .= 'M' . $t[0][0] . ' ' . $t[0][1]; foreach ($t as $i => $pt) if ($i) $d .= 'L' . $pt[0] . ' ' . $pt[1]; if (count($t) === 1) $d .= 'l0.1 0'; }
+    return '<svg class="sig" viewBox="0 0 600 200" ' . $style . ' xmlns="http://www.w3.org/2000/svg"><path d="' . $d . '" fill="none" stroke="#0b1f5c" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+}
 /** acao: entregar (recebido_por, data) | assinar (recebido_por opcional, data opcional) | cancelar (motivo) | reabrir (volta ao GERADO). */
 function prt_status(array &$d, array $in, string $user): array {
     $p = &prt_get($d, prt_str($in['id'] ?? '', 20)); $ac = (string)($in['acao'] ?? ''); $agora = date('c');
@@ -162,6 +185,17 @@ function prt_status(array &$d, array $in, string $user): array {
         if (empty($p['entregue_em'])) $p['entregue_em'] = $data;
         $p['status'] = 'ASSINADO'; $p['assinado_em'] = $data;
         $p['historico'][] = ['em' => $agora, 'por' => $user, 'acao' => 'Via assinada arquivada (assinado em ' . $data . ')'];
+    } elseif ($ac === 'assinar_digital') {
+        if (!in_array($st, ['GERADO', 'ENTREGUE'], true)) prt_fail('Este protocolo não está aguardando assinatura.');
+        if (mb_strlen($rec) < 3) prt_fail('Informe o nome completo de quem está assinando.');
+        $tr = prt_tracos($in['tracos'] ?? null);
+        $cargo = prt_str($in['cargo'] ?? '', 60);
+        $ass = ['nome' => $rec, 'cargo' => $cargo, 'em' => $agora, 'ip' => substr((string)($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45), 'tracos' => $tr];
+        $ass['codigo'] = strtoupper(substr(hash('sha256', json_encode([$p['id'], array_map(fn($l) => prt_chave((int)$l['pc'], (string)$l['numeroNF'], (string)$l['serieNF']), $p['linhas']), $rec, $agora, $tr])), 0, 12));
+        $p['assinatura_digital'] = $ass; $p['recebido_por'] = $rec;
+        if (empty($p['entregue_em'])) $p['entregue_em'] = $data;
+        $p['status'] = 'ASSINADO'; $p['assinado_em'] = date('Y-m-d');
+        $p['historico'][] = ['em' => $agora, 'por' => $user, 'acao' => 'Assinado digitalmente no sistema por ' . $rec . ($cargo !== '' ? ' (' . $cargo . ')' : '') . ' · código ' . $ass['codigo']];
     } elseif ($ac === 'cancelar') {
         if ($st === 'ASSINADO') prt_fail('Protocolo assinado não pode ser cancelado. Reabra-o primeiro, se for mesmo necessário.');
         $m = prt_str($in['motivo'] ?? '', 200); if (mb_strlen($m) < 3) prt_fail('Informe o motivo do cancelamento.');
@@ -171,6 +205,7 @@ function prt_status(array &$d, array $in, string $user): array {
         if (!in_array($st, ['ASSINADO'], true)) prt_fail('Só um protocolo assinado pode ser reaberto.');
         $m = prt_str($in['motivo'] ?? '', 200); if (mb_strlen($m) < 3) prt_fail('Informe o motivo da reabertura.');
         $p['status'] = 'ENTREGUE'; unset($p['assinado_em']);
+        if (!empty($p['assinatura_digital'])) { $p['assinaturas_anteriores'][] = ['nome' => $p['assinatura_digital']['nome'], 'em' => $p['assinatura_digital']['em'], 'codigo' => $p['assinatura_digital']['codigo']]; unset($p['assinatura_digital']); }
         $p['historico'][] = ['em' => $agora, 'por' => $user, 'acao' => 'Reaberto: ' . $m];
     } else prt_fail('Ação inválida.');
     return $p;
@@ -232,7 +267,10 @@ function prt_html_impressao(array $p): string {
             . ($v['linhas_sem_valor'] ? '<p class="peq">* ' . (int)$v['linhas_sem_valor'] . ' nota(s) sem valor informado no sistema; o total considera só as que têm valor.</p>' : '')
             . ($p['obs'] !== '' ? '<p class="obs"><b>Observações:</b> ' . nl2br($e($p['obs'])) . '</p>' : '')
             . '<div class="ass"><div><div class="lin"></div><b>Entregue por (Recebimento)</b><small>Nome, assinatura e data</small></div>'
-            . '<div><div class="lin"></div><b>Recebido por (' . $e($p['destinatario']) . ')</b><small>Nome, assinatura, data e hora</small></div></div>'
+            . (!empty($p['assinatura_digital'])
+                ? '<div class="digi">' . prt_ass_svg($p['assinatura_digital']['tracos']) . '<div class="lin"></div><b>Recebido por (' . $e($p['destinatario']) . '): ' . $e($p['assinatura_digital']['nome']) . ($p['assinatura_digital']['cargo'] !== '' ? ' — ' . $e($p['assinatura_digital']['cargo']) : '') . '</b>'
+                    . '<small>Assinado digitalmente no sistema em ' . $e(date('d/m/Y H:i', strtotime((string)$p['assinatura_digital']['em']))) . ' · código ' . $e($p['assinatura_digital']['codigo']) . '</small></div>'
+                : '<div><div class="lin"></div><b>Recebido por (' . $e($p['destinatario']) . ')</b><small>Nome, assinatura, data e hora</small></div>') . '</div>'
             . '<footer>Protocolo ' . $e($p['id']) . ' · ' . $e($titulo) . ' · guarde a via assinada junto ao Recebimento.</footer></section>';
     };
     return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' . $e($p['id']) . ' - Protocolo de NFs</title><style>'
@@ -243,7 +281,7 @@ function prt_html_impressao(array $p): string {
         . 'h1{font-size:16px;text-align:center;margin:14px 0 10px;letter-spacing:.4px}'
         . '.meta{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px}.meta div{border:1px solid #bbb;border-radius:4px;padding:5px 7px}.meta small{display:block;color:#555;font-size:10px;text-transform:uppercase}'
         . '.txt{margin:8px 0}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #888;padding:4px 5px;vertical-align:top}th{background:#eee;text-align:left}td.c{text-align:center}td.r{text-align:right}td.ck{width:34px}tfoot td{background:#f4f4f4}'
-        . '.peq{font-size:10px;color:#555}.obs{margin-top:8px}.ass{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:auto;padding-top:46px}.ass .lin{border-top:1px solid #111;margin-bottom:4px}.ass b{display:block}.ass small{color:#555}'
+        . '.peq{font-size:10px;color:#555}.obs{margin-top:8px}.ass{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:auto;padding-top:46px}.ass .lin{border-top:1px solid #111;margin-bottom:4px}.ass b{display:block}.digi{position:relative}.digi .sig{display:block;height:46px;width:150px;margin-bottom:-6px}.ass small{color:#555}'
         . 'footer{margin-top:16px;border-top:1px dashed #999;padding-top:6px;color:#555;font-size:10px;text-align:center}'
         . '@media print{body{background:#fff}.bar{display:none}.via{margin:0;box-shadow:none;width:auto;min-height:277mm;page-break-after:always;break-after:page}.via:last-child{page-break-after:auto;break-after:auto}@page{size:A4;margin:10mm}}'
         . '@media(max-width:800px){.via{width:auto;margin:8px;padding:12px;min-height:0}.meta{grid-template-columns:1fr 1fr}table{font-size:10px}}'
@@ -366,7 +404,14 @@ function prt_pdf(array $p): string {
         $hw = ($cw - 30) / 2;
         foreach ([['Entregue por (Recebimento)', 'Nome, assinatura e data'], ['Recebido por (' . $p['destinatario'] . ')', 'Nome, assinatura, data e hora']] as $i => [$a, $b]) {
             $bx = $mx + $i * ($hw + 30); $pdf->line($bx, $sig, $bx + $hw, $sig, 0.8);
-            $pdf->t($bx, $sig + 13, $pdf->fit($a, 9.5, true, $hw), 9.5, true); $pdf->t($bx, $sig + 24, $b, 8);
+            $dg = $i === 1 ? ($p['assinatura_digital'] ?? null) : null;
+            if ($dg) {
+                foreach ($dg['tracos'] as $t) for ($k = 1; $k < count($t); $k++) $pdf->line($bx + 6 + $t[$k - 1][0] * 0.28, $sig - 52 + $t[$k - 1][1] * 0.26, $bx + 6 + $t[$k][0] * 0.28, $sig - 52 + $t[$k][1] * 0.26, 1.3);
+                $a = 'Recebido por (' . $p['destinatario'] . '): ' . $dg['nome'] . ($dg['cargo'] !== '' ? ' - ' . $dg['cargo'] : '');
+                $b = 'Assinado digitalmente no sistema em ' . date('d/m/Y H:i', strtotime((string)$dg['em']));
+                $pdf->t($bx, $sig + 35, 'Codigo de verificacao: ' . $dg['codigo'], 8);
+            }
+            $pdf->t($bx, $sig + 13, $pdf->fit($a, 9.5, true, $hw), 9.5, true); $pdf->t($bx, $sig + 24, $pdf->fit($b, 8, false, $hw), 8);
         }
         $pdf->line($mx, $H - 62, $mx + $cw, $H - 62, 0.4);
         $pdf->t($mx, $H - 50, 'Protocolo ' . $p['id'] . ' · ' . $via . ' · guarde a via assinada junto ao Recebimento.', 7.5, false, 'C', $cw);
