@@ -106,6 +106,27 @@ function rd_carga_locacoes(): void {
                         loc_excluir($d, ['id' => $l['id']], 'carga-nf (substituído por ' . $c['documento'] . ')');
                 }
                 foreach ($c['locacoes'] as $x) {
+                    // v3.35.2: 'complementar' — NÃO cria locação: só acrescenta texto na observação e anexa documentos a uma locação que já existe (mesmo contrato e fornecedor). Se não existir, ignora.
+                    if (!empty($x['complementar'])) {
+                        $achou = null;
+                        foreach ($d['locacoes'] as &$ll) {
+                            if (($ll['contrato'] ?? '') === ($x['casar_contrato'] ?? '#') && stripos((string)($ll['fornecedor'] ?? ''), (string)($x['casar_fornecedor'] ?? '')) !== false) {
+                                $add = trim((string)($x['observacao_acrescentar'] ?? ''));
+                                if ($add !== '' && mb_strpos((string)($ll['observacao'] ?? ''), mb_substr($add, 0, 40)) === false)
+                                    $ll['observacao'] = mb_substr(trim((string)($ll['observacao'] ?? '') . "\n\n" . $add), 0, 4000);
+                                foreach ((array)($x['documentos'] ?? []) as $doc) {
+                                    $nomeDoc = (string)($doc['nome'] ?? '');
+                                    $jaTem = false; foreach ((array)($ll['documentos'] ?? []) as $a) if (($a['nome'] ?? '') === $nomeDoc) $jaTem = true;
+                                    if (!$jaTem) loc_doc_importar($ll, DATA_DIR . '/carga_inicial/docs/' . basename((string)($doc['arquivo'] ?? '')), $nomeDoc, (string)($doc['tipo'] ?? 'OUTRO'), 'carga-nf');
+                                }
+                                $ll['atualizado_em'] = date('c');
+                                $achou = $ll['id']; break;
+                            }
+                        }
+                        unset($ll);
+                        if ($achou) $ids[] = $achou;
+                        continue;
+                    }
                     // v3.35.0: 'casar_contrato' — se a locação JÁ existe no sistema (mesmo contrato e fornecedor, ainda ativa), encerra e anexa nela em vez de criar outra.
                     $l = null;
                     if (!empty($x['casar_contrato'])) foreach ($d['locacoes'] as $ex) {

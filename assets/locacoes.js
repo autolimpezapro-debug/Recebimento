@@ -7,7 +7,7 @@ const locD = s => s ? new Date(s.slice(0, 10) + 'T12:00:00').toLocaleDateString(
 const locR = n => Number(n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const locN = n => Number(n || 0).toLocaleString('pt-BR');
 const locHoje = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
-const LOC_DOC_TIPOS = { NF_REMESSA: 'NF de remessa', NF_DEVOLUCAO: 'NF de devolução', COMPROVANTE: 'Comprovante de devolução', CONTRATO: 'Contrato', FATURA: 'Fatura / boleto', OUTRO: 'Outro' };
+const LOC_DOC_TIPOS = { NF_REMESSA: 'NF de remessa', NF_DEVOLUCAO: 'NF de devolução', COMPROVANTE: 'Comprovante de devolução', CHECKLIST: 'Checklist de entrega / retorno', CONTRATO: 'Contrato', FATURA: 'Fatura / boleto', OUTRO: 'Outro' };
 const locPode = op => typeof rdaPermite !== 'function' || rdaPermite('estoque', op);
 const LOC_TAR = { DIARIA: 'Diária', SEMANAL: 'Semanal', QUINZENAL: 'Quinzenal', MENSAL: 'Mensal' };
 const LOC_MES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];

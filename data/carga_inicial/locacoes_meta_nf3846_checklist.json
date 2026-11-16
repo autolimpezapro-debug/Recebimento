@@ -1,0 +1,19 @@
+{
+ "documento": "META checklist de entrega NF 3846 (09/11/2026)",
+ "fornecedor": "META LOCACAO",
+ "locacoes": [
+  {
+   "complementar": true,
+   "casar_contrato": "NF remessa 3846",
+   "casar_fornecedor": "META LOCACAO",
+   "observacao_acrescentar": "CHECKLIST DE ENTREGA (Declaração de entrada e saída de equipamentos da Meta, NF 3846, 09/11/2026, marcada \"saída p/ locação\"): cliente Drilling do Brasil Serviços · GMG 194 · 100 KVA · 220 V · diesel · motor MWM · gerador WEG · óleo 15W40 · série do motor 229.06.110.297 · série do gerador 1000.261.90 · horímetro manuscrito 13298,9 / 10139,41 (a NF traz 13228,9: conferir no documento) · observação manuscrita cita bandeja e extintor (trecho parcialmente ilegível) · assinado pelo cliente. Itens marcados e demais anotações: ver o documento anexado.",
+   "documentos": [
+    {
+     "arquivo": "meta-checklist-entrega-gerador-nfe-3846.pdf",
+     "nome": "Checklist de entrega do gerador - Meta Locação (NF 3846).pdf",
+     "tipo": "CHECKLIST"
+    }
+   ]
+  }
+ ]
+}

@@ -16,7 +16,7 @@ const LOC_LOCK = DATA_DIR . '/.locacoes.lock';
 const LOC_MATRIZ = 'MATRIZ';
 const LOC_DIR = DATA_DIR . '/locacoes_docs';      // v3.35.0: documentos da locação (NF, comprovante, contrato) — bloqueado para acesso direto
 const LOC_MAX_DOC = 15 * 1024 * 1024;
-const LOC_DOC_TIPOS = ['NF_REMESSA' => 'NF de remessa', 'NF_DEVOLUCAO' => 'NF de devolução', 'COMPROVANTE' => 'Comprovante de devolução', 'CONTRATO' => 'Contrato', 'FATURA' => 'Fatura / boleto', 'OUTRO' => 'Outro'];
+const LOC_DOC_TIPOS = ['NF_REMESSA' => 'NF de remessa', 'NF_DEVOLUCAO' => 'NF de devolução', 'COMPROVANTE' => 'Comprovante de devolução', 'CHECKLIST' => 'Checklist de entrega / retorno', 'CONTRATO' => 'Contrato', 'FATURA' => 'Fatura / boleto', 'OUTRO' => 'Outro'];
 const LOC_TARIFAS = ['DIARIA' => 1, 'SEMANAL' => 7, 'QUINZENAL' => 15, 'MENSAL' => 30];
 const LOC_EXTRAS = ['FRETE_ENTREGA' => 'Frete de entrega', 'FRETE_RETIRADA' => 'Frete de retirada', 'FRETE_TRANSFERENCIA' => 'Frete de transferência',
     'MANUTENCAO' => 'Manutenção', 'AVARIA' => 'Avaria / dano', 'SEGURO' => 'Seguro', 'CONSUMIVEL' => 'Consumível / acessório',
