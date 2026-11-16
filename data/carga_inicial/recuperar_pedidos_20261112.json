@@ -1,0 +1,472 @@
+{
+    "origem": "rd_versoes items.json — versão mais recente de cada PC em 12\/11\/2026",
+    "pedidos": [
+        {
+            "pc": 4950,
+            "material": "6) TAMPAO DO BLOCO",
+            "fornecedor": "RETIFICA SAO JOSE LTDA",
+            "situacao": "FINALIZADO",
+            "situacao_origem": "WHATSAPP",
+            "ultima_acao": "Recebimento finalizado",
+            "ultima_acao_em": "2026-11-12T11:44:52-03:00",
+            "chegou": "SIM",
+            "data": "2026-11-12",
+            "qtd": "",
+            "insumos": [
+                {
+                    "id": "sku_MA001791",
+                    "sku": "MA001791",
+                    "descricao": "TAMPAO DO BLOCO",
+                    "unidade": "UN",
+                    "quantidade_pedida": 6,
+                    "quantidade_recebida": 6,
+                    "quantidade_pendente": 0,
+                    "conferido_etapa": true
+                }
+            ],
+            "origem_entrega": "COLETA_DRILLING",
+            "entregas": [
+                {
+                    "confirmado_em": "2026-11-12T11:44:52-03:00",
+                    "origem_entrega": "COLETA_DRILLING",
+                    "status": "SIM",
+                    "insumos": [
+                        {
+                            "id": "sku_MA001791",
+                            "descricao": "TAMPAO DO BLOCO",
+                            "unidade": "UN",
+                            "quantidade_pedida": 6,
+                            "quantidade_recebida": 6,
+                            "quantidade_nesta_entrega": 6,
+                            "quantidade_pendente": 0
+                        }
+                    ]
+                }
+            ],
+            "historico_retificacoes": [],
+            "primeira_confirmacao_em": "2026-11-12T11:44:52-03:00",
+            "obs": "",
+            "chaveNF": "31261117193871000171550030000251291254019175",
+            "fotoNF": "",
+            "fotosProdutos": [
+                "data\/photos\/pc_4950_p0_473527c6bfb3d67a.jpg",
+                "data\/photos\/pc_4950_p1_e45172723a30846a.jpg",
+                "data\/photos\/pc_4950_p2_296ce560348e2745.jpg"
+            ],
+            "nfResumo": "",
+            "numeroNF": "25129",
+            "serieNF": "3",
+            "cnpjEmitente": "17193871000171",
+            "emissaoNF": "2026-11-09",
+            "valorNF": "172,68",
+            "itensNF": "",
+            "origemNF": "QRCODE",
+            "xmlNF": "",
+            "solicitante": "Manutenção",
+            "recebimento_estado": "finalizado",
+            "recebimento_iniciado_em": "2026-11-11T07:49:22-03:00",
+            "recebimento_finalizado_em": "2026-11-12T11:44:52-03:00",
+            "updated_at": "2026-11-12T11:44:52.354735-03:00",
+            "importacao_origem": "PDF individual",
+            "importacao_arquivo": "PC 4950 RETIFICA SÃO JOSE (PSM20).pdf",
+            "importacao_hash": "34f847947073eba1b3cae928d1c3ceff291d870b3a5b0ffc7f0d990bbca2820e",
+            "importacao_em": "2026-11-10T11:03:54-03:00",
+            "novo_pedido_em": null,
+            "urgente": "",
+            "devolucoes": [],
+            "urgente_motivo": "",
+            "urgente_em": null
+        },
+        {
+            "pc": 4963,
+            "material": "6.75) Mola Protecao Plastica 25mm Interno PP25",
+            "fornecedor": "MPA HIDRAULICA E PNEUMATICA LTDA",
+            "situacao": "FINALIZADO",
+            "situacao_origem": "WHATSAPP",
+            "ultima_acao": "Recebimento finalizado",
+            "ultima_acao_em": "2026-11-12T11:45:05-03:00",
+            "chegou": "SIM",
+            "data": "2026-11-12",
+            "qtd": "",
+            "insumos": [
+                {
+                    "id": "sku_MA000743",
+                    "sku": "MA000743",
+                    "descricao": "Mola Protecao Plastica 25mm Interno PP25",
+                    "unidade": "UN",
+                    "quantidade_pedida": 6.75,
+                    "quantidade_recebida": 6.75,
+                    "quantidade_pendente": 0,
+                    "conferido_etapa": true
+                }
+            ],
+            "origem_entrega": "COLETA_DRILLING",
+            "entregas": [
+                {
+                    "confirmado_em": "2026-11-12T11:45:05-03:00",
+                    "origem_entrega": "COLETA_DRILLING",
+                    "status": "SIM",
+                    "insumos": [
+                        {
+                            "id": "sku_MA000743",
+                            "descricao": "Mola Protecao Plastica 25mm Interno PP25",
+                            "unidade": "UN",
+                            "quantidade_pedida": 6.75,
+                            "quantidade_recebida": 6.75,
+                            "quantidade_nesta_entrega": 6.75,
+                            "quantidade_pendente": 0
+                        }
+                    ]
+                }
+            ],
+            "historico_retificacoes": [],
+            "primeira_confirmacao_em": "2026-11-12T11:45:05-03:00",
+            "obs": "",
+            "chaveNF": "31261137544071000165550010000135591000141161",
+            "fotoNF": "",
+            "fotosProdutos": [
+                "data\/photos\/pc_4963_p0_2565f3d2d047af9b.jpg",
+                "data\/photos\/pc_4963_p1_310eec638b5f9a07.jpg"
+            ],
+            "nfResumo": "",
+            "numeroNF": "13559",
+            "serieNF": "1",
+            "cnpjEmitente": "37544071000165",
+            "emissaoNF": "2026-11-10",
+            "valorNF": "59,74",
+            "itensNF": "",
+            "origemNF": "QRCODE",
+            "xmlNF": "",
+            "solicitante": "Manutenção",
+            "recebimento_estado": "finalizado",
+            "recebimento_iniciado_em": "2026-11-11T08:46:43-03:00",
+            "recebimento_finalizado_em": "2026-11-12T11:45:05-03:00",
+            "updated_at": "2026-11-12T11:45:05.662490-03:00",
+            "importacao_origem": "WhatsApp ZIP",
+            "importacao_arquivo": "PC 4963 MPA HIDRAULICA (SH25).pdf",
+            "importacao_hash": "ce602323606247b35ba2e9e4d18c94b67bc8df70b1cf9a5a993b6ca9fa3bb96b",
+            "importacao_em": "2026-11-09T07:54:21-03:00",
+            "novo_pedido_em": null,
+            "urgente": "",
+            "devolucoes": [],
+            "urgente_motivo": "",
+            "urgente_em": null
+        },
+        {
+            "pc": 4974,
+            "material": "1) CHAVE GERAL MANUAL UNIVERSAL DNI 85365090",
+            "fornecedor": "TRIANGULO PECAS E FILTROS LTDA",
+            "situacao": "FINALIZADO",
+            "situacao_origem": "WHATSAPP",
+            "ultima_acao": "Recebimento finalizado",
+            "ultima_acao_em": "2026-11-12T08:04:48-03:00",
+            "chegou": "SIM",
+            "data": "2026-11-12",
+            "qtd": "",
+            "insumos": [
+                {
+                    "id": "sku_MA002784",
+                    "sku": "MA002784",
+                    "descricao": "CHAVE GERAL MANUAL UNIVERSAL DNI 85365090",
+                    "unidade": "UN",
+                    "quantidade_pedida": 1,
+                    "quantidade_recebida": 1,
+                    "quantidade_pendente": 0,
+                    "conferido_etapa": true
+                }
+            ],
+            "origem_entrega": "COLETA_DRILLING",
+            "entregas": [
+                {
+                    "confirmado_em": "2026-11-12T08:04:48-03:00",
+                    "origem_entrega": "COLETA_DRILLING",
+                    "status": "SIM",
+                    "insumos": [
+                        {
+                            "id": "sku_MA002784",
+                            "descricao": "CHAVE GERAL MANUAL UNIVERSAL DNI 85365090",
+                            "unidade": "UN",
+                            "quantidade_pedida": 1,
+                            "quantidade_recebida": 1,
+                            "quantidade_nesta_entrega": 1,
+                            "quantidade_pendente": 0
+                        }
+                    ]
+                }
+            ],
+            "historico_retificacoes": [],
+            "primeira_confirmacao_em": "2026-11-12T08:04:48-03:00",
+            "obs": "",
+            "chaveNF": "31261102994902000116550010006985781019174762",
+            "fotoNF": "",
+            "fotosProdutos": [
+                "data\/photos\/pc_4974_p0_5632443ba5708523.jpg"
+            ],
+            "nfResumo": "",
+            "numeroNF": "698578",
+            "serieNF": "1",
+            "cnpjEmitente": "02994902000116",
+            "emissaoNF": "2026-11-11",
+            "valorNF": "110,00",
+            "itensNF": "",
+            "origemNF": "QRCODE",
+            "xmlNF": "",
+            "solicitante": "Marcos",
+            "recebimento_estado": "finalizado",
+            "recebimento_iniciado_em": "2026-11-12T08:02:47-03:00",
+            "recebimento_finalizado_em": "2026-11-12T08:04:48-03:00",
+            "updated_at": "2026-11-12T08:04:48.360902-03:00",
+            "importacao_origem": "PDF individual",
+            "importacao_arquivo": "PC 4974 TRIANGULO PEÇAS (MUNCK).pdf",
+            "importacao_hash": "40150c1db67fc6f4ed6f62a425cfdfffd9bb94224189c25a24db1252fcc21864",
+            "importacao_em": "2026-11-10T10:59:02-03:00",
+            "novo_pedido_em": null,
+            "urgente": "",
+            "devolucoes": []
+        },
+        {
+            "pc": 5007,
+            "material": "1) INTERRUPTOR ÓLEO MBB\/CASE\/TOYOTA (D15316)",
+            "fornecedor": "TRIÂNGULO PEÇAS E FILTROS",
+            "situacao": "FINALIZADO",
+            "situacao_origem": "MANUAL",
+            "ultima_acao": "Recebimento finalizado",
+            "ultima_acao_em": "2026-11-12T09:02:49-03:00",
+            "chegou": "SIM",
+            "data": "2026-11-12",
+            "qtd": "",
+            "insumos": [
+                {
+                    "id": "item_1",
+                    "sku": "",
+                    "descricao": "INTERRUPTOR ÓLEO MBB\/CASE\/TOYOTA (D15316)",
+                    "unidade": "UN",
+                    "quantidade_pedida": 1,
+                    "quantidade_recebida": 1,
+                    "quantidade_pendente": 0,
+                    "conferido_etapa": true
+                }
+            ],
+            "origem_entrega": "COLETA_DRILLING",
+            "entregas": [
+                {
+                    "confirmado_em": "2026-11-12T09:02:49-03:00",
+                    "origem_entrega": "COLETA_DRILLING",
+                    "status": "SIM",
+                    "insumos": [
+                        {
+                            "id": "item_1",
+                            "descricao": "INTERRUPTOR ÓLEO MBB\/CASE\/TOYOTA (D15316)",
+                            "unidade": "UN",
+                            "quantidade_pedida": 1,
+                            "quantidade_recebida": 1,
+                            "quantidade_nesta_entrega": 1,
+                            "quantidade_pendente": 0
+                        }
+                    ]
+                }
+            ],
+            "historico_retificacoes": [],
+            "primeira_confirmacao_em": "2026-11-12T09:02:49-03:00",
+            "obs": "CR-180",
+            "chaveNF": "31261102994902000116550010006986051019175369",
+            "fotoNF": "",
+            "fotosProdutos": [
+                "data\/photos\/pc_5007_p0_67dac626b7db0cbc.jpg"
+            ],
+            "nfResumo": "",
+            "numeroNF": "698605",
+            "serieNF": "1",
+            "cnpjEmitente": "02994902000116",
+            "emissaoNF": "2026-11-11",
+            "valorNF": "31.00",
+            "itensNF": "",
+            "origemNF": "QRCODE",
+            "xmlNF": "",
+            "solicitante": "Mecânica",
+            "recebimento_estado": "finalizado",
+            "recebimento_iniciado_em": "2026-11-12T09:02:02-03:00",
+            "recebimento_finalizado_em": "2026-11-12T09:02:49-03:00",
+            "updated_at": "2026-11-12T09:02:49.946296-03:00",
+            "importacao_origem": "Cadastro manual",
+            "importacao_arquivo": "",
+            "importacao_hash": "",
+            "importacao_em": null,
+            "novo_pedido_em": null,
+            "urgente": "",
+            "devolucoes": []
+        },
+        {
+            "pc": 4979,
+            "material": "8) FAROL AUX LED QUADRADO 9 LEDS 12\/24V 27W\n4) GIROFLEX C\/LED BIV AZUL 24 ( SMD )= 72 LEDS",
+            "fornecedor": "TRIÂNGULO PEÇAS E FILTROS",
+            "situacao": "FINALIZADO",
+            "situacao_origem": "MANUAL",
+            "ultima_acao": "Dados do pedido atualizados",
+            "ultima_acao_em": "2026-11-12T10:21:57-03:00",
+            "chegou": "SIM",
+            "data": "2026-11-12",
+            "qtd": "",
+            "insumos": [
+                {
+                    "id": "item_1",
+                    "sku": "",
+                    "descricao": "FAROL AUX LED QUADRADO 9 LEDS 12\/24V 27W",
+                    "unidade": "UN",
+                    "quantidade_pedida": 8,
+                    "quantidade_recebida": 8,
+                    "quantidade_pendente": 0,
+                    "conferido_etapa": true
+                },
+                {
+                    "id": "item_2",
+                    "sku": "",
+                    "descricao": "GIROFLEX C\/LED BIV AZUL 24 ( SMD )= 72 LEDS",
+                    "unidade": "UN",
+                    "quantidade_pedida": 4,
+                    "quantidade_recebida": 4,
+                    "quantidade_pendente": 0,
+                    "conferido_etapa": true
+                }
+            ],
+            "origem_entrega": "COLETA_DRILLING",
+            "entregas": [
+                {
+                    "confirmado_em": "2026-11-12T09:45:47-03:00",
+                    "origem_entrega": "COLETA_DRILLING",
+                    "status": "SIM",
+                    "insumos": [
+                        {
+                            "id": "item_1",
+                            "descricao": "FAROL AUX LED QUADRADO 9 LEDS 12\/24V 27W",
+                            "unidade": "UN",
+                            "quantidade_pedida": 8,
+                            "quantidade_recebida": 8,
+                            "quantidade_nesta_entrega": 8,
+                            "quantidade_pendente": 0
+                        },
+                        {
+                            "id": "item_2",
+                            "descricao": "GIROFLEX C\/LED BIV AZUL 24 ( SMD )= 72 LEDS",
+                            "unidade": "UN",
+                            "quantidade_pedida": 4,
+                            "quantidade_recebida": 4,
+                            "quantidade_nesta_entrega": 4,
+                            "quantidade_pendente": 0
+                        }
+                    ]
+                }
+            ],
+            "historico_retificacoes": [],
+            "primeira_confirmacao_em": "2026-11-12T09:45:47-03:00",
+            "obs": "Nexa",
+            "chaveNF": "31261102994902000116550010006986031019175348",
+            "fotoNF": "",
+            "fotosProdutos": [
+                "data\/photos\/pc_4979_p0_46ca16cc8cf9b9c7.jpg",
+                "data\/photos\/pc_4979_p1_f857f015e841a17f.jpg",
+                "data\/photos\/pc_4979_p2_90a1445e215c3fa9.jpg"
+            ],
+            "nfResumo": "",
+            "numeroNF": "698603",
+            "serieNF": "1",
+            "cnpjEmitente": "02994902000116",
+            "emissaoNF": "2026-11-11",
+            "valorNF": "692",
+            "itensNF": "",
+            "origemNF": "QRCODE",
+            "xmlNF": "",
+            "solicitante": "Mecânica",
+            "recebimento_estado": "finalizado",
+            "recebimento_iniciado_em": "2026-11-12T09:43:00-03:00",
+            "recebimento_finalizado_em": "2026-11-12T09:45:47-03:00",
+            "updated_at": "2026-11-12T10:21:57.932529-03:00",
+            "importacao_origem": "Cadastro manual",
+            "importacao_arquivo": "",
+            "importacao_hash": "",
+            "importacao_em": null,
+            "novo_pedido_em": null,
+            "urgente": "",
+            "devolucoes": []
+        },
+        {
+            "pc": 5004,
+            "material": "40) DISPOSITIVO DE SEGURANÇA NR12 P\/ MANGUEIRA 1\/4\" -3\/4\" ATÉ 120BAR PRESSÃO x 520MM CS18-520\n12) DISPOSITIVO DE SEGURANÇA NR12 P\/ MANGUEIRA 1\/4\" -3\/4\" ATÉ 120BAR PRESSÃO x 300MM CS18-520\n8) DISPOSITIVO DE SEGURANÇA NR12 P\/ MANGUEIRA 1\/4\" -3\/4\" ATÉ 120BAR PRESSÃO x 640MM CS18-520",
+            "fornecedor": "MPA HIDRÁULICA",
+            "situacao": "EM CONFERÊNCIA",
+            "situacao_origem": "MANUAL",
+            "ultima_acao": "Foto do produto anexada",
+            "ultima_acao_em": "2026-11-12T12:40:05-03:00",
+            "chegou": "",
+            "data": "",
+            "qtd": "",
+            "insumos": [
+                {
+                    "id": "item_1",
+                    "sku": "",
+                    "descricao": "DISPOSITIVO DE SEGURANÇA NR12 P\/ MANGUEIRA 1\/4\" -3\/4\" ATÉ 120BAR PRESSÃO x 520MM CS18-520",
+                    "unidade": "UN",
+                    "quantidade_pedida": 40,
+                    "quantidade_recebida": 40,
+                    "quantidade_pendente": 0,
+                    "conferido_etapa": true
+                },
+                {
+                    "id": "item_2",
+                    "sku": "",
+                    "descricao": "DISPOSITIVO DE SEGURANÇA NR12 P\/ MANGUEIRA 1\/4\" -3\/4\" ATÉ 120BAR PRESSÃO x 300MM CS18-520",
+                    "unidade": "UN",
+                    "quantidade_pedida": 12,
+                    "quantidade_recebida": 12,
+                    "quantidade_pendente": 0,
+                    "conferido_etapa": true
+                },
+                {
+                    "id": "item_3",
+                    "sku": "",
+                    "descricao": "DISPOSITIVO DE SEGURANÇA NR12 P\/ MANGUEIRA 1\/4\" -3\/4\" ATÉ 120BAR PRESSÃO x 640MM CS18-520",
+                    "unidade": "UN",
+                    "quantidade_pedida": 8,
+                    "quantidade_recebida": 8,
+                    "quantidade_pendente": 0,
+                    "conferido_etapa": true
+                }
+            ],
+            "origem_entrega": "ENTREGA_FORNECEDOR",
+            "entregas": [],
+            "historico_retificacoes": [],
+            "primeira_confirmacao_em": null,
+            "obs": "",
+            "chaveNF": "31261137544071000165550010000136071000141667",
+            "fotoNF": "",
+            "fotosProdutos": [
+                "data\/photos\/pc_5004_p0_d276b6410384a14d.jpg",
+                "data\/photos\/pc_5004_p1_cbfd60f9d935dcf9.jpg",
+                "data\/photos\/pc_5004_p2_4679be30c7b3a8d4.jpg"
+            ],
+            "nfResumo": "",
+            "numeroNF": "13607",
+            "serieNF": "1",
+            "cnpjEmitente": "37544071000165",
+            "emissaoNF": "2026-11-12",
+            "valorNF": "2657,53",
+            "itensNF": "",
+            "origemNF": "QRCODE",
+            "xmlNF": "",
+            "solicitante": "Mecânica",
+            "recebimento_estado": "em_andamento",
+            "recebimento_iniciado_em": "2026-11-12T12:38:00-03:00",
+            "recebimento_finalizado_em": null,
+            "updated_at": "2026-11-12T12:40:05.816773-03:00",
+            "importacao_origem": "Cadastro manual",
+            "importacao_arquivo": "",
+            "importacao_hash": "",
+            "importacao_em": null,
+            "novo_pedido_em": "2026-11-12T12:37:49-03:00",
+            "urgente": "",
+            "devolucoes": [],
+            "urgente_motivo": "",
+            "urgente_em": null
+        }
+    ]
+}

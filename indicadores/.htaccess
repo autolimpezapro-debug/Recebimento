@@ -1,0 +1,3 @@
+# Painel de Indicadores (SPA): rotas como /indicadores/admin abrem o index.html
+FallbackResource /indicadores/index.html
+Options -Indexes

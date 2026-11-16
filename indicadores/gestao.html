@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Indicadores de gestão · Recebimento Drilling</title>
+<link rel="icon" href="/indicadores/favicon.ico?v=3150" type="image/x-icon">
+<style>
+:root{--bg:#07101f;--card:#0f1b2e;--line:#22314a;--tx:#e6edf7;--tx2:#9fb0c8;--tx3:#6f8199;--ac:#e8b746;--blue:#4f86d6;--ok:#3fb68b;--warn:#e0a43b;--bad:#e5534b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.bar{position:sticky;top:0;z-index:5;display:flex;gap:12px;align-items:center;justify-content:space-between;padding:8px 18px;background:#0b1424;border-bottom:1px solid var(--line);font-size:12px;color:var(--tx2)}
+.bar a{color:var(--ac);font-weight:600;text-decoration:none}
+main{max-width:1380px;margin:0 auto;padding:18px}
+.head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+h1{margin:0;font-size:22px}.head p{margin:3px 0 0;color:var(--tx3);font-size:12px}
+.filt{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+select,button{background:var(--card);color:var(--tx);border:1px solid var(--line);border-radius:9px;padding:7px 10px;font:inherit;font-size:13px}
+button{cursor:pointer}.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}.seg button{border:0;border-radius:0}.seg button.on{background:#1d3150;color:var(--ac);font-weight:650}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.kpi span{font-size:11px;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em}.kpi strong{display:block;font-size:21px;margin:3px 0}.kpi small{color:var(--tx2);font-size:11.5px}
+.kpi.bad strong{color:var(--bad)}.kpi.warn strong{color:var(--warn)}.kpi.ok strong{color:var(--ok)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;min-width:0}
+.card.wide{grid-column:1/-1}
+.card h2{margin:0;font-size:15px}.card .sub{margin:2px 0 12px;color:var(--tx3);font-size:12px}
+.card .tag{float:right;font-size:11px;color:var(--tx3);border:1px solid var(--line);border-radius:999px;padding:2px 8px}
+.bars{display:grid;gap:9px}.b-l{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;margin-bottom:3px}.b-l span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx2)}.b-l b{white-space:nowrap}.b-l small{color:var(--tx3);font-weight:400;margin-left:5px}
+.track{height:8px;border-radius:9px;background:#18263d;display:flex;overflow:hidden}.track i{display:block;height:100%}
+.c1{background:var(--blue)}.c2{background:var(--ac)}.c3{background:#a37bea}.cok{background:var(--ok)}.cbad{background:var(--bad)}
+.leg{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--tx3);margin-bottom:10px}.leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}th{text-align:left;color:var(--tx3);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:7px 8px;border-bottom:1px solid #18263d;vertical-align:top}tr:last-child td{border-bottom:0}.num{text-align:right;white-space:nowrap}
+.cls{display:inline-block;width:24px;height:24px;line-height:24px;text-align:center;border-radius:7px;font-weight:800}
+.cA{background:#14382c;color:var(--ok)}.cB{background:#1d3150;color:#7aa6ff}.cC{background:#3b2f14;color:var(--warn)}.cD{background:#3d1d1f;color:var(--bad)}
+.empty{color:var(--tx3);font-size:12.5px;padding:8px 0}.note{font-size:11.5px;color:var(--tx3);margin-top:10px}
+.scroll{overflow:auto;max-height:420px}
+.cols{display:flex;align-items:flex-end;gap:5px;height:140px}.cols div{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px}.cols i{width:100%;max-width:24px;border-radius:5px 5px 2px 2px;background:var(--blue)}.cols small{font-size:10px;color:var(--tx3)}
+.cf-row{cursor:pointer}.cf-row:hover td{background:#13213a}.cf-det td{background:#0b1526;padding:12px 14px}
+.cf-det h4{margin:6px 0 6px;font-size:12.5px;color:var(--tx2)}.rec{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:999px;background:#3b2f14;color:var(--warn);margin-left:6px}
+.sug{border:1px solid #3b2f14;background:#1c1709;color:#f3d38a;border-radius:10px;padding:8px 12px;font-size:12.5px;margin-bottom:10px}.kmt{font-size:10.5px;color:var(--tx3)}
+.cf-cols{display:grid;grid-template-columns:2fr 1fr;gap:14px}@media(max-width:900px){.cf-cols{grid-template-columns:1fr}}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+@media print{.bar,.filt,#cfGeo,#cfCsv{display:none!important}body{background:#fff;color:#000;font-size:11px}.card,.kpi{border-color:#ccc;background:#fff;break-inside:avoid}.kpi strong,.card h2{color:#000}.kpi span,.kpi small,.sub,th,.note,.kmt{color:#444}td{border-color:#ddd}.cf-det td{background:#f6f8fb}.track{background:#e8edf3}.scroll{max-height:none!important;overflow:visible}.grid{grid-template-columns:1fr 1fr}main{max-width:none;padding:0}.sug{background:#fff8e6;color:#5a4300;border-color:#e8c46a}tr.cf-det{break-inside:auto}#cf,.card.wide{break-inside:auto!important}h1{color:#000}@page{size:A4;margin:12mm}}
+</style>
+</head>
+<body>
+<div class="bar"><span>Indicadores de gestão · calculados automaticamente pelo Recebimento Drilling</span><span style="display:flex;gap:16px"><a href="/indicadores/">← Painel de indicadores</a><a href="/">Voltar ao sistema</a></span></div>
+<main>
+  <div class="head"><div><h1>Indicadores de gestão</h1><p id="ger">Carregando…</p></div>
+    <div class="filt"><select id="mes"></select><div class="seg" id="per"><button data-p="mes" class="on">Mês</button><button data-p="ano">Ano até o mês</button><button data-p="12m">12 meses</button></div><button id="btnXlsx" title="Planilha com todas as tabelas, uma aba por indicador">⇩ Excel detalhado</button><button id="btnPdf" title="Relatório completo para salvar em PDF">⇩ PDF detalhado</button><button id="btnLink" hidden title="Gerar o link público para enviar">🔗 Link público</button></div></div>
+  <div class="kpis" id="kpis"></div>
+  <section class="card wide" id="cf" style="margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start">
+      <div><h2>Coletas por fornecedor</h2><p class="sub" id="cfSub">Quantas vezes fomos a cada fornecedor, quantas compras, km rodados e insumos coletados</p></div>
+      <div class="filt"><div class="seg" id="cfDias"><button data-d="30">30 dias</button><button data-d="90" class="on">90 dias</button><button data-d="180">180 dias</button><button data-d="365">12 meses</button></div><select id="cfMes" title="Ver um mês específico"><option value="">ou escolha o mês…</option></select><button id="cfGeo" title="Busca o endereço de cada fornecedor pelo CNPJ e localiza no mapa, para calcular os km">📍 Localizar fornecedores</button><button id="cfCsv">⇩ Excel (CSV)</button></div>
+    </div>
+    <div class="kpis" id="cfKpis" style="margin:4px 0 12px"></div>
+    <div id="cfTab"></div>
+  </section>
+  <div class="grid" id="grid"></div>
+</main>
+<script>
+'use strict';
+const $=s=>document.querySelector(s);
+let TK='';try{const q=new URLSearchParams(location.search).get('p');if(q)sessionStorage.setItem('rdKpiLink',q);TK=sessionStorage.getItem('rdKpiLink')||'';}catch(e){}
+const H=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const R=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+const N=n=>Number(n||0).toLocaleString('pt-BR');
+const MES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+const st={mes:new Date().toISOString().slice(0,7),per:'mes'};
+(function(){const s=$('#mes');for(let i=0;i<18;i++){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);const m=d.toISOString().slice(0,7);s.insertAdjacentHTML('beforeend',`<option value="${m}">${MES[+m.slice(5)-1]}/${m.slice(0,4)}</option>`);}s.onchange=()=>{st.mes=s.value;load();};})();
+document.querySelectorAll('#per button').forEach(b=>b.onclick=()=>{st.per=b.dataset.p;document.querySelectorAll('#per button').forEach(x=>x.classList.toggle('on',x===b));load();});
+function bars(rows,lbl,val,extra,cls='c1'){const max=Math.max(1,...rows.map(val));return rows.length?'<div class="bars">'+rows.map(r=>`<div><div class="b-l"><span title="${H(lbl(r))}">${H(lbl(r))}</span><b>${extra(r)}</b></div><div class="track"><i class="${cls}" style="width:${Math.max(1.5,val(r)/max*100)}%"></i></div></div>`).join('')+'</div>':'<div class="empty">Sem dados no período.</div>';}
+function card(t,sub,body,wide,tag){return `<section class="card ${wide?'wide':''}">${tag?`<span class="tag">${tag}</span>`:''}<h2>${t}</h2><p class="sub">${sub}</p>${body}</section>`;}
+async function load(){
+  $('#ger').textContent='Carregando…';
+  let d;try{const r=await fetch(`api.php?op=gestao&mes=${st.mes}&periodo=${st.per}`,{credentials:'same-origin',cache:'no-store',headers:TK?{'X-KPI-Link':TK}:{}});d=await r.json();if(!d.ok)throw new Error(d.erro||'Erro');}
+  catch(e){$('#ger').innerHTML=`${H(e.message)} — <a href="/" style="color:#e8b746">entre no sistema</a>`;return;}
+  if(d.publico){const g=$('#cfGeo');if(g)g.remove();document.querySelector('.bar').innerHTML='<span>Indicadores de gestão · Drilling do Brasil · visualização pública, somente leitura</span><a href="/indicadores/">← Painel de indicadores</a>';}
+  const perTxt={mes:'no mês',ano:'no ano até o mês','12m':'nos últimos 12 meses'}[d.periodo];
+  $('#ger').textContent=`Período: ${perTxt} (${MES[+d.mes.slice(5)-1]}/${d.mes.slice(0,4)}) · atualizado ${new Date(d.gerado_em).toLocaleString('pt-BR')}`;
+  window.GD=d;
+  const L=d.locacoes||{},C=d.custo_obra||{},F=d.ferramentas||{},U=d.urgentes||{},DV=d.devolucoes||{},DI=d.divergencias||{},CP=d.capital_parado||{},MA=d.motivos_atraso||{};
+  $('#kpis').innerHTML=[
+    ['Custo das obras',R(C.total),'material + remessas + locação',''],
+    ['Locação de equipamentos',R(L.total),`${N(L.ativos)} locados agora · ${R(L.custo_dia)}/dia`,''],
+    ['Ferramentas fora',N(F.abertos),`${N(F.atrasados)} com devolução atrasada`,F.atrasados?'bad':'ok'],
+    ['PCs urgentes',(U.pct||0).toLocaleString('pt-BR')+'%',`${N(U.urgentes)} de ${N(U.pcs)} pedidos`,U.pct>20?'warn':'ok'],
+    ['Devoluções a fornecedor',R(DV.valor),`${N(DV.qtd)} devolução(ões)`,DV.qtd?'warn':'ok'],
+    ['Recebimentos com divergência',(DI.pct||0).toLocaleString('pt-BR')+'%',`${N(DI.com_divergencia)} de ${N(DI.finalizados)} PCs`,DI.pct>10?'bad':'ok'],
+    ['Risco de ruptura',N((d.ruptura||[]).length),'itens acabam em até 15 dias',(d.ruptura||[]).length?'bad':'ok'],
+    ['Capital parado',R(CP.valor),`${N(CP.itens)} itens · ${(CP.pct||0).toLocaleString('pt-BR')}% do estoque`,CP.pct>15?'warn':''],
+  ].map(([a,b,c,k])=>`<div class="kpi ${k}"><span>${a}</span><strong>${b}</strong><small>${c}</small></div>`).join('');
+  const g=[];
+  // 2 custo por obra
+  g.push(card('Custo por obra / local','Material retirado do estoque + remessas por NF (com frete) + locação de equipamentos',
+    '<div class="leg"><span><i class="c1"></i>Estoque</span><span><i class="c2"></i>Remessas NF</span><span><i class="c3"></i>Locação</span></div>'+
+    ((C.por_obra||[]).length?'<div class="bars">'+(()=>{const max=Math.max(1,...C.por_obra.map(o=>o.total));return C.por_obra.filter(o=>o.total>0).map(o=>`<div><div class="b-l"><span>${H(o.obra)}</span><b>${R(o.total)}<small>${o.saidas?N(o.saidas)+' saídas':''}</small></b></div><div class="track" style="width:${Math.max(2,o.total/max*100)}%"><i class="c1" style="width:${o.estoque/o.total*100}%"></i><i class="c2" style="width:${o.remessas/o.total*100}%"></i><i class="c3" style="width:${o.locacao/o.total*100}%"></i></div></div>`).join('');})()+'</div>':'<div class="empty">Sem dados no período.</div>'),true));
+  // 1 locação
+  g.push(card('Locação de equipamentos por obra','Diárias rateadas pelos dias em cada local + fretes e custos extras',
+    bars((L.por_obra||[]).filter(x=>x.valor>0||x.equipamentos),x=>x.obra,x=>x.valor,x=>`${R(x.valor)}<small>${N(x.equipamentos)} locado(s)</small>`,'c3')+
+    (L.sem_valor?`<p class="note">${N(L.sem_valor)} equipamento(s) locado(s) sem valor de diária — não entram no custo.</p>`:'')+(L.vencidas?`<p class="note" style="color:#e5534b">${N(L.vencidas)} locação(ões) com devolução vencida.</p>`:'')));
+  // consumo por setor
+  g.push(card('Consumo do estoque por setor','Saídas de material valorizadas pelo custo médio',bars(C.por_setor||[],x=>x.setor,x=>x.valor,x=>R(x.valor))));
+  // 3 ferramentas
+  g.push(card('Ferramentas emprestadas','Unidades fora do almoxarifado por destino (agora)',bars(F.por_destino||[],x=>x.destino,x=>x.unidades,x=>`${N(x.unidades)} un${x.atrasados?` <small style="color:#e5534b">${x.atrasados} atrasado(s)</small>`:''}`)+
+    ((F.lista_atrasados||[]).length?`<table style="margin-top:12px"><tr><th>Responsável</th><th>Destino</th><th>Ferramentas</th><th class="num">Atraso</th></tr>${F.lista_atrasados.map(e=>`<tr><td>${H(e.responsavel)}</td><td>${H(e.destino)}</td><td>${H(e.itens)}</td><td class="num" style="color:#e5534b">${e.dias} d</td></tr>`).join('')}</table>`:'<p class="note">Nenhum empréstimo atrasado.</p>'),false,'agora'));
+  // 4 urgentes
+  g.push(card('PCs urgentes por solicitante','Quem mais pede com urgência — sinal de falta de planejamento',
+    `<table><tr><th>Solicitante</th><th class="num">PCs</th><th class="num">Urgentes</th><th class="num">%</th></tr>${(U.por_solicitante||[]).map(s=>`<tr><td>${H(s.solicitante)}</td><td class="num">${N(s.pcs)}</td><td class="num">${N(s.urgentes)}</td><td class="num" style="color:${s.pct>30?'#e5534b':s.pct>15?'#e0a43b':'inherit'}">${s.pct.toLocaleString('pt-BR')}%</td></tr>`).join('')}</table>`+
+    (!U.urgentes?'<p class="note">Nenhum PC marcado como urgente no período (marque em cada pedido ou deixe a importação do WhatsApp marcar).</p>':'')));
+  // 8 motivos atraso
+  g.push(card('Motivos de atraso das coletas','Ranking dos motivos informados nas coletas',bars(MA.motivos||[],x=>x.motivo,x=>x.qtd,x=>N(x.qtd)+' coleta(s)','cbad')));
+  // 5 devoluções
+  g.push(card('Devoluções a fornecedor','Valor devolvido por fornecedor',bars(DV.por_fornecedor||[],x=>x.fornecedor,x=>x.valor,x=>`${R(x.valor)}<small>${N(x.qtd)}×</small>`,'cbad')));
+  // 9 divergências
+  g.push(card('Divergências no recebimento','PCs recebidos com quantidade diferente da pedida (ou entrega parcial)',
+    (DI.por_fornecedor||[]).length?`<table><tr><th>Fornecedor</th><th class="num">PCs</th><th>Exemplos</th></tr>${DI.por_fornecedor.map(f=>`<tr><td>${H(f.fornecedor)}</td><td class="num">${N(f.pcs)}</td><td><small>${f.exemplos.map(H).join('<br>')}</small></td></tr>`).join('')}</table>`:`<div class="empty">Nenhuma divergência em ${N(DI.finalizados)} PC(s) recebido(s) no período.</div>`));
+  // 6 ruptura
+  g.push(card('Risco de ruptura','Itens que acabam em até 15 dias pelo consumo dos últimos 90 dias',
+    (d.ruptura||[]).length?`<table><tr><th>Item</th><th class="num">Saldo</th><th class="num">Consumo/dia</th><th class="num">Dias</th></tr>${d.ruptura.map(c=>`<tr><td>${H(c.descricao)}<br><small style="color:#6f8199">${H(c.codigo)}</small></td><td class="num">${N(c.saldo)} ${H(c.unidade)}</td><td class="num">${c.consumo_dia.toLocaleString('pt-BR')}</td><td class="num" style="color:${c.dias<=7?'#e5534b':'#e0a43b'}">${c.dias<=0?'zerado':c.dias.toLocaleString('pt-BR')}</td></tr>`).join('')}</table>`:'<div class="empty">Nenhum item em risco.</div>',false,'agora'));
+  // 7 capital parado
+  g.push(card('Capital parado','Itens com saldo e sem movimento há mais de 180 dias',
+    (CP.top||[]).length?`<table><tr><th>Item</th><th class="num">Saldo</th><th class="num">Valor</th><th class="num">Último mov.</th></tr>${CP.top.map(c=>`<tr><td>${H(c.descricao)}<br><small style="color:#6f8199">${H(c.codigo)}</small></td><td class="num">${N(c.saldo)} ${H(c.unidade)}</td><td class="num">${R(c.valor)}</td><td class="num">${c.ultimo?new Date(c.ultimo).toLocaleDateString('pt-BR'):'—'}</td></tr>`).join('')}</table>`+(CP.valor===0?'<p class="note">Os itens parados estão sem custo cadastrado — preencha o custo para medir o valor.</p>':''):'<div class="empty">Nenhum item parado.</div>',false,'agora'));
+  // 10 ranking
+  const FR=d.fornecedores||[];
+  g.push(card('Ranking de fornecedores','Nota = 50% no prazo + 50% completo (sem divergência), menos penalidades por coleta atrasada e devolução. A ≥ 90 · B ≥ 75 · C ≥ 60 · D < 60',
+    FR.length?`<div class="scroll"><table><tr><th></th><th>Fornecedor</th><th class="num">PCs recebidos</th><th class="num">No prazo</th><th class="num">Completos</th><th class="num">Coletas atrasadas</th><th class="num">Devoluções</th><th class="num">Nota</th></tr>${FR.map(f=>`<tr><td><span class="cls c${f.classe}">${f.classe}</span></td><td>${H(f.fornecedor)}</td><td class="num">${N(f.finalizados)}</td><td class="num">${f.pct_prazo.toLocaleString('pt-BR')}%</td><td class="num">${f.pct_completo.toLocaleString('pt-BR')}%</td><td class="num">${N(f.coletas_atrasadas)}</td><td class="num">${f.devolucoes?R(f.devolucoes):'—'}</td><td class="num"><b>${f.nota.toLocaleString('pt-BR')}</b></td></tr>`).join('')}</table></div>`:'<div class="empty">Nenhum pedido recebido no período.</div>',true));
+  $('#grid').innerHTML=g.join('');
+}
+const cf={dias:90,d:null,aberto:{},mes:''};
+document.querySelectorAll('#cfDias button').forEach(b=>b.onclick=()=>{cf.dias=+b.dataset.d;cf.mes='';$('#cfMes').value='';document.querySelectorAll('#cfDias button').forEach(x=>x.classList.toggle('on',x===b));cfLoad();});
+(function(){const s=$('#cfMes');for(let i=0;i<18;i++){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);const m=d.toISOString().slice(0,7);s.insertAdjacentHTML('beforeend',`<option value="${m}">${MES[+m.slice(5)-1]}/${m.slice(0,4)}</option>`);}
+ s.onchange=()=>{cf.mes=s.value;document.querySelectorAll('#cfDias button').forEach(x=>x.classList.toggle('on',!cf.mes&&+x.dataset.d===cf.dias));cfLoad();};})();
+const D=s=>s?new Date(s+'T12:00').toLocaleDateString('pt-BR'):'—';
+const Q=n=>Number(n||0).toLocaleString('pt-BR',{maximumFractionDigits:3});
+async function cfLoad(){
+  $('#cfTab').innerHTML='<div class="empty">Carregando…</div>';
+  try{const r=await fetch(`api.php?op=coletas_fornecedor&dias=${cf.dias}${cf.mes?`&de=${cf.mes}-01&ate=${cf.mes}-${new Date(+cf.mes.slice(0,4),+cf.mes.slice(5),0).getDate()}`:''}`,{credentials:'same-origin',cache:'no-store',headers:TK?{'X-KPI-Link':TK}:{}});cf.d=await r.json();if(!cf.d.ok)throw new Error(cf.d.erro||'Erro');}
+  catch(e){$('#cfTab').innerHTML=`<div class="empty">${H(e.message)}</div>`;return;}
+  cfRender();
+}
+function cfRender(){
+  const d=cf.d,t=d.totais;
+  $('#cfSub').textContent=`De ${D(d.de)} a ${D(d.ate)} · km = ida e volta a partir de ${d.origem} (estimado pela distância × ${d.fator_estrada.toLocaleString('pt-BR')}, ou o km real informado na coleta) · data da coleta = dia útil anterior ao recebimento pelo conferente (não usa a data em que o PC foi criado)`;
+  $('#cfKpis').innerHTML=[['Fornecedores',N(t.fornecedores),'com coleta no período'],['Idas',N(t.idas),'dias × fornecedor visitado'],['Compras coletadas',N(t.pcs),'PCs'],['Km rodados',N(Math.round(t.km))+' km',t.sem_endereco?`${t.sem_endereco} fornecedor(es) sem endereço`:'todos com endereço'],
+    ['Valor coletado',R(t.valor),'soma das NFs'],['Economia possível',t.idas_a_menos?`${N(t.idas_a_menos)} idas`:'—',t.km_a_menos?`≈ ${N(t.km_a_menos)} km a menos juntando compras`:'sem recorrência relevante']]
+    .map(([a,b,c],i)=>`<div class="kpi ${i===5&&t.idas_a_menos?'warn':''}"><span>${a}</span><strong>${b}</strong><small>${c}</small></div>`).join('');
+  const F=d.fornecedores;
+  if(!F.length){$('#cfTab').innerHTML='<div class="empty">Nenhuma coleta realizada no período.</div>';return;}
+  $('#cfTab').innerHTML=`<div class="scroll" style="max-height:none"><table><tr><th>Fornecedor</th><th class="num">Idas</th><th class="num">Compras (PCs)</th><th class="num">Km</th><th class="num">Valor</th><th class="num">Insumos</th><th class="num">Última ida</th><th></th></tr>
+  ${F.map((f,i)=>`<tr class="cf-row" data-i="${i}"><td><b>${H(f.fornecedor)}</b>${f.sugestao?'<span class="rec">compras repetidas</span>':''}<br><small style="color:#6f8199">${f.cnpj?H(f.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5')):''}</small></td>
+    <td class="num"><b>${N(f.idas)}</b></td><td class="num">${N(f.pcs)}</td><td class="num">${f.km!==null?N(Math.round(f.km))+' km':'—'}<br><span class="kmt">${f.km_tipo}</span></td><td class="num">${R(f.valor)}</td><td class="num">${N(f.insumos_total)}</td><td class="num">${D(f.ultima_ida)}</td><td class="num">${cf.aberto[i]?'▲':'▼'}</td></tr>
+    ${cf.aberto[i]?cfDet(f):''}`).join('')}</table></div>`;
+  document.querySelectorAll('.cf-row').forEach(r=>r.onclick=()=>{const i=r.dataset.i;cf.aberto[i]=!cf.aberto[i];cfRender();});
+}
+function cfDet(f){
+  const s=f.sugestao;
+  return `<tr class="cf-det"><td colspan="8">
+    ${s?`<div class="sug">💡 ${N(f.idas)} idas em ${cf.dias} dias com ${N(s.insumos_recorrentes)} insumo(s) comprado(s) 3 vezes ou mais. Concentrando as compras em 1 ida por mês seriam <b>${N(s.idas_possiveis)} ida(s)</b> — <b>${N(s.idas_a_menos)} a menos</b>${s.km_a_menos!==null?` (≈ ${N(s.km_a_menos)} km)`:''}.</div>`:''}
+    ${f.km===null?'<p class="note">Sem endereço localizado para este fornecedor: cadastre o endereço numa coleta dele (módulo Coletas) para calcular os km.</p>':''}
+    <div class="cf-cols"><div><h4>Insumos coletados (somados)</h4><table><tr><th>Insumo</th><th class="num">Quantidade</th><th class="num">Compras</th><th class="num">A cada</th><th>Datas</th></tr>
+      ${f.insumos.map(x=>`<tr><td>${H(x.descricao)}${x.recorrente?'<span class="rec">recorrente</span>':''}<br><small style="color:#6f8199">${H(x.sku)}</small></td><td class="num">${Q(x.quantidade)} ${H(x.unidade)}</td><td class="num"><b>${x.compras}</b></td><td class="num">${x.intervalo_medio_dias?x.intervalo_medio_dias.toLocaleString('pt-BR')+' d':'—'}</td><td><small>${x.datas.map(D).join(', ')}</small></td></tr>`).join('')}
+      ${f.insumos_total>f.insumos.length?`<tr><td colspan="5" class="note">+ ${f.insumos_total-f.insumos.length} insumo(s) — veja o CSV</td></tr>`:''}</table></div>
+    <div><h4>Resumo das idas</h4><table><tr><th>Data</th><th>PCs</th><th class="num">Km</th><th class="num">Valor</th></tr>${f.idas_lista.map(c=>`<tr><td>${D(c.data)}</td><td>${c.pcs.map(n=>'PC '+n).join(', ')||'<small>'+H(c.obs||'sem PC')+'</small>'}</td><td class="num">${c.km!==null?N(Math.round(c.km)):'—'}</td><td class="num">${c.valor?R(c.valor):'—'}</td></tr>`).join('')}</table></div></div>
+    <h4 style="margin-top:14px">Cada ida: o que foi coletado</h4>
+    <table><tr><th style="width:110px">Data</th><th style="width:90px" class="num">Km</th><th>PC</th><th>Insumo</th><th class="num">Quantidade</th></tr>
+    ${f.idas_lista.map(c=>{const it=c.itens.length?c.itens:[{pc:'',descricao:c.obs||'(coleta sem PC — sem lista de insumos)',quantidade:'',unidade:''}];return it.map((x,j)=>`<tr${j===0?' style="border-top:2px solid #2b3b55"':''}>${j===0?`<td rowspan="${it.length}"><b>${D(c.data)}</b></td><td class="num" rowspan="${it.length}">${c.km!==null?N(Math.round(c.km))+' km':'—'}</td>`:''}<td>${x.pc?'PC '+x.pc:''}</td><td>${H(x.descricao)}</td><td class="num">${x.quantidade!==''?Q(x.quantidade)+' '+H(x.unidade):''}</td></tr>`).join('');}).join('')}</table>
+  </td></tr>`;
+}
+$('#cfGeo').onclick=async()=>{
+  const b=$('#cfGeo');b.disabled=true;let tot=0;
+  try{
+    for(let i=0;i<40;i++){
+      b.textContent=`📍 Localizando… ${tot} encontrado(s)`;
+      const r=await fetch('/api.php?action=coletas_localizar_fornecedores',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:'{}'});
+      const d=await r.json();if(!d.ok)throw new Error(d.error||'Entre no sistema com permissão de Coletas.');
+      tot+=d.localizados;if(!d.restantes||!d.processados)break;
+    }
+    alert(`Localização concluída: ${tot} fornecedor(es) localizado(s) agora. Os que não foram encontrados podem ter o endereço preenchido numa coleta.`);cfLoad();
+  }catch(e){alert(e.message);}finally{b.disabled=false;b.textContent='📍 Localizar fornecedores';}
+};
+if(TK)document.addEventListener('DOMContentLoaded',()=>{const g=$('#cfGeo');if(g)g.remove();});
+$('#cfCsv').onclick=()=>{
+  if(!cf.d)return;const L=[['Fornecedor','CNPJ','Idas','Compras (PCs)','Km','Tipo km','Valor','Insumo','SKU','Quantidade','Unidade','Vezes comprado','Intervalo médio (dias)','Datas']];
+  cf.d.fornecedores.forEach(f=>{(f.insumos.length?f.insumos:[null]).forEach(x=>L.push([f.fornecedor,f.cnpj,f.idas,f.pcs,f.km??'',f.km_tipo,f.valor,x?x.descricao:'',x?x.sku:'',x?x.quantidade:'',x?x.unidade:'',x?x.compras:'',x?(x.intervalo_medio_dias??''):'',x?x.datas.join(' '):'']));});
+  const csv='\ufeff'+L.map(r=>r.map(v=>{v=String(v??'');if(typeof v==='string'&&/^\d+\.\d+$/.test(v))v=v.replace('.',',');return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}).join(';')).join('\r\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download=`coletas_por_fornecedor_${cf.d.de}_a_${cf.d.ate}.csv`;a.click();
+};
+/* ---------- Exportação detalhada (Excel e PDF) ---------- */
+const perNome=()=>({mes:'Mês',ano:'Ano até o mês','12m':'Últimos 12 meses'}[st.per]);
+$('#btnXlsx').onclick=async()=>{
+  const b=$('#btnXlsx');b.disabled=true;b.textContent='Gerando…';
+  try{
+    const X=await import('/assets/xlsx-lib.js'),d=window.GD||{},c=cf.d||{fornecedores:[],totais:{}};
+    const wb=X.utils.book_new(),add=(nome,rows)=>X.utils.book_append_sheet(wb,X.utils.json_to_sheet(rows.length?rows:[{'(sem dados)':''}]),nome.slice(0,31));
+    const L=d.locacoes||{},C=d.custo_obra||{},F=d.ferramentas||{},U=d.urgentes||{},DV=d.devolucoes||{},DI=d.divergencias||{},CP=d.capital_parado||{},MA=d.motivos_atraso||{};
+    add('Resumo',[
+      {Indicador:'Período',Valor:`${perNome()} — ${d.mes}`},{Indicador:'Custo das obras (R$)',Valor:C.total},{Indicador:'Locação de equipamentos (R$)',Valor:L.total},
+      {Indicador:'Equipamentos locados agora',Valor:L.ativos},{Indicador:'Ferramentas emprestadas',Valor:F.abertos},{Indicador:'Ferramentas atrasadas',Valor:F.atrasados},
+      {Indicador:'PCs no período',Valor:U.pcs},{Indicador:'PCs urgentes',Valor:U.urgentes},{Indicador:'% urgentes',Valor:U.pct},
+      {Indicador:'Devoluções (R$)',Valor:DV.valor},{Indicador:'PCs recebidos',Valor:DI.finalizados},{Indicador:'PCs com divergência',Valor:DI.com_divergencia},
+      {Indicador:'Itens em risco de ruptura (15 dias)',Valor:(d.ruptura||[]).length},{Indicador:'Capital parado (R$)',Valor:CP.valor},
+      {Indicador:`Coletas — fornecedores (${c.de||''} a ${c.ate||''})`,Valor:c.totais.fornecedores},{Indicador:'Coletas — idas',Valor:c.totais.idas},{Indicador:'Coletas — km',Valor:c.totais.km},
+      {Indicador:'Gerado em',Valor:new Date().toLocaleString('pt-BR')}]);
+    add('Custo por obra',(C.por_obra||[]).map(o=>({Obra:o.obra,'Estoque (R$)':o.estoque,'Remessas NF (R$)':o.remessas,'Locação (R$)':o.locacao,'Total (R$)':o.total,'Saídas':o.saidas})));
+    add('Consumo por setor',(C.por_setor||[]).map(o=>({Setor:o.setor,'Valor (R$)':o.valor})));
+    add('Locação por obra',(L.por_obra||[]).map(o=>({Obra:o.obra,'Custo (R$)':o.valor,'Locados agora':o.equipamentos})));
+    add('Ferramentas atrasadas',(F.lista_atrasados||[]).map(e=>({Responsável:e.responsavel,Destino:e.destino,Ferramentas:e.itens,'Devolver até':e.previsto,'Dias de atraso':e.dias})));
+    add('Ferramentas por destino',(F.por_destino||[]).map(e=>({Destino:e.destino,Unidades:e.unidades,Atrasados:e.atrasados})));
+    add('PCs urgentes',(U.por_solicitante||[]).map(e=>({Solicitante:e.solicitante,PCs:e.pcs,Urgentes:e.urgentes,'%':e.pct})));
+    add('Motivos atraso coletas',(MA.motivos||[]).map(e=>({Motivo:e.motivo,Coletas:e.qtd})));
+    add('Devoluções',(DV.por_fornecedor||[]).map(e=>({Fornecedor:e.fornecedor,'Valor (R$)':e.valor,Devoluções:e.qtd})));
+    add('Divergências',(DI.por_fornecedor||[]).map(e=>({Fornecedor:e.fornecedor,PCs:e.pcs,Linhas:e.linhas,Exemplos:e.exemplos.join(' | ')})));
+    add('Risco de ruptura',(d.ruptura||[]).map(e=>({Código:e.codigo,Item:e.descricao,Saldo:e.saldo,Unidade:e.unidade,'Consumo/dia':e.consumo_dia,'Dias de cobertura':e.dias})));
+    add('Capital parado',(CP.top||[]).map(e=>({Código:e.codigo,Item:e.descricao,Saldo:e.saldo,Unidade:e.unidade,'Valor (R$)':e.valor,'Último movimento':e.ultimo?new Date(e.ultimo).toLocaleDateString('pt-BR'):''})));
+    add('Ranking fornecedores',(d.fornecedores||[]).map(f=>({Classe:f.classe,Fornecedor:f.fornecedor,Nota:f.nota,'PCs recebidos':f.finalizados,'% no prazo':f.pct_prazo,'% completos':f.pct_completo,'Coletas atrasadas':f.coletas_atrasadas,'Devoluções (R$)':f.devolucoes})));
+    add('Coletas por fornecedor',c.fornecedores.map(f=>({Fornecedor:f.fornecedor,CNPJ:f.cnpj,Idas:f.idas,'Compras (PCs)':f.pcs,Km:f.km,'Tipo km':f.km_tipo,'Valor (R$)':f.valor,'Insumos diferentes':f.insumos_total,'Última ida':f.ultima_ida,'Idas a menos (sugestão)':f.sugestao?f.sugestao.idas_a_menos:'','Km a menos (sugestão)':f.sugestao?f.sugestao.km_a_menos:''})));
+    const ins=[];c.fornecedores.forEach(f=>f.insumos.forEach(x=>ins.push({Fornecedor:f.fornecedor,Insumo:x.descricao,SKU:x.sku,Quantidade:x.quantidade,Unidade:x.unidade,'Vezes comprado':x.compras,'Intervalo médio (dias)':x.intervalo_medio_dias??'',Recorrente:x.recorrente?'sim':'',Datas:x.datas.map(D).join(', ')})));
+    add('Coletas - insumos',ins);
+    const cp=[];c.fornecedores.forEach(f=>f.compras.forEach(x=>cp.push({Fornecedor:f.fornecedor,Data:D(x.data),PC:x.pc||'',NF:x.nf||'','Valor (R$)':x.valor||'',Observação:x.obs||''})));
+    add('Coletas - compras',cp);
+    const ida=[];c.fornecedores.forEach(f=>(f.idas_lista||[]).forEach(i=>{const it=i.itens.length?i.itens:[{pc:'',descricao:i.obs||'',quantidade:'',unidade:''}];it.forEach((x,j)=>ida.push({Fornecedor:f.fornecedor,'Data da coleta':D(i.data),'Km da ida':j===0?(i.km??''):'',PC:x.pc,Insumo:x.descricao,Quantidade:x.quantidade,Unidade:x.unidade}));}));
+    add('Coletas - cada ida',ida);
+    X.writeFile(wb,`indicadores_gestao_${d.mes||''}_${st.per}.xlsx`);
+  }catch(e){alert('Não foi possível gerar o Excel: '+e.message);}
+  finally{b.disabled=false;b.textContent='⇩ Excel detalhado';}
+};
+$('#btnPdf').onclick=()=>{
+  if(!cf.d)return;
+  const antes={...cf.aberto};cf.d.fornecedores.forEach((_,i)=>cf.aberto[i]=true);cfRender();
+  document.body.classList.add('imprimindo');
+  setTimeout(()=>{print();setTimeout(()=>{document.body.classList.remove('imprimindo');cf.aberto=antes;cfRender();},300);},150);
+};
+/* ---------- Link público (só administrador) ---------- */
+(async()=>{
+  if(TK)return;
+  try{const r=await fetch('api.php',{credentials:'same-origin',cache:'no-store'});const d=await r.json();if(!d.ok||!d.link_publico)return;window.GL=d;$('#btnLink').hidden=false;}catch(e){}
+})();
+$('#btnLink').onclick=()=>{
+  const d=window.GL,L=d.link_publico||{},base=location.origin+'/indicadores/';
+  const u1=L.ativo?base+'gestao.html?p='+encodeURIComponent(L.token):'',u2=L.ativo?base+'?p='+encodeURIComponent(L.token):'';
+  const bg=document.createElement('div');bg.style.cssText='position:fixed;inset:0;background:#010614cc;z-index:99;display:flex;align-items:center;justify-content:center;padding:16px';
+  bg.innerHTML=`<div class="card" style="width:min(600px,100%)"><h2>Link público</h2><p class="sub">Quem receber o link vê estes indicadores <b>sem login</b>, somente leitura, e pode exportar Excel e PDF. Nomes de pessoas ficam ocultos. Só funciona depois que você gerar; gerar de novo desativa o anterior.</p>
+   ${L.ativo?`<label class="sub">Indicadores de gestão</label><input readonly value="${u1}" style="width:100%;padding:9px;border-radius:9px;border:1px solid var(--line);background:#07101f;color:var(--ac)" id="lk1"><label class="sub" style="display:block;margin-top:8px">Painel de indicadores</label><input readonly value="${u2}" style="width:100%;padding:9px;border-radius:9px;border:1px solid var(--line);background:#07101f;color:var(--ac)">`:'<p class="sub">Nenhum link ativo.</p>'}
+   <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px">${L.ativo?'<button data-a="desativar">Desativar</button><button data-a="copiar">Copiar link de gestão</button><button data-a="whats">Enviar por WhatsApp</button>':''}<button data-a="gerar" style="background:var(--ac);color:#111;font-weight:700">${L.ativo?'Gerar novo link':'Gerar link público'}</button><button data-a="fechar">Fechar</button></div></div>`;
+  document.body.appendChild(bg);
+  bg.onclick=async e=>{const a=e.target.dataset&&e.target.dataset.a;if(!a)return;
+    if(a==='fechar'){bg.remove();return;}
+    if(a==='copiar'){await navigator.clipboard.writeText(u1).catch(()=>{$('#lk1').select();document.execCommand('copy');});e.target.textContent='Copiado ✓';return;}
+    if(a==='whats'){window.open('https://wa.me/?text='+encodeURIComponent('Indicadores Drilling do Brasil: '+u1),'_blank','noopener');return;}
+    if(a==='gerar'&&L.ativo&&!confirm('O link atual deixará de funcionar. Gerar um novo?'))return;
+    if(a==='desativar'&&!confirm('Desativar o link público?'))return;
+    try{const r=await fetch('api.php',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-Requested-With':'kpi-sync','X-CSRF-Token':d.csrf},body:JSON.stringify({op:'link_publico',acao:a})});const j=await r.json();if(!j.ok)throw new Error(j.erro);d.link_publico=j.link_publico;bg.remove();$('#btnLink').click();}catch(err){alert(err.message);}
+  };
+};
+$('#mes').value=st.mes;load();cfLoad();
+</script>
+</body>
+</html>

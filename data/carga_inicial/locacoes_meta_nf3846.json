@@ -1,0 +1,26 @@
+{
+ "documento": "META NF-e 3846 (09/11/2026)",
+ "fornecedor": "META LOCACAO",
+ "locacoes": [
+  {
+   "fornecedor": "META LOCACAO INDUSTRIA E COMERCIO LTDA",
+   "equipamento": "GRUPO GERADOR GMG 194 MOTOR MWM GERADOR WEG",
+   "categoria": "Gerador",
+   "patrimonio": "",
+   "contrato": "NF remessa 3846",
+   "quantidade": 1,
+   "tarifa_tipo": "DIARIA",
+   "tarifa_valor": 0,
+   "inicio": "2026-11-09",
+   "local": "MATRIZ",
+   "observacao": "META LOCACAO INDUSTRIA E COMERCIO LTDA (CNPJ 23.336.910/0001-45, Belo Horizonte/MG) · remessa de locação NF-e 3846 série 1 de 09/11/2026 (saída 13:45) · série do motor 229.06110.297 · série do gerador 1000.261.90 · horímetro 13228,9 // 10139,41 · valor do bem na NF R$ 180.000,00 · em trânsito para São José da Lapa/MG",
+   "documentos": [
+    {
+     "arquivo": "meta-nfe-3846-remessa-locacao.pdf",
+     "nome": "NF-e 3846 - remessa de locação (Meta Locação).pdf",
+     "tipo": "NF_REMESSA"
+    }
+   ]
+  }
+ ]
+}

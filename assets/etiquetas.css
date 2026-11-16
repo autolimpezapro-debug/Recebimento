@@ -1,0 +1,105 @@
+/* Recebimento Drilling — Etiquetas e Identificação v3.6.0
+ * Folha A4 / 6 etiquetas: dimensões idênticas ao FOR-COM-001 rev.1 do SKU Auto Fill. */
+.etq-wrap{display:grid;gap:14px}
+.etq-card{background:var(--panel,#111e32);border:1px solid var(--line,#253550);border-radius:14px;padding:16px}
+.etq-card h3{margin:0 0 10px;font-size:14px}
+.etq-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.etq-grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.etq-grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.etq-wrap label.f{display:grid;gap:4px;font-size:11px;font-weight:700;color:var(--muted,#8fa3bd);text-transform:uppercase;letter-spacing:.03em}
+.etq-wrap input[type=text]:not(.etiqueta-input),.etq-wrap input[type=number],.etq-wrap input[type=search],.etq-wrap select,.etq-wrap textarea:not(.etiqueta-input){width:100%;background:#0b1729;border:1px solid #2b3b55;color:#ecf3ff;border-radius:9px;padding:9px 11px;font:inherit;font-size:13px}
+.etq-wrap input:not(.etiqueta-input):focus,.etq-wrap select:focus{outline:2px solid #336efc55;border-color:#336efc}
+.etq-msg{font-size:12.5px;padding:9px 12px;border-radius:9px;background:#14263e;border:1px solid #2b405f}
+.etq-msg.err{background:#3a2430;border-color:#7b3140;color:#ffb2bb}
+.etq-msg.ok{background:#0e3b34;border-color:#1f7f6b;color:#7df0d5}
+.etq-results{max-height:300px;overflow:auto;border:1px solid #22314a;border-radius:10px}
+.etq-res{display:grid;grid-template-columns:auto 130px 1fr auto;gap:10px;align-items:center;padding:8px 12px;border-top:1px solid #22314a;font-size:13px;cursor:pointer}
+.etq-res:first-child{border-top:0}.etq-res:hover{background:#16243a}
+.etq-res b{font-family:ui-monospace,Consolas,monospace}
+.etq-tag{font-size:10px;font-weight:800;padding:3px 8px;border-radius:99px;white-space:nowrap}
+.etq-tag.of{background:#0e544e;color:#7df0d5}.etq-tag.ped{background:#554325;color:#ffd89a}
+.etq-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.etq-tabs button.on{background:#336efc;color:#fff;border-color:#336efc}
+.etq-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.etq-table th,.etq-table td{padding:7px 9px;border-top:1px solid #22314a;text-align:left;vertical-align:top}
+.etq-table th{font-size:10.5px;text-transform:uppercase;color:#8fa3bd}
+.etq-stat{display:inline-block;padding:6px 12px;border-radius:9px;background:#14263e;border:1px solid #2b405f;font-size:12px;margin:0 6px 6px 0}
+.etq-stat b{font-size:16px;display:block}
+.etq-scroll{overflow:auto;padding:8px 0}
+
+/* ---------- folha (tela e impressão) ---------- */
+.etq-preview{overflow:auto;padding:6px;background:#0b1729;border-radius:12px;border:1px solid #22314a}
+.etq-zoom{transform-origin:top left}
+.folha{color:#000;background:#fff;width:210mm;height:297mm;margin:0 auto 8mm;font-family:Arial,Helvetica,sans-serif;position:relative;overflow:hidden;box-shadow:0 1px 10px #0000004d}
+.folha *,.folha :before,.folha :after{box-sizing:border-box}
+.cabecalho{border:.25mm solid #000;width:180.7mm;font-family:"Times New Roman",Times,serif;font-weight:700;position:absolute;top:24.9mm;left:12.5mm}
+.cabecalho-grid{grid-template-columns:24.1mm 87.5mm 1fr;height:20.7mm;display:grid}
+.cabecalho-logo{border-right:.25mm solid #000;justify-content:center;align-items:center;display:flex}
+.cabecalho-logo img{width:18.5mm}
+.cabecalho-titulo{text-align:center;border-right:.25mm solid #000;padding-top:4.2mm;font-size:16pt;line-height:1}
+.cabecalho-meta{grid-template-rows:7mm 4.5mm 4.7mm 1fr;display:grid}
+.cabecalho-meta>div{grid-template-columns:33.1mm 1fr;align-items:center;display:grid}
+.cabecalho-meta>div+div{border-top:.25mm solid #000}
+.cabecalho-meta span,.cabecalho-meta strong{align-items:center;height:100%;line-height:1;display:flex}
+.cabecalho-meta span{border-right:.25mm solid #000;padding-left:1.7mm;font-size:10pt}
+.cabecalho-meta strong{padding-left:2mm;font-size:11pt}
+.cabecalho-subtitulo{text-align:left;border-top:.25mm solid #000;height:12.2mm;padding:.9mm 3.9mm 0;font-size:15pt;line-height:1.2}
+.grade-etiquetas{border-top:.25mm solid #000;border-left:.25mm solid #000;grid-template-columns:repeat(2,95mm);grid-auto-rows:65mm;display:grid;position:absolute;top:72.4mm;left:9.8mm}
+.etiqueta{border-bottom:.25mm solid #000;border-right:.25mm solid #000;position:relative;overflow:hidden}
+.etiqueta>*{position:absolute}
+.etiqueta-logo{object-fit:contain;width:19.6mm;height:20.6mm;top:2.9mm;left:3.1mm}
+.etiqueta-label{white-space:nowrap;font-family:Calibri,Carlito,"Arial Narrow",Arial,sans-serif;font-size:12pt;font-weight:700;line-height:1}
+.lbl-almox{text-align:center;width:68.2mm;font-family:Arial,Helvetica,sans-serif;font-size:8.5pt;top:6.1mm;left:22.7mm}
+.lbl-item{text-align:center;width:88mm;top:19.6mm;left:3.5mm}
+.lbl-insumo{letter-spacing:-.02em;font-size:11pt;top:49.3mm;left:3.5mm}
+.lbl-data{font-size:7pt;top:59.7mm;left:72.6mm}
+.etiqueta-box{text-align:center;border:.2mm solid #b2b2b2;justify-content:center;align-items:center;font-family:Arial,Helvetica,sans-serif;line-height:1.15;display:flex;overflow:hidden}
+.box-almox{width:68.2mm;height:7.2mm;font-size:11pt;top:9.5mm;left:22.7mm}
+.box-item{width:88mm;height:21.3mm;padding:0 1.5mm;font-size:16pt;font-weight:700;top:23.6mm;left:3.5mm}
+.box-item.texto-medio{font-size:13pt}.box-item.texto-longo{font-size:10.5pt}
+.box-insumo{width:56mm;height:7.2mm;font-size:12pt;font-weight:700;top:48.4mm;left:20.8mm}
+.box-data{width:13.1mm;height:3.3mm;font-size:6pt;line-height:1;top:59.1mm;left:79.9mm}
+/* Código de barras Code 128 com o SKU oficial (não substitui o SKU impresso) */
+.etq-bars{top:48.4mm;left:78mm;width:15.5mm;height:7.2mm;display:block}
+.etq-bars.on{display:block}
+.etiqueta-input{width:100%;height:100%;color:inherit;font:inherit;line-height:inherit;text-align:center;text-transform:uppercase;background:0 0;border:0;outline:none;margin:0;padding:0;display:block}
+textarea.etiqueta-input{resize:none;field-sizing:content;height:auto;max-height:100%;overflow:hidden}
+.etiqueta-box:focus-within{background:#e8f0ff;outline:.4mm solid #336efc}
+.so-impressao{display:none}
+.etiqueta-selecionada{box-shadow:inset 0 0 0 .7mm #336efc}
+.etiqueta-controles{color:#555;align-items:center;gap:2mm;font-size:7.5pt;display:flex;top:58.6mm;left:3.5mm}
+.etiqueta-controles label{cursor:pointer;align-items:center;gap:1mm;display:flex}
+.etiqueta-controles button{text-decoration:underline;background:none;border:0;color:inherit;cursor:pointer;font-size:7.5pt}
+.etiqueta-numero{font-weight:700}
+.etq-flag{top:1.2mm;right:2mm;font-size:6pt;font-weight:700;color:#a35a00}
+.etq-print-area{display:none}
+
+/* ---------- celular / tablet ---------- */
+@media (max-width:900px){.etq-grid3{grid-template-columns:1fr 1fr}.etq-grid4{grid-template-columns:1fr 1fr}.etq-res{grid-template-columns:auto 1fr auto}.etq-res .d{grid-column:2/4}}
+@media (max-width:560px){.etq-grid3,.etq-grid4{grid-template-columns:1fr}.etq-card{padding:12px}}
+
+/* ---------- impressão A4: só as folhas ---------- */
+@page{size:A4 portrait;margin:0}
+@media print{
+ body.etq-printing{background:#fff!important}
+ body.etq-printing>*:not(.etq-print-area){display:none!important}
+ body.etq-printing .etq-print-area{display:block!important}
+ body.etq-printing .folha{box-shadow:none;margin:0;page-break-after:always;break-after:page}
+ body.etq-printing .folha:last-child{page-break-after:auto;break-after:auto}
+ body.etq-printing .so-impressao{display:inline}
+ body.etq-printing .etiqueta-box:focus-within{background:none;outline:none}
+ body.etq-printing .etiqueta-selecionada{box-shadow:none}
+ body.etq-printing .etiqueta{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+
+.folha .etiqueta-input{all:unset;box-sizing:border-box;width:100%;height:100%;display:block;text-align:center;text-transform:uppercase;color:inherit;font:inherit;line-height:inherit;background:transparent;border:0;padding:0;margin:0;cursor:text}
+.folha textarea.etiqueta-input{height:auto;max-height:100%;resize:none;field-sizing:content;overflow:hidden}
+.folha .etiqueta-controles input[type=checkbox]{width:auto;margin:0}
+.folha .etiqueta-box{color:#000}
+
+/* app.css estiliza TODO input/textarea (fundo escuro, padding, min-height 39px): dentro da folha
+   o gabarito do formulário vence, para a etiqueta sair idêntica na tela e no papel. */
+.folha input.etiqueta-input,.folha textarea.etiqueta-input{background:transparent!important;color:#000!important;border:0!important;border-radius:0!important;padding:0!important;margin:0!important;min-height:0!important;max-width:none!important;width:100%!important;height:100%!important;box-shadow:none!important;outline:none!important;font:inherit!important;line-height:inherit!important;text-align:center!important}
+.folha textarea.etiqueta-input{height:auto!important;max-height:100%!important}
+.folha .etiqueta-controles input[type=checkbox]{min-height:0!important;padding:0!important;width:auto!important;background:initial!important}
+.folha .etiqueta-controles{color:#444!important}

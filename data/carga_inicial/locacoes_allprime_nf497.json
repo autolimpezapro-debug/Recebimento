@@ -1,0 +1,19 @@
+{
+ "documento": "ALLPRIME NF-e 497 (21/08/2026)",
+ "fornecedor": "ALLPRIME PUMPS",
+ "locacoes": [
+  {
+   "fornecedor": "ALLPRIME PUMPS",
+   "equipamento": "CONJUNTO MOTOBOMBA RE-AUTOESCORVANTE ALLPRIME MODELO S3 C/ MOTOR ELETRICO DE 30 CV",
+   "categoria": "Motobomba",
+   "patrimonio": "ALP062",
+   "contrato": "NF remessa 497",
+   "quantidade": 1,
+   "tarifa_tipo": "DIARIA",
+   "tarifa_valor": 0,
+   "inicio": "2026-08-21",
+   "local": "MATRIZ",
+   "observacao": "ALLPRIME PUMPS LOCACAO E VENDAS DE BOMBAS LTDA (CNPJ 36.983.944/0001-73, Capela do Alto/SP) · remessa de locação NF-e 497 série 1 de 21/08/2026 · bomba ALP062 · valor do bem na NF R$ 48.000,00"
+  }
+ ]
+}

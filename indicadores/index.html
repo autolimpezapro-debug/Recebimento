@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="author" content="Almoxarifado · Suprimentos" />
+    <title>Painel de Indicadores do Almoxarifado | Gestão de Estoques e Coletas</title>
+    <link rel="icon" href="/indicadores/favicon.ico?v=3131" type="image/x-icon" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <script type="module" crossorigin src="/indicadores/assets/index-Boy_Oc1q.js"></script>
+    <link rel="modulepreload" crossorigin href="/indicadores/assets/rolldown-runtime-aKtaBQYM.js">
+    <link rel="stylesheet" crossorigin href="/indicadores/assets/index-DbFJHR0q.css">
+  <style id="rd-pub">.rd-publico a[href$="/admin"],.rd-publico a[href*="/admin/"]{display:none!important}</style>
+<style id="rd-kpi">.rd-kpi-bar{position:sticky;top:0;z-index:50;display:flex;gap:12px;align-items:center;justify-content:space-between;padding:8px 18px;background:#0b1424;border-bottom:1px solid #22314a;font:500 12px/1.4 "IBM Plex Sans",system-ui,sans-serif;color:#9fb2cc}.rd-kpi-bar a{color:#e8b746;font-weight:600;text-decoration:none}.rd-kpi-oculto{display:none!important}</style>
+<script>
+/* v3.16.0: LINK PÚBLICO — /indicadores/?p=TOKEN abre os indicadores sem login (somente leitura). */
+(function(){
+  try{var q=new URLSearchParams(location.search).get('p');if(q)sessionStorage.setItem('rdKpiLink',q);}catch(e){}
+  var tk='';try{tk=sessionStorage.getItem('rdKpiLink')||'';}catch(e){}
+  window.rdKpiLink=tk;
+  if(!tk)return;
+  var f0=window.fetch.bind(window);
+  window.fetch=function(u,o){
+    var url=typeof u==='string'?u:(u&&u.url)||'';
+    if(/api\.php/.test(url)){o=Object.assign({},o||{});var h=new Headers(o.headers||{});h.set('X-KPI-Link',tk);o.headers=h;}
+    return f0(u,o);
+  };
+})();
+</script>
+<script>
+/* Recebimento Drilling: o painel é calculado automaticamente — esconde os lançamentos manuais do SGA. */
+(function(){
+  var OCULTAR=['Lançar dados','Importar CSV','Restaurar dados de exemplo','Lançar indicadores','Importar CSV de KPIs','Meses','Pedidos (WhatsApp)','Itens críticos','Backup e dados'];
+  var SECOES=[];
+  var abriuRemessas=false;
+  function limpar(){
+    if(!abriuRemessas&&/\/indicadores\/admin/.test(location.pathname)){var t=[].slice.call(document.querySelectorAll('button')).find(function(b){return (b.textContent||'').trim()==='Notas de remessa';});if(t){abriuRemessas=true;setTimeout(function(){['pointerdown','mousedown','focus','mouseup','click'].forEach(function(n){t.dispatchEvent(new MouseEvent(n,{bubbles:true,cancelable:true,button:0}));});try{t.focus();}catch(e){}},150);}}
+    document.querySelectorAll('input[type=file]').forEach(function(i){var a=i.getAttribute('accept')||'';if(a.indexOf('.pdf')>=0&&a.indexOf('.xlsx')<0)i.setAttribute('accept',a+',.xlsx,.xls');});
+    document.querySelectorAll('button,a').forEach(function(b){var t=(b.textContent||'').trim();if(OCULTAR.indexOf(t)>=0)b.classList.add('rd-kpi-oculto');});
+    document.querySelectorAll('h2,h3').forEach(function(h){var t=(h.textContent||'').trim();
+      if(SECOES.some(function(x){return t.indexOf(x)===0;})){var c=h.closest('.panel');if(c&&c.parentElement&&c.parentElement.childElementCount===1)c=c.parentElement;if(c)c.classList.add('rd-kpi-oculto');}});
+    document.querySelectorAll('p,span,div').forEach(function(e){if(e.childElementCount===0&&/Dados salvos neste navegador/.test(e.textContent||''))e.textContent='Dados calculados automaticamente a partir do Recebimento Drilling (pedidos, estoque, inventário SAP e coletas).';});
+  }
+  try{localStorage.removeItem('almoxarifado-kpis-v1');}catch(e){}
+  var ROT={totalValue:['Valor total do estoque (R$) — mínimo esperado'],deadStockValue:['Estoque parado / sem giro (R$) — máximo'],inventoryLossValue:['Divergências e perdas (R$) — máximo'],otif:['OTIF dos pedidos de compra (%) — mínimo'],avgFulfillmentMinutes:['Tempo médio de conferência (min) — máximo'],accuracy:['Acuracidade IRA (%) — mínimo'],criticalItemsCount:['Itens críticos abaixo do mínimo — máximo'],stockouts:['Rupturas no mês — máximo'],collectionsCompleted:['Coletas realizadas no mês — mínimo'],collectionsFulfillmentPct:['% de atendimento das coletas — mínimo'],collectionsPending:['Coletas pendentes — máximo'],collectionsLate:['Coletas atrasadas — máximo'],collectionsSlaPct:['% de coletas no prazo (SLA) — mínimo'],collectionsAvgHours:['Tempo médio até a coleta (h) — máximo'],returnsCount:['Devoluções no mês — máximo'],returnsValue:['Valor devolvido (R$) — máximo'],emergencyPurchases:['Pedidos emergenciais no mês — máximo']};
+  window.rdLinkPublico=function(d){
+    var L=d.link_publico||{},url=L.ativo?location.origin+'/indicadores/?p='+encodeURIComponent(L.token):'';
+    var bg=document.createElement('div');bg.style.cssText='position:fixed;inset:0;background:#010614cc;z-index:99;display:flex;align-items:center;justify-content:center;padding:16px';
+    bg.innerHTML='<div style="background:#0f1b2e;border:1px solid #2b3b55;border-radius:16px;padding:20px;width:min(560px,100%);color:#e6edf7;font:14px/1.5 Inter,system-ui,sans-serif">'+
+      '<h3 style="margin:0 0 6px">Link público dos indicadores</h3><p style="margin:0 0 12px;color:#9fb0c8;font-size:12.5px">Quem tiver o link vê o painel e os indicadores de gestão <b>sem login</b>, somente leitura. Nomes de pessoas (solicitantes, responsáveis) ficam ocultos. Gerar um novo link desativa o anterior.</p>'+
+      (L.ativo?'<label style="font-size:11.5px;color:#9fb0c8">Painel de indicadores</label><input readonly value="'+url+'" style="width:100%;padding:9px;border-radius:9px;border:1px solid #2b3b55;background:#07101f;color:#e8b746;font-size:12.5px" id="rdLinkUrl"><label style="display:block;margin-top:8px;font-size:11.5px;color:#9fb0c8">Indicadores de gestão (com exportação Excel/PDF)</label><input readonly value="'+location.origin+'/indicadores/gestao.html?p='+encodeURIComponent(L.token)+'" style="width:100%;padding:9px;border-radius:9px;border:1px solid #2b3b55;background:#07101f;color:#e8b746;font-size:12.5px"><p style="font-size:11.5px;color:#6f8199;margin:6px 0 0">Criado em '+new Date(L.criado_em).toLocaleString('pt-BR')+' por '+(L.criado_por||'')+'</p>':'<p style="color:#9fb0c8">Nenhum link público ativo.</p>')+
+      '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px">'+(L.ativo?'<button data-a="desativar" style="padding:8px 12px;border-radius:8px;border:1px solid #5a2a30;background:#3d1d1f;color:#ffb4b4;cursor:pointer">Desativar link</button><button data-a="copiar" style="padding:8px 12px;border-radius:8px;border:1px solid #2b3b55;background:#1a2a42;color:#fff;cursor:pointer">Copiar</button>':'')+
+      '<button data-a="gerar" style="padding:8px 12px;border-radius:8px;border:0;background:#e8b746;color:#111;font-weight:700;cursor:pointer">'+(L.ativo?'Gerar novo link':'Gerar link público')+'</button><button data-a="fechar" style="padding:8px 12px;border-radius:8px;border:1px solid #2b3b55;background:transparent;color:#9fb0c8;cursor:pointer">Fechar</button></div></div>';
+    document.body.appendChild(bg);
+    bg.onclick=function(e){var a=e.target.dataset&&e.target.dataset.a;if(!a)return;
+      if(a==='fechar'){bg.remove();return;}
+      if(a==='copiar'){var i=document.getElementById('rdLinkUrl');i.select();(navigator.clipboard?navigator.clipboard.writeText(i.value):Promise.resolve(document.execCommand('copy'))).then(function(){e.target.textContent='Copiado ✓';});return;}
+      if(a==='gerar'&&L.ativo&&!confirm('O link atual deixará de funcionar. Gerar um novo?'))return;
+      if(a==='desativar'&&!confirm('Desativar o link público? Quem tiver o link perde o acesso.'))return;
+      fetch('api.php',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-Requested-With':'kpi-sync','X-CSRF-Token':d.csrf},body:JSON.stringify({op:'link_publico',acao:a})})
+        .then(function(r){return r.json()}).then(function(r){if(!r.ok)throw new Error(r.erro);d.link_publico=r.link_publico;bg.remove();rdLinkPublico(d);}).catch(function(err){alert(err.message);});
+    };
+  };
+  window.rdMetas=function(d){
+    var t=d.dados.targets,h='<div style="position:fixed;inset:0;background:#010614cc;z-index:99;display:flex;align-items:center;justify-content:center;padding:16px" id="rdMetasBg"><form id="rdMetasForm" style="background:#111d31;border:1px solid #2b3b55;border-radius:14px;width:min(560px,100%);max-height:88vh;overflow:auto;padding:20px;color:#e6eefb;font:14px system-ui"><h3 style="margin:0 0 4px">Metas dos indicadores</h3><p style="color:#8ca0ba;font-size:12px;margin:0 0 14px">Valem para o farol (verde/vermelho) de todos os meses.</p>';
+    Object.keys(ROT).forEach(function(k){h+='<label style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin:7px 0;font-size:12px">'+ROT[k][0]+'<input name="'+k+'" type="number" step="any" min="0" value="'+(t[k]!=null?t[k]:'')+'" style="width:130px;background:#0b1729;color:#fff;border:1px solid #2b3b55;border-radius:7px;padding:6px 8px"></label>';});
+    h+='<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button type="button" id="rdMetasCancel" style="padding:8px 14px;border-radius:8px;border:1px solid #2b3b55;background:#1a2a42;color:#fff">Cancelar</button><button style="padding:8px 14px;border-radius:8px;border:0;background:#e8b746;color:#1a1408;font-weight:700">Salvar metas</button></div></form></div>';
+    document.body.insertAdjacentHTML('beforeend',h);
+    document.getElementById('rdMetasCancel').onclick=function(){document.getElementById('rdMetasBg').remove();};
+    document.getElementById('rdMetasForm').onsubmit=function(e){e.preventDefault();var o={};new FormData(e.target).forEach(function(v,k){if(v!=='')o[k]=Number(v);});
+      fetch('api.php',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-Requested-With':'kpi-sync','X-CSRF-Token':d.csrf},body:JSON.stringify({op:'salvar_metas',dados:{targets:o}})}).then(function(r){return r.json()}).then(function(r){if(!r.ok){alert(r.erro||'Falha');return;}location.reload();});};
+  };
+  // PDF de DANFE: além da leitura do painel, o servidor lê transportadora, frete, placa, motorista e itens.
+  document.addEventListener('change',function(ev){
+    var inp=ev.target;if(!inp||inp.type!=='file')return;var f=inp.files&&inp.files[0];
+    if(!f||!/\.pdf$/i.test(f.name)||!window.rdKpiCsrf)return;
+    var fd=new FormData();fd.append('pdf',f);
+    window.rdDanfePronto=fetch('api.php?op=ler_danfe',{method:'POST',credentials:'same-origin',headers:{'X-Requested-With':'kpi-sync','X-CSRF-Token':window.rdKpiCsrf},body:fd}).then(function(r){return r.json()}).catch(function(){});
+  },true);
+  // "Registrar movimentações" espera a leitura do servidor terminar, para gravar já completo.
+  document.addEventListener('click',function(ev){
+    var b=ev.target&&ev.target.closest&&ev.target.closest('button');if(!b||!window.rdDanfePronto||b.dataset.rdOk==='1')return;
+    if((b.textContent||'').trim()!=='Registrar movimentações')return;
+    ev.stopImmediatePropagation();ev.preventDefault();
+    window.rdDanfePronto.then(function(){window.rdDanfePronto=null;b.dataset.rdOk='1';b.click();b.dataset.rdOk='';});
+  },true);
+  // Excel (.xlsx/.xls) → CSV no navegador, antes do importador de remessas do painel.
+  document.addEventListener('change',function(ev){
+    var inp=ev.target;if(!inp||inp.type!=='file'||inp.dataset.rdConv==='1')return;
+    var f=inp.files&&inp.files[0];if(!f||!/\.(xlsx|xls)$/i.test(f.name))return;
+    ev.stopImmediatePropagation();ev.preventDefault();
+    import('../assets/xlsx-lib.js').then(function(X){return f.arrayBuffer().then(function(buf){
+      var wb=X.read(buf,{type:'array',cellDates:true});var csv=X.utils.sheet_to_csv(wb.Sheets[wb.SheetNames[0]],{FS:';',dateNF:'dd/mm/yyyy'});
+      var nf=new File(['\ufeff'+csv],f.name.replace(/\.(xlsx|xls)$/i,'.csv'),{type:'text/csv'});var dt=new DataTransfer();dt.items.add(nf);
+      inp.files=dt.files;inp.dataset.rdConv='1';inp.dispatchEvent(new Event('change',{bubbles:true}));setTimeout(function(){inp.dataset.rdConv='';},0);
+    });}).catch(function(e){alert('Não foi possível ler a planilha Excel: '+e.message);});
+  },true);
+  document.addEventListener('DOMContentLoaded',function(){
+    var bar=document.createElement('div');bar.className='rd-kpi-bar';
+    bar.innerHTML='<span>Indicadores calculados automaticamente pelo Recebimento Drilling · atualizados a cada abertura</span><span style="display:flex;gap:16px"><a href="/indicadores/gestao.html">📊 Indicadores de gestão</a><a href="#" id="rdLinkBtn" style="display:none">🔗 Link público</a><a href="#" id="rdMetasBtn" style="display:none">⚙ Metas</a><a href="../">← Voltar ao sistema</a></span>';
+    fetch('api.php',{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(d){
+      if(!d.ok){if(d.erro){var m=document.createElement('div');m.className='rd-kpi-bar';m.style.background='#4a2130';m.style.color='#ffd0d6';m.innerHTML=d.erro+' <a href="../">Entrar</a>';document.body.insertBefore(m,bar.nextSibling);}return;}
+      window.rdKpiCsrf=d.csrf;
+      if(d.publico){document.documentElement.classList.add('rd-publico');bar.innerHTML='<span>Indicadores Drilling do Brasil · visualização pública, somente leitura · atualizados a cada abertura</span><span><a href="/indicadores/gestao.html">📊 Indicadores de gestão</a></span>';
+        document.querySelectorAll('a[href*="/admin"],button').forEach(function(){});}
+      if(d.link_publico){var lb=document.getElementById('rdLinkBtn');if(lb){lb.style.display='';lb.onclick=function(e){e.preventDefault();rdLinkPublico(d);};}}
+      if(d.usuario&&d.usuario.papel==='gestor'){var b=document.getElementById('rdMetasBtn');b.style.display='';b.onclick=function(e){e.preventDefault();rdMetas(d);};}
+    }).catch(function(){});
+    document.body.insertBefore(bar,document.body.firstChild);
+    limpar();new MutationObserver(limpar).observe(document.body,{childList:true,subtree:true});
+  });
+})();
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

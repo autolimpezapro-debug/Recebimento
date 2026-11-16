@@ -1,0 +1,70 @@
+/* Recebimento Drilling — Sistema de Notificações v3.1.0 */
+
+/* Sino no topo */
+.nt-anchor{position:relative;display:inline-flex}
+.nt-btn{position:relative;display:inline-flex;align-items:center;gap:7px}
+.nt-btn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.nt-badge{position:absolute;top:-7px;right:-7px;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:#e5484d;color:#fff;font-size:10px;font-weight:800;display:grid;place-items:center;box-shadow:0 0 0 2px #0c1526;animation:nt-pulse 1.6s ease-in-out infinite}
+.nt-dot{position:absolute;top:2px;right:2px;width:9px;height:9px;border-radius:50%;background:#f8bf60;box-shadow:0 0 0 2px #0c1526}
+@keyframes nt-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+.nt-btn.has-news{border-color:#e5484d;color:#fff}
+
+/* Painel do sino */
+.nt-panel{position:fixed;top:66px;right:22px;z-index:190;width:min(440px,calc(100vw - 20px));max-height:min(660px,calc(100dvh - 90px));background:#12233a;border:1px solid #37516c;border-radius:15px;box-shadow:0 18px 60px #000a;display:flex;flex-direction:column;overflow:hidden}
+.nt-panel[hidden]{display:none!important}
+.nt-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:14px 15px;border-bottom:1px solid #25334b}
+.nt-head strong{display:block;font-size:14px}
+.nt-head small{display:block;font-size:11px;color:#92a3bb;margin-top:3px}
+.nt-tools{display:flex;flex-wrap:wrap;gap:6px;padding:10px 15px;border-bottom:1px solid #25334b;background:#0f1d30}
+.nt-tools .button{padding:7px 10px;font-size:11px}
+.nt-list{overflow-y:auto;flex:1;overscroll-behavior:contain}
+.nt-item{display:flex;gap:10px;width:100%;text-align:left;padding:12px 15px;border:0;border-bottom:1px solid rgba(128,150,180,.16);background:transparent;color:inherit;cursor:pointer}
+.nt-item:hover{background:rgba(121,142,170,.09)}
+.nt-item.unread{background:rgba(76,141,255,.10)}
+.nt-item.unread .nt-item-body strong{color:#fff}
+.nt-item-icon{font-size:18px;line-height:1.2}
+.nt-item-body{display:grid;gap:3px;min-width:0}
+.nt-item-body strong{font-size:12.5px}
+.nt-item-body small{font-size:11.5px;color:#b5c7dd}
+.nt-item-body em{font-size:10px;color:#7f93ad;font-style:normal}
+.nt-empty{padding:22px 16px;font-size:12px;color:#92a3bb;text-align:center}
+.nt-foot{padding:10px 15px;border-top:1px solid #25334b;font-size:10.5px;color:#92a3bb;display:flex;justify-content:space-between;gap:8px;align-items:center}
+
+/* Banner de chegada (aparece em qualquer tela) */
+.nt-banner{position:fixed;top:76px;left:50%;transform:translate(-50%,-14px);z-index:200;width:min(620px,calc(100vw - 24px));display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:13px;background:linear-gradient(110deg,#12507f,#123a5e 60%,#12233a);border:1px solid #3d7db5;box-shadow:0 18px 50px #000a;opacity:0;transition:.18s}
+.nt-banner[hidden]{display:none!important}
+.nt-banner.on{opacity:1;transform:translate(-50%,0)}
+.nt-banner-main{display:flex;align-items:center;gap:11px;background:transparent;border:0;color:#fff;text-align:left;flex:1;min-width:0;cursor:pointer}
+.nt-banner-icon{font-size:22px}
+.nt-banner-text{display:grid;gap:2px;min-width:0}
+.nt-banner-text strong{font-size:13px}
+.nt-banner-text small{font-size:11.5px;color:#c9dcf1;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.nt-banner-actions{display:flex;gap:6px;align-items:center}
+.nt-banner-btn{border:1px solid #4f8fc8;background:#1b5f96;color:#fff;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;white-space:nowrap}
+.nt-banner-btn:hover{filter:brightness(1.12)}
+.nt-banner-close{border:0;background:transparent;color:#c9dcf1;font-size:14px;padding:4px 6px}
+
+/* Tela de configuração */
+.nt-config{display:grid;gap:14px}
+.nt-config-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.nt-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px}
+.nt-card h2{font-size:15px;margin-bottom:6px}
+.nt-card p{font-size:12px;color:var(--muted);margin-bottom:12px}
+.nt-switch{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid #25334b;font-size:12.5px}
+.nt-switch:first-of-type{border-top:0}
+.nt-switch input{width:18px;height:18px;accent-color:#4c8dff}
+.nt-cats{display:grid;gap:8px;margin-top:6px}
+.nt-cat{display:flex;align-items:center;gap:9px;font-size:12.5px;background:#14263e;border:1px solid #2b405f;border-radius:10px;padding:9px 11px}
+.nt-cat input{width:17px;height:17px;accent-color:#22d3a7}
+.nt-table{width:100%;border-collapse:collapse;font-size:12px}
+.nt-table th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9ab0ce;padding:8px;background:#192a41}
+.nt-table td{padding:8px;border-top:1px solid #25334b}
+.nt-pill{display:inline-block;font-size:10px;font-weight:800;padding:3px 8px;border-radius:999px;background:#21354f;color:#a8c2dd}
+.nt-pill.on{background:#0e544e;color:#7df0d5}
+.nt-pill.off{background:#3a2430;color:#ffb2bb}
+
+@media (max-width:720px){
+  .nt-panel{top:60px;right:8px;width:calc(100vw - 16px)}
+  .nt-banner{top:64px;flex-wrap:wrap}
+  .nt-config-grid{grid-template-columns:1fr}
+}

@@ -1,0 +1,57 @@
+/* Controle de obras (v3.28.0) */
+.ob-layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px;align-items:start;margin-top:14px}
+.ob-lista{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;position:sticky;top:84px;max-height:calc(100vh - 110px);overflow:auto}
+.ob-lista .searchbox{display:block;margin-bottom:10px}.ob-lista input{width:100%}
+.ob-item{display:grid;gap:2px;width:100%;text-align:left;background:#0f1b2e;border:1px solid #22344f;border-radius:11px;padding:10px 12px;margin-bottom:7px;color:inherit;cursor:pointer}
+.ob-item:hover{border-color:#3d6aa6}.ob-item.on{border-color:#4a86f0;background:#152a4c}
+.ob-item strong{font-size:13px}.ob-item small{font-size:11px;color:#8ea6c6}.ob-item-n{font-size:11px;color:#b5c6dc}.ob-item-n i{color:#6f86a6}
+.ob-detalhe{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;min-height:300px}
+.ob-vazio{display:grid;justify-items:center;gap:6px;padding:60px 12px;text-align:center;color:#8ea6c6}.ob-vazio span{font-size:38px}.ob-vazio strong{color:#dbe6f5}
+.ob-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}.ob-head h2{font-size:20px}.ob-head small{color:#8ea6c6}
+.ob-mini{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0 12px;font-size:12px;color:#9fb3cd}.ob-mini b{color:#fff;font-size:15px}
+.ob-envio{border:1px solid #24395a;border-radius:13px;padding:14px;margin-top:12px;background:#0f1b2e}
+.ob-envio-top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.ob-data{font-weight:800;font-size:15px}
+.ob-envio-acoes{display:flex;gap:6px;flex-wrap:wrap}
+.ob-itens{white-space:pre-wrap;font:12px/1.5 inherit;background:#0b1527;border-radius:9px;padding:9px 11px;margin:10px 0 0;color:#d2dfed}
+.ob-obs{font-size:12px;color:#b5c6dc;margin-top:8px}
+.ob-arqs{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px}.ob-arqs h5,.ob-up h5{margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9ab0ce}
+.ob-thumbs{display:flex;flex-wrap:wrap;gap:8px}
+.ob-thumb{position:relative;width:92px;height:92px;border-radius:10px;overflow:hidden;border:1px solid #2b3f5c;background:#0b1527;display:grid;place-items:center;text-decoration:none;color:#dbe6f5}
+.ob-thumb img{width:100%;height:100%;object-fit:cover}.ob-thumb.pdf{background:linear-gradient(160deg,#3a1520,#1b1016)}
+.ob-thumb.pdf span{font-weight:900;color:#ff9aa3;font-size:15px}.ob-thumb.pdf small{position:absolute;bottom:4px;left:4px;right:4px;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#d8c4c8}
+.ob-thumb-x{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;border:0;background:#000a;color:#fff;font-size:11px;cursor:pointer;display:none}.ob-thumb:hover .ob-thumb-x{display:block}
+.ob-modal{width:min(860px,96vw);max-height:92vh}
+.ob-form{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}.ob-form label{display:grid;gap:5px;font-size:11px;font-weight:700;color:#b5c6dc}
+.ob-form input,.ob-form select,.ob-form textarea{width:100%}.ob-form .full{grid-column:1/-1}.ob-form .modal-actions{padding:6px 0 0}
+.ob-up{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.ob-drop{display:grid!important;justify-items:center;gap:3px;padding:16px;border:1.5px dashed #3d5f90;border-radius:12px;background:#0f1d33;cursor:pointer;text-align:center}
+.ob-drop:hover{border-color:#5b8def}.ob-drop span{font-size:13px;color:#cfe0f5}.ob-drop small{font-weight:400;color:#8ea6c6}
+.ob-up ul{list-style:none;padding:0;margin:8px 0;display:grid;gap:4px;font-size:12px}.ob-up li button{background:none;border:0;color:#ff9aa3;cursor:pointer}
+.ob-nota{font-size:11.5px;color:#8ea6c6;margin-top:10px}.ob-ul{font-size:12.5px;display:grid;gap:4px;padding-left:18px}
+#page-obras h4{margin:16px 0 8px;font-size:13px}
+@media(max-width:900px){.ob-layout{grid-template-columns:1fr}.ob-lista{position:static;max-height:300px}.ob-arqs,.ob-up,.ob-form{grid-template-columns:1fr}}
+
+/* v3.33.0 — envio com origem em pedido de compra */
+.ob-pc-linha{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px}
+.ob-pc-linha input{flex:1 1 140px;min-width:0}
+.ob-pc-box{margin-top:8px;border:1px solid rgba(128,140,160,.4);border-left:3px solid #12b76a;border-radius:10px;padding:10px;background:rgba(128,140,160,.08);display:grid;gap:8px}
+.ob-pc-cab{display:grid;gap:2px}
+.ob-pc-aviso{margin:0;padding:6px 8px;border-radius:6px;background:rgba(247,144,9,.14);font-size:12px}
+.ob-pc-linhas{display:grid;gap:6px}
+.ob-pc-linha-item{display:grid;grid-template-columns:minmax(0,1fr) 96px;gap:8px;align-items:center;border-top:1px solid rgba(128,140,160,.22);padding-top:6px}
+.ob-pc-linha-item.off{opacity:.6}
+.ob-pc-chk{display:flex;gap:8px;align-items:flex-start;cursor:pointer;min-width:0}
+.ob-pc-chk span{min-width:0;overflow-wrap:anywhere}
+.ob-pc-chk input{margin-top:3px;flex:0 0 auto}
+.ob-pc-sub{margin:4px 0 0;font-size:12px}
+.ob-pc-fotos{display:flex;gap:8px;flex-wrap:wrap}
+.ob-pc-fotos label{position:relative;cursor:pointer}
+.ob-pc-fotos img{width:84px;height:84px;object-fit:cover;border-radius:8px;display:block;border:2px solid transparent}
+.ob-pc-fotos input{position:absolute;top:6px;left:6px;z-index:1}
+.ob-pc-fotos input:checked+img{border-color:#12b76a}
+@media (max-width:560px){.ob-pc-linha-item{grid-template-columns:1fr}.ob-pc-linha-item input[type=number]{max-width:140px}}
+.ob-form .ob-pc-chk{display:flex!important;flex-direction:row;gap:8px;align-items:flex-start}
+.ob-form .ob-pc-chk input[type=checkbox],.ob-form .ob-pc-fotos input[type=checkbox]{width:auto;flex:0 0 auto}
+.ob-form .ob-pc-fotos label{display:block}
+.ob-form .ob-pc>label{display:grid;gap:4px}
+.ob-pc-cab{overflow-wrap:anywhere}

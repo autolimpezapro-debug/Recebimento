@@ -1,0 +1,294 @@
+v3.35.0 (16/11/2026) - LOCACOES: DOCUMENTOS ANEXADOS + 2 LANCAMENTOS. (1) Na ficha de cada locacao ha agora 'Documentos': anexar (PDF/JPG/PNG ate 15 MB, com tipo: NF de remessa, NF de devolucao, comprovante, contrato...), abrir, baixar e remover (o arquivo fica guardado). Locacoes com documento mostram o clipe na lista. (2) Carga automatica, na primeira abertura apos instalar: (a) GERADOR GMG 194 MWM/WEG - Meta Locacao, NF-e 3846 (09/11/2026), ativa na Matriz, com a NF anexada; (b) CONTAINER MARITIMO CON301 - Locafaz, contrato CW0147796, 09/08/2023 a 19/10/2026, DEVOLVIDO pela NF-e 15, com NF e comprovante anexados. Se o container ja estiver cadastrado como ativa (mesmo contrato), ele e encerrado em vez de duplicado. Valor da locacao fica em branco (como nas cargas anteriores): edite em Detalhes > Editar. Data de devolucao adotada = 19/10/2026 (manuscrita no comprovante); a NF e de 14/10 e o comprovante de 15/10 - ajuste em Editar se preferir. (3) Ficha da locacao sem estouro de largura no celular.
+
+v3.34.0 (16/11/2026) - AVISO DE CHEGADA: RESULTADO VISIVEL + MAIS SUGESTOES. (1) Ao finalizar um recebimento, o sistema mostra em ~3 s o que aconteceu com o e-mail: 'enviado para X' ou 'NAO enviado: motivo' (antes o envio era silencioso). O motivo tambem fica em data/emails_recebimento.json. (2) O e-mail so sai quando ha destinatario DEFINIDO (escolhido no pedido/importacao/ao finalizar) ou solicitante reconhecido; sugestoes nunca sao enviadas sem confirmacao. (3) Abreviacoes como 'MANUT.' passam a sugerir o contato de Manutencao; pedidos de reposicao de estoque sao identificados no motivo. Se o log diz 'enviado: true' e o e-mail nao chegou, configure SMTP em Administracao > Avisos por e-mail (o mail() da hospedagem pode cair em spam).
+
+v3.33.0 (16/11/2026) - OBRAS: ENVIO A PARTIR DO PEDIDO DE COMPRA + AJUSTE DE LAYOUT. (1) Em Obras > Novo envio, o campo 'Pedido de compra (PC)' traz os itens (com quantidade), o solicitante e as fotos do recebimento; o operador marca o que vai e ajusta as quantidades. O sistema desconta o que ja foi enviado daquele PC e avisa se a obra for diferente do destino do pedido. O ENVIO A OBRA NAO DA BAIXA NO ESTOQUE (so registra itens, nota e fotos) - para evitar duplicidade; a baixa continua sendo feita na Saida de material. (2) Saida de material: o modal agora rola por dentro com os botoes sempre visiveis, e se reorganiza em celular/tablet (cartao do PC, linhas de material, campos de OS).
+
+v3.32.0 (16/11/2026) - OS NUNCA OBRIGATORIA NA SAIDA + OS LIDA DO PEDIDO: (1) Na saida de material, OS e equipamento sao opcionais em qualquer setor (inclusive Manutencao); a regra antiga 'setores que exigem OS' foi desligada. (2) Ao importar um pedido de compra, o sistema procura a OS e o equipamento nas observacoes/finalidade do PDF (ex.: 'OS 4521', 'O.S. 1234/26', 'ordem de servico 5566', 'PAT 800509'). Se a regra de texto nao achar e o texto sugerir uma OS, o Gemini (se ligado) e consultado, mas so vale se a OS estiver escrita literalmente no texto. (3) Ao puxar o PC na saida, OS e equipamento vem preenchidos (pode apagar/trocar). Pedidos importados antes desta versao ficam sem OS - o operador digita se houver.
+
+v3.31.0 (16/11/2026) - E-MAIL 'SEU PEDIDO CHEGOU' COM FOTOS E DADOS: o aviso agora mostra data/hora do recebimento, situacao (completo/parcial), conferente, NF, observacao do recebimento e ate 3 fotos do produto EMBUTIDAS no corpo do e-mail (reduzidas a 800 px). A foto da nota fiscal nunca e enviada. Se o servidor recusar o e-mail com fotos, ele e reenviado sem elas; o aviso nunca deixa de sair por causa de foto. Requer a extensao GD do PHP (padrao na HostGator); sem ela, o e-mail sai sem fotos.
+
+v3.30.0 (16/11/2026) - SAIDA POR PC / SKU / NOME COM FOTO AUTOMATICA: em Estoque > Nova saida, o campo 'Buscar material ou pedido' aceita o numero do PC (ex.: 1000), o SKU ou o nome do cadastro. Ao digitar o PC, o sistema mostra o que foi recebido, o que ja saiu e o que ainda pode sair; 'Adicionar todos' preenche as linhas, sugere setor/obra e solicitante do pedido e traz a foto (cadastro, senao a do recebimento), sem o operador fotografar. Continuam valendo: setor/obra, OS, assinatura e validacao de saldo; nao deixa retirar mais do que o PC recebeu. O operador pode trocar a foto clicando nela. Segurancas incluidas nos contatos de aviso: seguranca.drilling@ e seguranca2@drilling.com.br.
+
+v3.29.0 (16/11/2026) - AVISO DE CHEGADA: define quem recebe o e-mail quando o pedido e recebido, mesmo sem solicitante no PC. (1) Na importacao: cada PC mostra "Avisar quando chegar" - o sistema usa o campo Solicitante e, se faltar, procura nas OBSERVACOES do pedido os nomes/apelidos ja cadastrados em Administracao > Avisos por e-mail; sugestao amarela precisa de confirmacao. (2) No detalhe do pedido: secao "Avisar quando chegar" (escolher pessoas, "nao avisar ninguem" ou voltar ao automatico). (3) Ao finalizar o recebimento, se ainda nao houver destinatario, o conferente escolhe na hora (falha tecnica nunca bloqueia o recebimento). Quadro "Avisos de chegada" na lista de Pedidos: PCs sem destinatario e e-mails que nao sairam. Sugestao nao confirmada NAO envia e-mail. So aceita e-mails da lista de contatos. Os 10 e-mails principais da Drilling (Marcos Lopes, Frederico, PCP/Willy, PCM, Ana Clara, Compras, Almoxarifado, Expedicao, William Ramos, Manutencao/Kenneton) sao carregados uma unica vez no primeiro acesso, sem apagar contatos ja cadastrados.
+v3.28.0 (13/11/2026) - Novo modulo Obras: envios de material por obra com notas (PDF/foto) e fotos, e o que o sistema ja registrou para a obra (saidas, ferramentas, locados). Arquivos em data/obras (protegidos, no backup e no MySQL). Backup passa a incluir as assinaturas.
+v3.27.5 (13/11/2026) - Ferramentas: ate 3 fotos direto no cadastro (Nova/Editar ferramenta), camera ou galeria.
+v3.27.4 (13/11/2026) - Revisao completa: 59 itens do estoque (codigos com espaco do SAP e codigos EST- provisorios) davam "Item nao encontrado" ao abrir detalhe/kardex - corrigido; gestor volta a ver a lista de usuarios; telas nao fazem consultas sem permissao; erro real do backup aparece em vez de "Invalid Zip object"; permissoes de arquivos.
+v3.27.3 (13/11/2026) - Administracao > Avisos por e-mail > "Nome e e-mail - aviso de chegada": lista simples de quem recebe o e-mail quando o pedido do solicitante e recebido; teste de nome e historico de envios.
+v3.27.2 (13/11/2026) - Piloto: saida para Manutencao sempre exige OS e equipamento; setores configuraveis em "alterar" na tela de saida.
+v3.27.1 (13/11/2026) - OS opcional na saida: caixa "Vincular a uma ordem de servico"; marcada, OS e equipamento ficam obrigatorios.
+v3.27.0 (13/11/2026) - Saida de material (Estoque e Importados) exige Ordem de servico (OS) e Equipamento aplicado; aparecem no comprovante, nas listas e no CSV de movimentos.
+v3.26.3 (13/11/2026) - "Valor do parque" renomeado para "Patrimonio em ferramentas"; atalho "Avisos por e-mail" no topo de Administracao.
+v3.26.2 (13/11/2026) - Novo perfil "Visualizador (somente leitura)": ve todos os modulos operacionais sem criar, editar, finalizar nem exportar.
+v3.26.1 (13/11/2026) - Revisao: e-mails enviados depois da resposta tambem em LiteSpeed (HostGator); lembrete de estoque nao repete logo apos um e-mail; fuso de Sao Paulo nos crons (alertas e agenda).
+v3.26.0 (13/11/2026) - Alertas de estoque baixo (faixa no topo, sino e e-mail repetindo ate a reposicao; cron opcional alertas_worker.php). E-mail ao solicitante quando o pedido dele e recebido (e-mail no cadastro do funcionario, icone discreto).
+v3.25.0 (13/11/2026) - NF: depois de escanear o codigo de barras, fotografar a DANFE; o Gemini le fornecedor, valores e todos os produtos, confere com a chave e compara com os itens do pedido.
+v3.24.0 (13/11/2026) - Coletas: montar rota digitando os numeros dos PCs (cria a coleta com o endereco do fornecedor), km e tempo pelas ruas (OSRM), quadro Rotas realizadas por mes (rotas, km, deslocamento, duracao) com Excel.
+v3.23.0 (13/11/2026) - Coletas: abas de status com contagem, montar rota marcando pedidos (ordem otimizada, setas, Google Maps, WhatsApp), iniciar/encerrar rota, Modo motorista (motorista.html) com Coletei/Nao coletei, itens do PC e localizacao do caminhao no mapa.
+v3.22.0 (12/11/2026) - Central de exportacao redesenhada: cartoes de modelo, conjuntos com contagem, busca/obra/situacao/periodo, Excel (.xlsx) com filtro, PDF com cabecalho e assinaturas.
+v3.21.2 (12/11/2026) - Carga unica: 21 pedidos novos do WhatsApp (PC 4980 a 5021). So inclui PC que ainda nao existe; nunca altera pedido ja cadastrado.
+v3.21.1 (12/11/2026) - Indicadores > Coletas por fornecedor: filtro por mes, cada ida com data, km e insumos coletados; aba Excel "Coletas - cada ida".
+v3.21.0 — FERRAMENTAS: até 3 FOTOS por ferramenta (galeria na ficha: adicionar, trocar e remover) e até 3 fotos no EMPRÉSTIMO (estado em que as ferramentas saíram), que aparecem no termo de empréstimo junto da assinatura.
+
+v3.20.4 — RECUPERAÇÃO DE PEDIDOS de 12/11/2026: entre 12:37 e 13:53 a base de pedidos voltou a uma versão antiga (PCs 4979, 5004 e 5007 sumiram; 4950, 4963 e 4974 perderam o recebimento). No primeiro acesso, esses 6 PCs são recuperados da cópia do MySQL (fotos inclusas), sem tocar em pedidos alterados depois. Roda uma única vez.
+
+v3.20.3 — RESTAURAÇÃO SEGURA: se os dados voltarem do backup ou do MySQL, a carga inicial (inventário SAP, importados, funcionários, remessas) NÃO é aplicada de novo — evita duplicar o estoque.
+
+v3.20.2 — COLETAS POR FORNECEDOR: origem fixa Drilling do Brasil (São José da Lapa) para os km; data da coleta = dia útil ANTERIOR ao recebimento feito pelo conferente (nunca antes da emissão da NF; se o motorista registrou "Coletado" antes, vale o registro). A data de criação/importação do PC não é mais usada (o PC costuma ser enviado no grupo dias antes, aguardando status).
+
+v3.20.1 — INDICADORES DE GESTÃO: exportação detalhada em EXCEL (uma aba por indicador, incluindo coletas por fornecedor com insumos e compras) e em PDF (relatório completo, A4). Botão "🔗 Link público" também na tela de gestão: gera o endereço /indicadores/gestao.html?p=… para enviar (copiar ou WhatsApp); sem o link gerado a página continua exigindo login. Quem abre pelo link vê e exporta, sem login e sem nomes de pessoas.
+
+v3.20.0 — PEDIDOS POR OBRA: cada PC ganha "Destino do pedido" (obra ou setor: Depósito, Caldeiraria, Manutenção…), identificado automaticamente pelas observações e finalidade do PDF do SAP (na importação e, uma única vez, nos pedidos já existentes) e editável no detalhe do pedido. Na lista de Pedidos há o filtro "Todas as obras / setores" com contagem e a etiqueta do destino em cada PC.
+
+v3.19.1 — DATAS no padrão dd/mm/aaaa em todo o sistema (independe do idioma do computador; 📅 abre o calendário). FERRAMENTAS: setor "Depósito" e "Depósito" no topo da lista de obras (também nas saídas do estoque); o cadastro puxa automaticamente as ferramentas do estoque (SKU FE…) e há o botão "⇩ Puxar do estoque" (só acrescenta, nunca altera). Corrigido: o campo "Qual obra?" aparecia mesmo com setor diferente de Obra.
+
+v3.19.0 — ESTOQUE: FOTO DO PRODUTO NA SAÍDA — botão 📷 em cada linha da saída (câmera do celular ou arquivo, reduzida para até 1280 px antes de enviar). A foto aparece no comprovante de entrega (junto da assinatura) e no histórico de movimentos (📷). Arquivos em data/estoque/fotos_saida (protegidos, só com login; espelhados no MySQL).
+
+v3.18.1 — "📍 Localizar fornecedores" (Indicadores de gestão → Coletas por fornecedor): busca o endereço de cada fornecedor pelo CNPJ dos pedidos e localiza no mapa, em lotes, para o relatório calcular os km. Grava só em coletas.json (fornecedores); falhas são tentadas de novo após 7 dias.
+
+v3.18.0 — URGÊNCIA PELO CHAT: na importação do ZIP do WhatsApp o sistema lê as mensagens; quem escrever "urgente", "urgência", "emergencial", "prioridade", "pra hoje"… junto do PDF do pedido (legenda ou mensagem da mesma pessoa até 15 min antes/depois) ou citando o número do PC faz o pedido entrar marcado como URGENTE (inclusive PCs que já existiam; nunca desmarca). A prévia mostra "⚠ URGENTE no chat" e o motivo fica gravado no pedido. Também na importação de Coletas (prioridade Urgente).
+v3.17.0 — COLETAS POR FORNECEDOR (Indicadores de gestão): idas, compras (PCs), km rodados, valor e insumos somados por fornecedor em 30/90/180/365 dias, destaque de insumos recorrentes e quantas idas/km dá para economizar juntando compras; exporta CSV. Coletas: campo "Km rodado" ao mudar o status (opcional; sem ele, km estimado pela distância).
+
+v3.16.0 — LINK PÚBLICO DOS INDICADORES: o administrador gera em Indicadores → "🔗 Link público" um endereço que abre o painel e os indicadores de gestão SEM LOGIN, somente leitura (gravações bloqueadas no servidor) e com nomes de pessoas ocultos. Gerar novo link desativa o anterior; há botão para desativar.
+
+v3.15.0 — INDICADORES DE GESTÃO (/indicadores/gestao.html, link no topo do painel): custo por obra (estoque + remessas NF + locação), locação por obra, consumo por setor, ferramentas emprestadas/atrasadas, % PCs urgentes por solicitante, devoluções a fornecedor, divergências no recebimento, risco de ruptura, capital parado, motivos de atraso das coletas e ranking de fornecedores (A/B/C/D). Filtro por mês, ano e 12 meses; somente leitura.
+
+v3.14.0 (cont.) — IMPORTADOS: removida a legenda "Foto original do catálogo (planilha)" da ficha do item.
+
+v3.14.0 — IMPORTAÇÃO ATÉ 1 GB: o arquivo (ZIP do WhatsApp ou PDF) é enviado em partes, então o limite de upload do PHP/HostGator não atrapalha; o ZIP é lido direto do disco (sem carregar na memória). O ANEXO NÃO FICA NO SERVIDOR: é lido, os dados dos pedidos são gravados e o arquivo é apagado logo após a prévia. PDFs de pedido deixam de ser arquivados em data/order_pdfs (os que já existem continuam lá). Vale para a importação de Pedidos e de Coletas.
+
+v3.13.1 — Ícone do sistema (aba do navegador, atalho do celular e app instalado) passa a usar a logo real da Drilling do Brasil.
+
+v3.13.0 — COLETAS: botão "Importar pedidos" — envia PDF(s) do pedido ou o ZIP do WhatsApp, mostra a prévia (marca os PCs citados como coleta no chat, avisa coleta já existente) e cria SOMENTE coletas; pedidos, estoque e indicadores não são alterados. Endereço preenchido de coletas anteriores do mesmo CNPJ ou pela consulta pública do CNPJ.
+
+v3.12.5 — LOCAÇÕES: bomba ALP062 da ALLPRIME PUMPS (conjunto motobomba S3 30 CV, remessa NF-e 497 de 21/08/2026) lançada como locada.
+
+v3.12.4 — LOCAÇÕES: devoluções completas da ALUGAMAQUINAS pelas NF-e 13 e 14 (09/09/2026): conjunto do carrinho 800082 (remessa 13843 de 22/12/2025) e do carrinho 800067 (remessa 13685 de 01/10/2025), com maçarico, mangueira e reguladores — 10 itens devolvidos. Substitui os 2 lançamentos provisórios da v3.12.3 (sem duplicar).
+
+v3.12.3 — LOCAÇÕES: tarifa e datas passam a ser OPCIONAIS (controle por equipamento, fornecedor e patrimônio); devolução registra a NF de devolução. Carga: carrinhos oxicorte 800067 (NF 13685) e 800082 (NF 13843) da ALUGAMAQUINAS como devolvidos.
+
+v3.12.2 (cont.) — LOCAÇÕES: carga automática da nota de débito 054629 da ALUGAMAQUINAS (31/10/2026, R$ 1.680,00): 15 itens por número de série, diária unitária; patrimônio 800509 na OBRA SINOP; conjunto 800069 devolvido em 22/10. Roda uma única vez e não duplica se a NF já tiver sido lançada.
+
+v3.12.2 — ESTOQUE: a saída de material agora exige o SETOR (Obra, Caldeiraria, Manutenção, Expedição, Logística, ADM) e, se for Obra, qual obra (mesma lista das Ferramentas). O consumo por obra do painel passa a usar esse campo.
+
+v3.12.1 — FERRAMENTAS: o empréstimo agora exige o SETOR de destino (Obra, Caldeiraria, Manutenção, Expedição, Logística, ADM); se for Obra, escolhe-se qual obra numa lista única que junta as obras cadastradas (inclui Nexa, Sogel e Aterpa (Vale)) com as obras que aparecem nas NFs de remessa. Painel mostra ferramentas emprestadas por destino. Locações usam a mesma lista.
+
+v3.12.0 — NOVO MÓDULO LOCAÇÕES (menu lateral): equipamentos ALUGADOS DE FORNECEDORES (ex.: Locafaz). Tarifa diária/semanal/quinzenal/mensal, período mínimo, local atual (MATRIZ ou obra), transferências com data, fretes, avarias, manutenção e ajuste de fatura. Custo rateado por dia entre os locais; visões por equipamento, obra, fornecedor, tipo e mês; alerta de devolução vencida; exportação CSV. Dados em data/locacoes.json (espelhado no MySQL).
+
+v3.11.1 — GEMINI EM SEGUNDO PLANO (invisível, sem chat): lê um resumo numérico do estoque (sem dados pessoais) e acrescenta até 5 observações nos alertas do Painel do estoque. Cache de 6 h em data/gemini_insights.json; se o Gemini falhar, o painel funciona normalmente.
+
+v3.11.0 — PAINEL DO ESTOQUE completo: 8 indicadores, filtro de período (30/90/180 dias, 12 meses), entradas × saídas 12 meses, origem do saldo (inventário SAP × pedidos), valor por família de SKU, curva ABC, consumo por obra, risco de ruptura (dias de cobertura), mais consumidos, maior valor imobilizado, retiradas por pessoa, itens parados, alertas clicáveis e impressão em PDF.
+
+v3.10.4 — SKU ÚNICO: cada linha de PC exibe o SKU (busca por SKU na lista); itens de estoque com código provisório e SKU conhecido passam a usar o SKU (ou são unificados ao item já existente, sem apagar histórico). Relatório: rota estoque_sku_relatorio.
+
+RECEBIMENTO DRILLING v3.10.3 — PACOTE DE ATUALIZAÇÃO (código + banco MySQL)
+===========================================================================
+
+SUBIR, EXTRAIR E FUNCIONAR. Não precisa rodar instalador, não precisa de
+banco de dados, não precisa de Node. Só PHP 8.1+ no cPanel/HostGator (o servidor atual usa 8.3).
+
+  1. cPanel > Gerenciador de Arquivos > pasta do site (public_html ou o
+     subdomínio). Envie este ZIP e clique em Extrair (pode por cima).
+  2. Abra https://SEU-DOMINIO/ e faça Ctrl+F5.
+  3. Pronto. Na primeira abertura o sistema cria sozinho as pastas de dados,
+     as proteções do Apache e a base de pedidos (data/seed.php) quando ainda
+     não existir data/items.json.
+
+SEUS DADOS NÃO SÃO TOCADOS
+  Este pacote não contém items.json, fotos, PDFs, XMLs, estoque, coletas,
+  notificações, usuários, senhas nem backups. Extrair por cima é seguro.
+  Em instalação nova, a base de PCs nasce de data/seed.php.
+
+REQUISITOS (cPanel)
+  PHP 8.1+ (Select PHP Version) com: openssl, json, zip, gd, curl, fileinfo.
+  Upload: Select PHP Version > Options >
+     upload_max_filesize = 64M
+     post_max_size       = 64M
+     max_execution_time  = 300
+  Sem isso o ZIP do WhatsApp (até 45 MB) não passa.
+  data/ precisa de permissão de escrita (0755; 0775 se o servidor exigir).
+
+SE ABRIR E DER ERRO EM VEZ DA LISTA
+  O sistema responde em texto o que falta (PHP antigo ou data/ sem escrita).
+  Ajuste conforme acima e recarregue — nada é perdido.
+
+MÓDULOS DESTA VERSÃO
+  Dashboard · Pedidos de compra · Importação WhatsApp/PDF com apoio do Gemini
+  · Cadastro manual de PC · Estoque · Etiquetas e identificação (A4, 6/folha)
+  · Coletas com mapa e rota · Exportação PDF/Excel · Notificações e Web Push
+  · Backup completo automatizado · Usuários, perfis e permissões.
+
+Login por usuário ainda NÃO é obrigatório nesta instalação. Para ligar:
+  Administração > ativar a administração (código em data/backup_setup.key)
+  > Usuários, perfis e permissões > cadastrar os usuários > "Ativar login
+  obrigatório". Faça isso só depois de criar o seu próprio administrador.
+
+CRON (opcional, backup diário): cPanel > Cron Jobs, uma vez por dia:
+  php -q /home/SEU_USUARIO/public_html/backup_cli.php
+
+instalar.php continua no pacote como diagnóstico opcional; ele não é mais
+necessário e nunca apaga nem sobrescreve dados.
+
+SENHAS JÁ CONFIGURADAS NESTE PACOTE
+  As duas senhas (Administração, usuário padrão adm, e Importação de pedidos)
+  foram definidas por quem montou o pacote. NÃO as escreva aqui: este arquivo
+  fica público em public_html e qualquer pessoa que achar a URL leria a senha.
+  Troque quando quiser em Administração > senha administrativa.
+
+IMPORTADOS — MATERIAIS CRÍTICOS (NOVO NA 3.9.2)
+  Menu "Importados". Vitrine com foto oficial, saldo, ponto de disparo, estoque
+  recomendado, consumo mensal, cobertura em dias, "pedir/fabricar até", para onde
+  cada material foi (obras) e o histórico completo com obra e solicitante.
+  - 1ª vez: "Carregar a planilha CONTROLE IMPORTADOS" (abas MOVIMENTAÇÃO, ESTOQUE e
+    CONSUMO MENSAL). Traz 20 produtos e o histórico desde 30/04/2026 com as datas
+    originais. O saldo final de cada item fica IGUAL à aba ESTOQUE; diferenças entre a
+    soma das movimentações e a aba viram um ajuste registrado no histórico.
+  - Itens que existem no SAP (CO…) mantêm o código SAP; os demais recebem IMP-001…
+    A importação do inventário SAP NÃO altera mais o saldo dos importados.
+  - Status: COMPRAR (China) / FABRICAR (bases) / SEM ESTOQUE / ATENÇÃO (cobertura menor
+    que o prazo de reposição) / OK. Parâmetros editáveis na ficha de cada item.
+  - Foto: "Trocar foto" na ficha (câmera do celular ou arquivo).
+
+NOVO NA 3.10.2 / 3.10.3
+  - CARGA INICIAL: no 1º acesso após extrair, o sistema carrega sozinho (uma vez) o
+    inventário SAP, os importados (planilha CONTROLE IMPORTADOS), os 54 funcionários e
+    as 45 notas de remessa dos indicadores. Só preenche o que estiver vazio; antes guarda
+    cópia do estoque (data/estoque/antes_carga_inicial_*.json). Resultado em
+    data/carga_inicial/resultado.json.
+  - IMPORTADOS editáveis:
+      · Item: nome, unidade, localização, ponto de disparo, recomendado, prazo, fabricação.
+      · Movimentações: ✎ editar (data, quantidade, obra, solicitante, observação) e
+        🗑 excluir — motivo obrigatório; o saldo é recalculado e tudo fica registrado.
+        Saída assinada não se edita (é documento): exclua e lance de novo.
+      · "CONTAGEM (corrigir saldo)": informa o saldo contado + motivo.
+  - FOTOS dos importados: exatamente os arquivos que estão dentro da planilha Excel
+    (sem redimensionar nem recomprimir). Foto nova enviada pelo celular também vai como
+    foi tirada (até 2,8 MB). Botão para voltar à foto original da planilha.
+  - Indicadores: saldo de cada mês pela ordem real dos lançamentos (corrige o valor dos
+    itens SAP que passaram a ser controlados pela planilha de importados).
+
+AJUSTES DA 3.10.1 (revisão para subir ao cPanel)
+  - Importados: a leitura da planilha CONTROLE IMPORTADOS pela tela agora localiza as
+    colunas pelo cabeçalho (antes lia 39 "produtos" e sem ponto de disparo).
+  - instalar.php: com o sistema instalado, só abre para o administrador logado.
+  - Ícones do app movidos para assets/icons (o /icons/ é reservado pelo Apache do cPanel).
+  - Banco MySQL: no máximo uma versão a cada 15 min por arquivo (evita encher o banco).
+  - Compressão das respostas ligada (acrescentada ao .htaccess): a lista do estoque cai
+    de 1,2 MB para ~50 KB no celular. Lista de itens do estoque mais enxuta.
+  - Módulo de backup não tenta carregar antes do login (sumiu o erro 403 no console).
+
+EMPRÉSTIMO DE FERRAMENTAS (NOVO NA 3.10.0)
+  Menu "Ferramentas".
+  - Cadastro: código/TAG, nome, categoria, marca, modelo, série, patrimônio, quantidade,
+    local, valor e foto. Serve para ferramenta individual (qtd 1) ou por quantidade
+    (ex.: 10 marretas). "Importar planilha" aceita XLSX/CSV com prévia.
+  - Novo empréstimo: escolhe as ferramentas (+/−), obra e data de devolução; quem
+    retira escolhe o nome na lista de funcionários e ASSINA na tela (terceiro só com
+    documento). Gera o "Termo de empréstimo" para imprimir/salvar em PDF.
+  - Devolução total ou parcial, com estado: OK, danificada (vai para manutenção),
+    incompleta ou extraviada (sai do parque). Problema exige observação.
+  - Manutenção: enviar, voltou, baixar (descarte com motivo).
+  - Atrasos destacados em vermelho; histórico por ferramenta e por empréstimo.
+  - Dados em data/ferramentas.json (vai para o banco MySQL junto com o resto).
+
+FUNCIONÁRIOS AUTORIZADOS (NOVO NA 3.9.3)
+  Estoque > aba "Funcionários". Importe a planilha "Funcionários depósito" (aba Ativos):
+  mostra prévia (novos, já cadastrados, reativados) e, opcionalmente, inativa quem saiu
+  da lista. Também dá para cadastrar/editar (matrícula, setor, função) e inativar.
+  - Na assinatura da saída, quem retira é escolhido da lista (busca ao digitar).
+    Funcionário inativo não retira. Fora da lista: marcar "terceiro" e informar documento.
+  - Cada funcionário mostra quantas retiradas fez e o histórico com comprovantes.
+
+ASSINATURA NA SAÍDA DE MATERIAL (NOVO NA 3.9.2)
+  Toda saída (Estoque > Saídas e Importados > Envio/Reserva para obra) exige que quem
+  retira informe o nome, assine na tela (dedo, caneta ou mouse) e confirme o recebimento.
+  Gera comprovante para imprimir/salvar em PDF, com data/hora do servidor e código de
+  verificação. As assinaturas ficam em data/assinaturas (sem acesso pela web) e vão para
+  o banco MySQL junto com as fotos.
+
+PAINEL DE INDICADORES (NOVO NA 3.9.0)
+  Menu "Indicadores" (ou /indicadores). Mesma tela do SGA, mas os números são
+  CALCULADOS do sistema: estoque (valor, parado, críticos, perdas, IRA), OTIF dos
+  pedidos de compra, tempo de conferência, coletas (solicitadas, realizadas, no
+  prazo, atrasadas, tempo médio, urgentes), devoluções e PCs emergenciais.
+  - Metas: link "⚙ Metas" no topo do painel (somente administrador).
+  - Movimentação por obra: "Painel adm" > "Notas de remessa". Envie o PDF da DANFE
+    (pode ter várias notas), o CSV do protocolo ou a planilha Excel. O servidor lê de
+    cada nota: transportadora, frete, quem paga o frete, placa, motorista e itens.
+    "(3) Próprio/Emitente" ou transportadora Drilling = frete PRÓPRIO; demais = TERCEIRO.
+    Depois de importar, cada remessa pode ser editada na lista (número, origem,
+    destino, transportadora, próprio/terceiro, valor do frete). O custo do frete
+    terceiro normalmente vem do CT-e/fatura da transportadora: lance-o ali.
+    Mostra remessas por obra no mês e frete próprio × terceiro. Cadastro em "Obras".
+  - Usa o mesmo login e permissões do sistema (Dashboard > Visualizar).
+  Campos novos que alimentam o painel:
+  - Coleta: "Motivo do atraso" (gráfico de motivos).
+  - Pedido: "🚨 Pedido emergencial/urgente" (marcado sozinho quando a mensagem do
+    WhatsApp tem URGENTE/EMERGENCIAL).
+  - Pedido: "Devolução ao fornecedor" com data, valor, motivo e itens.
+
+INVENTÁRIO SAP E CONCILIAÇÃO (NOVO NA 3.9.0)
+  Estoque > aba "Inventário SAP". Importe a planilha "Inventário no relatório do
+  depósito" exportada do SAP HANA (.xlsx). A tela mostra uma PRÉVIA; nada é gravado
+  antes de "Confirmar e conciliar".
+
+  Regra: saldo final = quantidade do SAP + recebimentos de pedidos de compra que
+  entraram no sistema desde a última conciliação. Itens são casados pelo código
+  SAP (os PCs trazem o código, ex.: sku_UC000370 → UC000370).
+  - Cada item mostra a "Origem do saldo": inventário SAP, pedidos somados, pedidos
+    recebidos depois, saídas, perdas e ajustes.
+  - Itens que existiam com código provisório (EST-…) são unificados ao código SAP;
+    o código antigo vira apelido e todo o histórico acompanha.
+  - Da 2ª importação em diante, a diferença entre o SAP e o sistema é registrada
+    como divergência (alimenta acuracidade/IRA e perdas).
+  - A planilha original de cada importação fica guardada em data/estoque/.
+  - Aviso "dupla?": o SAP já mostra a quantidade que entrou pelo PC. Se o SAP já
+    lançou essas notas, desmarque "Somar os recebimentos" antes de confirmar.
+  - Recebimento de PC sem preço na NF é valorizado pelo preço do SAP.
+  - Movimentos antigos não são mais descartados: vão para
+    data/estoque/movimentos_arquivo_AAAA.jsonl.
+
+BANCO DE DADOS (3.8.0)
+  Os arquivos em data/ continuam sendo a base principal. O MySQL da HostGator
+  recebe uma cópia sincronizada de tudo: pedidos, estoque, coletas, etiquetas,
+  usuários/permissões, configurações, e também fotos, PDFs e XMLs das NFs.
+  Guarda ainda as últimas 60 versões de cada arquivo importante.
+
+  - Sincroniza sozinho depois de cada alteração (sem atrasar a tela).
+  - Se data/items.json corromper, o sistema volta a última cópia boa do banco.
+  - Se a pasta data/ inteira sumir (reinstalação, extração errada), na
+    primeira abertura tudo é recriado a partir do banco, inclusive as fotos.
+  - Se o banco cair, o sistema continua funcionando normalmente só com JSON.
+  - Uma base de pedidos muito menor (ex.: criada vazia) é BLOQUEADA e não
+    apaga a cópia do banco.
+  - Painel: Administração > "Banco de dados" (ou /banco.php) — situação,
+    sincronizar, versões e restauração. Só administrador.
+
+  Configuração: db_config.php na RAIZ do site (fora de data/, para sobreviver
+  à perda dessa pasta). Opções de driver: mysql (recomendado), sqlite (arquivo
+  local, sem servidor) ou off (só JSON, como antes).
+  ATENÇÃO: este ZIP contém a senha do banco dentro de db_config.php. Não envie
+  o ZIP a ninguém. Para trocar a senha: cPanel > MySQL Databases, depois edite
+  db_config.php.
+
+  Cron opcional (garante sincronização mesmo sem uso do sistema), a cada hora:
+    php -q /home4/will3269/recebimento.autolimpezapro.com.br/db_cli.php
+
+CORREÇÕES DA 3.7.4
+  - Após o login a tela ficava em "Não foi possível carregar os dados"; agora
+    recarrega sozinha já com a sessão válida. Os módulos não chamam mais a API
+    enquanto a tela de login está aberta.
+  - Finalizar recebimento: se estoque/notificação/agenda falhassem, o usuário via
+    erro mesmo com o recebimento gravado e as etapas seguintes eram puladas.
+  - "Salvar" num PC inexistente criava um pedido em branco. Agora só via cadastro.
+  - Backup: a tela lia o campo errado da retenção semanal e, ao salvar, gravava 1
+    semana. Corrigido; a retenção semanal volta ao padrão (8) uma única vez.
+  - Gravações de pedidos recusam requisições vindas de outros sites (Origin).
+  - .htaccess da raiz: o sistema ACRESCENTA (não substitui) um bloco que impede
+    baixar error_log, ZIPs, TXT, scripts CLI e a pasta antiga data01/.
+  - Senhas/configurações em data/ deixam de ter permissão de escrita para todos.
+  - Selo "novos" do menu Pedidos aparecia cortado.
+  - Versões de cache (index, app.js, service worker) sincronizadas: os navegadores
+    pegam o JavaScript novo sem precisar limpar o cache.
+
+Versão: 3.10.3

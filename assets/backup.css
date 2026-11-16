@@ -1,0 +1,15 @@
+/* Recebimento Drilling — Backup completo v3.2.0 */
+.bk-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.bk-alert{background:#3a2430;border:1px solid #7b3140;color:#ffb2bb;border-radius:10px;padding:11px 13px;font-size:12px;margin-bottom:8px}
+.bk-ok{background:#0e3b34;border:1px solid #1f7f6b;color:#7df0d5;border-radius:10px;padding:11px 13px;font-size:12px;margin-bottom:8px}
+.bk-resumo{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.bk-resumo>div{background:#14263e;border:1px solid #2b405f;border-radius:10px;padding:10px 12px}
+.bk-resumo small{display:block;font-size:10px;color:#92a3bb;text-transform:uppercase;letter-spacing:.05em}
+.bk-resumo strong{display:block;font-size:18px;margin-top:3px}
+.bk-table-scroll{overflow:auto;max-width:100%}
+.bk-cron{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.bk-cron code{background:#0b1729;border:1px solid #2b3b55;border-radius:8px;padding:8px 10px;font-size:11.5px;word-break:break-all}
+.bk-fields{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-top:10px}
+.bk-fields label{display:grid;gap:4px;font-size:11px;color:#92a3bb;text-transform:uppercase;letter-spacing:.05em}
+.bk-fields input{width:110px}
+@media (max-width:1080px){.bk-grid,.bk-resumo{grid-template-columns:repeat(2,minmax(0,1fr))}}

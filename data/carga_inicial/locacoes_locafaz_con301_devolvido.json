@@ -1,0 +1,36 @@
+{
+ "documento": "LOCAFAZ CW0147796 devolução NF-e 15 (14/10/2026)",
+ "fornecedor": "LOCAFAZ",
+ "locacoes": [
+  {
+   "fornecedor": "LOCAFAZ MOTORES E MAQUINAS LTDA",
+   "equipamento": "CONTAINER MARITIMO 4X2,40M (MOD. HABITACIONAL / ALMOXARIFADO)",
+   "categoria": "Contêiner",
+   "patrimonio": "CON301",
+   "contrato": "CW0147796",
+   "quantidade": 1,
+   "tarifa_tipo": "DIARIA",
+   "tarifa_valor": 0,
+   "inicio": "2023-08-09",
+   "local": "MATRIZ",
+   "fim": "2026-10-19",
+   "devolvido": true,
+   "nf_devolucao": "15",
+   "casar_contrato": "CW0147796",
+   "casar_fornecedor": "LOCAFAZ",
+   "observacao": "Contrato CW0147796 · recebido em comodato em 09/08/2023 (NF 497 da Locafaz) · devolvido pela LFCS Locações Especiais (CNPJ 43.946.023/0001-04) com a NF-e 15 série 1 de 14/10/2026 · comprovante de devolução TOTAL da Locafaz emitido em 15/10/2026, com data manuscrita de 19/10/2026 (data de devolução adotada; conferir) · valor do bem na NF R$ 5.800,00",
+   "documentos": [
+    {
+     "arquivo": "lfcs-nfe-15-devolucao-locafaz.pdf",
+     "nome": "NF-e 15 - devolução à Locafaz (14-10-2026).pdf",
+     "tipo": "NF_DEVOLUCAO"
+    },
+    {
+     "arquivo": "locafaz-comprovante-devolucao-con301.pdf",
+     "nome": "Comprovante de devolução Locafaz - CON301 (15-10-2026).pdf",
+     "tipo": "COMPROVANTE"
+    }
+   ]
+  }
+ ]
+}

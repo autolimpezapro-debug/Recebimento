@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1424">
+<meta name="robots" content="noindex">
+<title>Motorista · Recebimento Drilling</title>
+<link rel="icon" href="/favicon.ico?v=3131">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png?v=3131">
+<style>
+*{box-sizing:border-box}html,body{margin:0}
+body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#0b1424;color:#e6eefa;min-height:100vh;padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+button,input,select,textarea{font:inherit}
+.top{position:sticky;top:0;z-index:5;background:linear-gradient(#0b1424 80%,#0b142400);padding:calc(14px + env(safe-area-inset-top)) 16px 10px}
+.brand{display:flex;align-items:center;gap:10px}.brand img{width:34px;height:34px;border-radius:9px}
+.brand b{font-size:15px}.brand small{display:block;font-size:11px;color:#8ea6c6}
+.brand .sair{margin-left:auto;background:none;border:1px solid #2a3d58;color:#9fb6d6;border-radius:9px;padding:6px 10px;font-size:12px}
+.prog{margin-top:12px;background:#132139;border:1px solid #22344f;border-radius:14px;padding:12px}
+.prog-l{display:flex;justify-content:space-between;font-size:12px;color:#9fb6d6}.prog-l b{color:#e6eefa;font-size:15px}
+.bar{height:8px;border-radius:9px;background:#1d2e48;margin-top:8px;overflow:hidden}.bar i{display:block;height:100%;background:linear-gradient(90deg,#1fbf96,#4ade80);transition:width .4s}
+.gps{display:flex;align-items:center;gap:10px;margin-top:10px;background:#101d32;border:1px solid #22344f;border-radius:14px;padding:10px 12px}
+.gps span{flex:1;font-size:12px;color:#9fb6d6}.gps span b{display:block;color:#e6eefa;font-size:13px}
+.sw{width:50px;height:30px;border-radius:99px;background:#2a3b55;border:0;position:relative;flex:none}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:.2s}
+.sw.on{background:#1fbf96}.sw.on::after{left:23px}
+main{padding:4px 16px}
+.card{background:#111e33;border:1px solid #23375a;border-radius:18px;padding:14px;margin-bottom:12px}
+.card.prox{border-color:#4b86f0;box-shadow:0 0 0 1px #4b86f0 inset,0 10px 30px #0006}
+.card.feito{opacity:.6}
+.c-top{display:flex;gap:12px;align-items:flex-start}
+.num{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:#f5b544;color:#14110a}
+.feito .num{background:#34d399}.card.feito .acoes{opacity:1}
+.c-top h2{font-size:16px;margin:2px 0 3px;line-height:1.25}.c-top p{margin:0;font-size:12px;color:#9fb6d6}
+.tag{display:inline-block;font-size:10px;font-weight:800;padding:3px 8px;border-radius:99px;margin-top:6px;background:#1c2d47;color:#b7cae4}
+.tag.urg{background:#3a141b;color:#ff9aa3}.tag.ok{background:#123629;color:#6ee7b7}
+.itens{margin:12px 0 0;padding:10px 12px;background:#0c182b;border-radius:12px;font-size:13px;list-style:none}
+.itens li{display:flex;gap:8px;padding:4px 0;border-bottom:1px dashed #1f3150}.itens li:last-child{border:0}
+.itens b{min-width:64px;color:#8fc0ff;font-weight:700}
+.acoes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.btn{display:flex;align-items:center;justify-content:center;gap:6px;min-height:48px;border-radius:13px;border:1px solid #2b4366;background:#16263f;color:#e6eefa;font-weight:700;font-size:14px;text-decoration:none;cursor:pointer}
+.btn.ok{grid-column:1/-1;background:linear-gradient(110deg,#17b48c,#22c39b);border-color:#29d1a6;color:#04261c;font-size:16px;min-height:54px}
+.btn.nao{color:#ffb0b7}
+.vazio{text-align:center;padding:60px 20px;color:#9fb6d6}.vazio b{display:block;color:#e6eefa;font-size:17px;margin-bottom:6px}.vazio div{font-size:40px;margin-bottom:10px}
+.login{max-width:380px;margin:40px auto;padding:0 16px}.login .card{padding:20px}
+.login label{display:block;font-size:12px;color:#9fb6d6;margin:12px 0 5px}
+.login input,.sheet input,.sheet select,.sheet textarea{width:100%;background:#0b1527;border:1px solid #2a3d58;border-radius:11px;color:#e6eefa;padding:12px;font-size:16px}
+.erro{color:#ff9aa3;font-size:13px;min-height:18px;margin-top:10px}
+.sheet-bg{position:fixed;inset:0;background:#000a;z-index:20;display:flex;align-items:flex-end}
+.sheet{background:#111e33;width:100%;border-radius:22px 22px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:88vh;overflow:auto}
+.sheet h3{margin:0 0 4px}.sheet p{margin:0 0 12px;font-size:13px;color:#9fb6d6}
+.sheet label{display:block;font-size:12px;color:#9fb6d6;margin:12px 0 5px}
+.motivos{display:grid;gap:7px}.motivos button{text-align:left;padding:13px;border-radius:12px;border:1px solid #2a3d58;background:#0e1a2e;color:#e6eefa;font-size:14px}
+.motivos button.on{border-color:#f87171;background:#2a1219}
+.toast{position:fixed;left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));background:#1b2b45;border:1px solid #2f4870;border-radius:13px;padding:13px;font-size:14px;z-index:30;text-align:center}
+.toast.err{background:#3a141b;border-color:#7a2b37}
+.fim{font-size:12px;color:#7d93b3;text-align:center;margin:14px 0}
+</style>
+</head>
+<body>
+<div id="app"><div class="vazio"><div>⏳</div>Carregando…</div></div>
+<script>
+'use strict';
+const S = { csrf: '', rota: null, gps: false, watch: null, ultimoEnvio: 0, motivos: {}, user: '' };
+const $ = id => document.getElementById(id);
+const h = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+async function api(action, body, query) {
+  const qs = query ? '&' + new URLSearchParams(query) : '';
+  const init = { cache: 'no-store', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } };
+  if (body) { init.method = 'POST'; init.body = JSON.stringify(body); if (S.csrf) init.headers['X-RD-CSRF'] = S.csrf; }
+  const r = await fetch('api.php?action=' + action + qs, init);
+  let d; try { d = await r.json(); } catch { throw new Error('Sem resposta do servidor.'); }
+  if (!r.ok || !d.ok) { const e = new Error(d.error || 'Erro ' + r.status); e.status = r.status; throw e; }
+  return d;
+}
+function toast(m, err) { const t = document.createElement('div'); t.className = 'toast' + (err ? ' err' : ''); t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 3200); }
+
+async function iniciar() {
+  try {
+    const st = await api('auth_status');
+    S.csrf = st.csrf || ''; S.user = st.nome_completo || (st.user && st.user.username) || '';
+  } catch (e) { /* segue: instalação sem login */ }
+  try { const c = await api('coletas_config'); S.motivos = c.motivos_retorno || {}; } catch (e) { if (e.status === 401 || e.status === 403) return telaLogin(e.message); }
+  await carregar();
+  setInterval(() => { if (!document.hidden) carregar(true); }, 60000);
+}
+
+function telaLogin(msg) {
+  $('app').innerHTML = `<div class="login"><div class="brand"><img src="assets/icons/icon-192.png" alt=""><div><b>Modo motorista</b><small>Recebimento Drilling</small></div></div>
+    <form class="card" style="margin-top:18px" onsubmit="entrar(event)"><label>Usuário</label><input id="lu" autocomplete="username" autocapitalize="none" required>
+    <label>Senha</label><input id="lp" type="password" autocomplete="current-password" required>
+    <button class="btn ok" style="width:100%;margin-top:16px">Entrar</button><div class="erro" id="le">${h(msg && !/Autentica/.test(msg) ? msg : '')}</div></form></div>`;
+}
+async function entrar(ev) {
+  ev.preventDefault();
+  try { await api('auth_login', { username: $('lu').value.trim(), password: $('lp').value }); location.reload(); }
+  catch (e) { $('le').textContent = e.message; }
+}
+async function sair() { try { await api('auth_logout', {}); } catch (e) {} location.reload(); }
+
+async function carregar(silencioso) {
+  try { const r = await api('coletas_rota_ativa'); S.rota = r.rota; render(); }
+  catch (e) { if (e.status === 401 || e.status === 403) return telaLogin(e.message); if (!silencioso) toast(e.message, true); }
+}
+
+function mapsLink(p) { return p.tem_coordenadas ? `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}&travelmode=driving` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.endereco_completo + ' ' + (p.fornecedor || ''))}`; }
+function wazeLink(p) { return p.tem_coordenadas ? `https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes` : `https://waze.com/ul?q=${encodeURIComponent(p.endereco_completo)}&navigate=yes`; }
+const qtd = v => { const n = Number(String(v).replace(',', '.')); return isNaN(n) ? h(v) : n.toLocaleString('pt-BR', { maximumFractionDigits: 3 }); };
+
+function render() {
+  const r = S.rota;
+  const topo = `<div class="top"><div class="brand"><img src="assets/icons/icon-192.png" alt=""><div><b>Rota de coleta</b><small>${h(r ? (r.motorista || S.user) + ' · ' + new Date(r.criada_em).toLocaleDateString('pt-BR') : S.user)}</small></div><button class="sair" onclick="sair()">Sair</button></div>
+    ${r ? `<div class="prog"><div class="prog-l"><span><b>${r.feitas} de ${r.total}</b> coletas feitas${r.nao_coletadas ? ' · ' + r.nao_coletadas + ' não coletada(s)' : ''}</span><span>~${String(r.km_estimado).replace('.', ',')} km</span></div><div class="bar"><i style="width:${r.total ? Math.round(r.feitas / r.total * 100) : 0}%"></i></div></div>` : ''}
+    <div class="gps"><span><b>Compartilhar minha localização</b>${S.gps ? 'Ligado — o escritório vê o caminhão no mapa' : 'Desligado'}</span><button class="sw ${S.gps ? 'on' : ''}" aria-label="Compartilhar localização" onclick="alternarGps()"></button></div></div>`;
+  if (!r) { $('app').innerHTML = topo + `<main><div class="vazio"><div>🚚</div><b>Nenhuma rota em andamento</b>Quando o escritório iniciar a rota de coleta, as paradas aparecem aqui.<br><br><button class="btn" style="margin:auto;padding:0 20px" onclick="carregar()">↻ Atualizar</button></div></main>`; return; }
+  const todas = [...r.paradas, ...r.sem_local];
+  const prox = todas.findIndex(p => !p.concluida && !p.nao_coletada);
+  $('app').innerHTML = topo + '<main>' + todas.map((p, i) => `<article class="card ${p.concluida || p.nao_coletada ? 'feito' : ''} ${i === prox ? 'prox' : ''}">
+      <div class="c-top"><span class="num" ${p.nao_coletada ? 'style="background:#f87171"' : ''}>${p.concluida ? '✓' : p.nao_coletada ? '✕' : i + 1}</span><div style="flex:1;min-width:0">
+        <h2>${h(p.fornecedor || 'Fornecedor')}</h2><p>${h(p.endereco_completo || 'Endereço não cadastrado')}</p>
+        ${p.pc ? `<span class="tag">PC ${h(p.pc)}</span> ` : ''}${p.prioridade === 'URGENTE' ? '<span class="tag urg">URGENTE</span> ' : ''}${p.concluida ? `<span class="tag ok">${h(p.status_label)}</span>` : ''}${p.nao_coletada ? `<span class="tag urg">Não coletado: ${h(p.nao_coletada_motivo)}</span>` : ''}</div></div>
+      ${p.itens && p.itens.length ? `<ul class="itens">${p.itens.map(x => `<li><b>${qtd(x.quantidade)} ${h(x.unidade)}</b><span>${h(x.descricao)}</span></li>`).join('')}</ul>` : (p.observacao ? `<ul class="itens"><li><span>${h(p.observacao).replace(/\n/g, '<br>')}</span></li></ul>` : '')}
+      ${p.concluida ? '' : `<div class="acoes">
+        <a class="btn" href="${mapsLink(p)}" target="_blank" rel="noopener">🗺 Maps</a><a class="btn" href="${wazeLink(p)}" target="_blank" rel="noopener">◈ Waze</a>
+        ${p.contato ? `<a class="btn" href="tel:${h(String(p.contato).replace(/[^\d+]/g, ''))}">☎ Ligar</a>` : ''}<button class="btn nao" onclick="naoColetou('${h(p.id)}')" ${p.contato ? '' : 'style="grid-column:1/-1"'}>✕ Não coletei</button>
+        <button class="btn ok" onclick="coletou('${h(p.id)}')">✓ Coletei</button></div>`}
+    </article>`).join('') + `<p class="fim">Volta: ${h(r.origem.nome)}</p></main>`;
+}
+
+function sheet(html) { const b = document.createElement('div'); b.className = 'sheet-bg'; b.innerHTML = `<div class="sheet">${html}</div>`; b.onclick = e => { if (e.target === b) b.remove(); }; document.body.appendChild(b); return b; }
+function coletou(id) {
+  const p = [...S.rota.paradas, ...S.rota.sem_local].find(x => x.id === id);
+  const b = sheet(`<h3>Confirmar coleta</h3><p>${h(p.fornecedor)}${p.pc ? ' · PC ' + h(p.pc) : ''}</p>
+    <label>Km rodado até aqui (opcional)</label><input id="skm" inputmode="decimal" placeholder="Ex.: 18,5">
+    <div class="acoes"><button class="btn" onclick="this.closest('.sheet-bg').remove()">Voltar</button><button class="btn ok" style="grid-column:auto" id="sok">✓ Coletado</button></div>`);
+  b.querySelector('#sok').onclick = async () => {
+    try { await api('coletas_status', { id, status: 'COLETADO', detalhe: 'Coletado pelo motorista', km_real: b.querySelector('#skm').value.trim() || null }); b.remove(); toast('Coleta registrada ✓'); carregar(); }
+    catch (e) { toast(e.message, true); }
+  };
+}
+function naoColetou(id) {
+  const p = [...S.rota.paradas, ...S.rota.sem_local].find(x => x.id === id); let motivo = '';
+  const b = sheet(`<h3>Não foi possível coletar</h3><p>${h(p.fornecedor)}</p><div class="motivos">${Object.entries(S.motivos).map(([k, v]) => `<button type="button" data-m="${h(k)}">${h(v)}</button>`).join('')}</div>
+    <label>Observação</label><textarea id="sobs" rows="2" placeholder="O que aconteceu?"></textarea>
+    <div class="acoes"><button class="btn" onclick="this.closest('.sheet-bg').remove()">Voltar</button><button class="btn nao" id="sok">Registrar</button></div>`);
+  b.querySelectorAll('[data-m]').forEach(x => x.onclick = () => { motivo = x.dataset.m; b.querySelectorAll('[data-m]').forEach(y => y.classList.toggle('on', y === x)); });
+  b.querySelector('#sok').onclick = async () => {
+    if (!motivo) return toast('Escolha o motivo', true);
+    try { await api('coletas_retorno', { id, motivo, observacao: b.querySelector('#sobs').value }); b.remove(); toast('Ocorrência registrada. O escritório vai reagendar.'); carregar(); }
+    catch (e) { toast(e.message, true); }
+  };
+}
+
+function alternarGps() {
+  if (S.gps) { if (S.watch != null) navigator.geolocation.clearWatch(S.watch); S.gps = false; S.watch = null; try { localStorage.removeItem('rd_mot_gps'); } catch (e) {} render(); return; }
+  if (!navigator.geolocation) return toast('Este celular não oferece localização.', true);
+  S.gps = true; try { localStorage.setItem('rd_mot_gps', '1'); } catch (e) {} render();
+  S.watch = navigator.geolocation.watchPosition(async pos => {
+    if (Date.now() - S.ultimoEnvio < 45000) return;
+    S.ultimoEnvio = Date.now();
+    try { await api('coletas_posicao', { lat: pos.coords.latitude, lng: pos.coords.longitude, precisao: Math.round(pos.coords.accuracy || 0) }); } catch (e) { /* tenta no próximo ponto */ }
+  }, err => { S.gps = false; render(); toast(err.code === 1 ? 'Permita a localização para este site nas configurações do celular.' : 'Não foi possível obter a localização.', true); }, { enableHighAccuracy: true, maximumAge: 30000, timeout: 30000 });
+}
+iniciar().then(() => { try { if (localStorage.getItem('rd_mot_gps') === '1' && S.rota) alternarGps(); } catch (e) {} });
+</script>
+</body>
+</html>

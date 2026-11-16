@@ -1,0 +1,53 @@
+/* Recebimento Drilling — Locações (v3.12.0) */
+.loc-kpis .imp-kpi strong{font-size:22px}
+.loc-kpis .imp-kpi small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.loc-alerta{border:1px solid var(--rd-danger,#e5534b);background:var(--rd-danger-soft,rgba(229,83,75,.12));color:var(--text);border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:12px}
+.loc-filtros{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.loc-filtros input{flex:1;min-width:220px}
+.loc-local{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:650;background:var(--rd-accent-soft,rgba(91,141,239,.14));color:var(--rd-accent-2,#7aa6ff)}
+.loc-local.matriz{background:var(--rd-surface-3,rgba(255,255,255,.06));color:var(--text)}
+.loc-tab tfoot td{border-top:1px solid var(--border)}
+.loc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.loc-grid>.panel{min-width:0}.loc-wide{grid-column:1/-1}
+.loc-mes{font-size:12px;display:flex;gap:6px;align-items:center;color:var(--muted)}
+.loc-colunas{display:flex;align-items:flex-end;gap:6px;height:170px;padding-top:8px}
+.loc-colunas div{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px}
+.loc-colunas i{width:100%;max-width:26px;border-radius:5px 5px 2px 2px;background:var(--rd-accent,#5b8def)}
+.loc-colunas small{font-size:10px;color:var(--muted)}
+.loc-form{grid-template-columns:repeat(2,minmax(0,1fr))}
+.loc-obs{display:grid;gap:4px;font-size:11px;color:#b5c6dc;margin-top:8px}
+.loc-obs textarea{width:100%}
+.loc-dica{font-size:11px;margin:8px 0 0}
+.loc-prev{margin-top:10px;font-size:13px}
+.loc-ficha-top{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:10px}
+.loc-ficha-top div{border:1px solid var(--border);border-radius:10px;padding:8px 10px}
+.loc-ficha-top small{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.loc-ficha-top .tot{border-color:var(--rd-accent,#5b8def)}
+.rd-ass h3{font-size:13px;margin:14px 0 6px}
+.loc-mov{margin:0;padding-left:18px;font-size:12px;display:grid;gap:4px}
+.loc-acoes{flex-wrap:wrap}.loc-del{color:var(--red)}
+@media(max-width:760px){.loc-grid,.loc-form{grid-template-columns:1fr}}
+
+/* v3.35.0 — documentos da locação */
+.loc-docs{display:grid;gap:8px;margin:6px 0 10px}
+.loc-doc{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:center;padding:8px 10px;border:1px solid rgba(128,140,160,.35);border-radius:10px;background:rgba(128,140,160,.08)}
+.loc-doc-link{color:inherit;text-decoration:none;overflow-wrap:anywhere}
+.loc-doc-link:hover{text-decoration:underline}
+.loc-doc small{grid-column:1/2}
+.loc-doc-acoes{grid-column:2/3;grid-row:1/3;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.loc-doc-add{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.loc-doc-add select{min-width:0;max-width:100%}
+@media (max-width:560px){.loc-doc{grid-template-columns:1fr}.loc-doc small,.loc-doc-acoes{grid-column:1/2;grid-row:auto;justify-content:flex-start}}
+
+/* v3.35.0 — ficha da locação sem estouro de largura no celular */
+.rd-ass{max-width:100%;overflow-x:hidden}
+.rd-ass h2,.rd-ass h3,.rd-ass p,.rd-ass small,.rd-ass li,.rd-ass b{overflow-wrap:anywhere}
+.rd-ass table{display:block;max-width:100%;overflow-x:auto}
+.loc-acoes{display:flex;flex-wrap:wrap;gap:8px}
+@media (max-width:640px){.loc-ficha-top{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+.rd-ass{grid-template-columns:minmax(0,1fr)}
+.rd-ass>*{min-width:0}
+.rd-ass>div:first-child{flex-wrap:nowrap}
+.rd-ass>div:first-child h2{min-width:0;font-size:clamp(15px,4.2vw,18px)}
+.rd-ass td,.rd-ass th{white-space:nowrap}
+.rd-ass td small,.rd-ass td .muted{white-space:normal}

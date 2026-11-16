@@ -1,0 +1,176 @@
+/* Recebimento Drilling — Módulo de Coletas v3.5.0 */
+
+.col-kpis { grid-template-columns: repeat(6, minmax(0, 1fr)); margin-bottom: 16px; }
+
+.col-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(320px, .9fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.col-map-panel, .col-route-panel { display: flex; flex-direction: column; min-height: 460px; }
+.col-map { flex: 1; min-height: 380px; border-radius: 12px; overflow: hidden; border: 1px solid var(--rd-line); background: #0b131f; }
+.col-map-small { height: 260px; border-radius: 10px; overflow: hidden; border: 1px solid var(--rd-line); margin-bottom: 8px; }
+
+/* Pinos do mapa */
+.col-pin-wrap { background: none; border: 0; }
+.col-pin {
+  display: grid; place-items: center;
+  width: 30px; height: 30px; border-radius: 50% 50% 50% 4px;
+  transform: rotate(-45deg);
+  color: #06101c; font-size: 11px; font-weight: 800;
+  border: 2px solid #0b131f;
+  box-shadow: 0 4px 10px rgba(0,0,0,.55);
+}
+.col-pin > * { transform: rotate(45deg); }
+.col-pin { line-height: 1; }
+.col-pin-origem { background: #34d399; font-size: 13px; }
+
+.col-popup { font-size: 12px; min-width: 190px; }
+.col-popup strong { display: block; font-size: 13px; margin-bottom: 2px; }
+.col-popup small { display: block; color: #667; margin-bottom: 4px; }
+.col-popup p { margin: 4px 0; color: #445; }
+.col-popup-btn {
+  margin-top: 6px; border: 1px solid #4b7fe8; background: #4b7fe8; color: #fff;
+  border-radius: 7px; padding: 5px 9px; font-size: 11px; font-weight: 700; cursor: pointer;
+}
+
+.col-map-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; font-size: 10.5px; color: var(--rd-text-2); }
+.col-leg { display: inline-flex; align-items: center; gap: 5px; }
+.col-leg i { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid #0b131f; display: inline-block; }
+
+/* Lista da rota */
+.col-route-actions { display: flex; gap: 8px; margin-bottom: 10px; }
+.col-route-actions input { flex: 1; min-height: 34px; }
+.col-route-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; display: grid; gap: 6px; }
+.col-stop {
+  display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: center;
+  background: rgba(148,175,210,.05); border: 1px solid var(--rd-line); border-radius: 10px;
+  padding: 9px 11px; cursor: pointer; transition: .15s var(--rd-ease);
+}
+.col-stop:hover { border-color: rgba(91,141,239,.45); background: rgba(91,141,239,.09); }
+.col-stop-num {
+  display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--rd-accent-soft); color: #b9d2ff; font-size: 11px; font-weight: 800;
+}
+.col-stop-body strong { display: block; font-size: 12.5px; }
+.col-stop-body small { display: block; font-size: 10.5px; color: var(--rd-text-3); }
+.col-stop-km { font-size: 10.5px; color: var(--rd-text-2); font-variant-numeric: tabular-nums; }
+.col-stop-warn { border-color: rgba(245,181,68,.35); background: rgba(245,181,68,.08); }
+.col-stop-warn .col-stop-num { background: var(--rd-warning-soft); color: #ffd79a; }
+.col-empty { padding: 18px; text-align: center; color: var(--rd-text-3); font-size: 12px; }
+
+/* Tabela */
+.col-status {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700;
+  padding: 4px 9px; border-radius: 999px;
+  background: color-mix(in srgb, var(--cor) 16%, transparent);
+  color: var(--cor); border: 1px solid color-mix(in srgb, var(--cor) 38%, transparent);
+}
+.col-status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--cor); }
+
+.col-filterrow { grid-template-columns: minmax(200px, 1.7fr) repeat(3, minmax(130px, 1fr)); }
+
+/* Modal */
+.col-modal-wide { max-width: 900px; width: min(900px, 96vw); }
+.col-form { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.col-form .form-line.full { grid-column: 1 / -1; }
+.col-geo-box {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+  background: rgba(91,141,239,.08); border: 1px solid rgba(91,141,239,.28);
+  border-radius: 11px; padding: 11px 13px; margin-top: 12px;
+}
+.col-geo-box strong { display: block; font-size: 12.5px; }
+.col-geo-box small { display: block; font-size: 11px; color: var(--rd-text-2); }
+.col-geo-actions { display: flex; gap: 7px; flex-wrap: wrap; }
+.col-picker { margin-top: 10px; }
+
+.col-det-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+.col-det-grid > div { background: rgba(148,175,210,.05); border: 1px solid var(--rd-line); border-radius: 10px; padding: 10px 12px; }
+.col-det-grid small { display: block; font-size: 9.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--rd-text-3); }
+.col-det-grid strong { display: block; font-size: 12.5px; margin-top: 3px; }
+.col-obs { font-size: 12px; color: var(--rd-text-2); background: rgba(148,175,210,.05); border-radius: 9px; padding: 10px 12px; }
+.col-det-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; margin: 12px 0; }
+.col-det-actions .form-line { min-width: 190px; margin: 0; }
+.col-h4 { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--rd-text-3); margin: 14px 0 8px; }
+.col-hist { display: grid; gap: 6px; max-height: 240px; overflow-y: auto; }
+.col-hist-row {
+  display: grid; grid-template-columns: 118px 1fr; gap: 4px 10px; font-size: 11.5px;
+  background: rgba(148,175,210,.04); border: 1px solid var(--rd-line); border-radius: 9px; padding: 8px 10px;
+}
+.col-hist-row span { color: var(--rd-text-3); font-variant-numeric: tabular-nums; }
+.col-hist-row strong { font-size: 12px; }
+.col-hist-row small { grid-column: 2; color: var(--rd-text-2); }
+
+@media (max-width: 1180px) {
+  .col-layout { grid-template-columns: 1fr; }
+  .col-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .col-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .col-det-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .col-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .col-filterrow, .col-form { grid-template-columns: 1fr; }
+  .col-map { min-height: 300px; }
+}
+
+/* v3.13.0 importar pedidos de coleta */
+.coli-drop{display:block;border:1.5px dashed var(--rd-line-strong,#3a4a63);border-radius:12px;padding:22px;text-align:center;cursor:pointer;color:var(--rd-text-2,#b5c6dc)}
+.coli-drop input{display:none}.coli-drop:hover{border-color:var(--rd-accent,#5b8def)}
+.coli-res{margin-top:12px}.coli-erro{color:var(--red,#e5534b)}
+.coli-topo{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;font-size:13px}
+.coli-lista{display:grid;gap:6px;max-height:52vh;overflow:auto;padding-right:4px}
+.coli-item{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--rd-line,#26324a);border-radius:10px;padding:9px 11px;cursor:pointer;font-size:13px}
+.coli-item.tem{opacity:.75}.coli-item input{margin-top:3px}
+.coli-tags{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0}
+.coli-tags span{font-size:10.5px;border-radius:999px;padding:2px 8px;background:var(--rd-surface-3,rgba(255,255,255,.06))}
+.coli-tags .ok{background:var(--rd-success-soft,rgba(63,182,139,.14));color:var(--rd-success,#3fb68b)}
+.coli-tags .warn{background:var(--rd-warning-soft,rgba(224,164,59,.14));color:var(--rd-warning,#e0a43b)}
+.coli-avisos{margin-top:10px;font-size:12px;color:var(--rd-text-2,#b5c6dc)}
+/* v3.23.0 — pipeline, rota montada à mão, motorista */
+.col-pipe{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:6px}
+.col-pipe-item{position:relative;text-align:left;background:var(--card,#101b2c);border:1px solid #24364f;border-radius:14px;padding:13px 14px 12px;color:inherit;display:grid;gap:2px;overflow:hidden;transition:.15s}
+.col-pipe-item::before{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:var(--cor)}
+.col-pipe-item:hover{border-color:#3b5d8c;transform:translateY(-1px)}
+.col-pipe-item.on{border-color:var(--cor);background:linear-gradient(140deg,color-mix(in srgb,var(--cor) 16%,#0f1a2b),#0f1a2b);box-shadow:0 0 0 1px var(--cor) inset}
+.col-pipe-ic{font-size:13px;color:var(--cor)}
+.col-pipe-item strong{font-size:26px;letter-spacing:-.04em;line-height:1.1}
+.col-pipe-item>span:last-child{font-size:11px;color:#9fb3cd;font-weight:700}
+.col-pipe-extra{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;min-height:0}
+.col-pill{font-size:11px;font-weight:800;padding:5px 10px;border-radius:99px;border:1px solid #2a3d57;background:#111d30;color:#c7d6ea}
+.col-pill.bad{color:#ff9aa3;border-color:#6b2d36;background:#2a1219}.col-pill.warn{color:#f9cd72;border-color:#6b5525;background:#271f0e}
+button.col-pill{cursor:pointer}
+.col-route-panel{display:flex;flex-direction:column}
+.col-route-panel .col-route-list{flex:1;max-height:430px;overflow:auto}
+.col-route-badge{font-weight:800;font-size:13px;background:#163a2f;color:#5ee2b8;border:1px solid #23705a;padding:5px 10px;border-radius:99px}
+.col-route-vazia{list-style:none;text-align:center;padding:42px 14px;color:#9fb3cd;display:grid;gap:6px;justify-items:center}
+.col-route-vazia span{font-size:22px;color:#5b8def;letter-spacing:4px}.col-route-vazia strong{color:#dbe6f5;font-size:13px}.col-route-vazia small{font-size:11px;max-width:290px}
+.col-stop-origem{opacity:.75}.col-stop-origem .col-stop-num{background:#24364f!important}
+.col-stop-ctl{display:flex;gap:3px;margin-left:auto}
+.col-stop-ctl button{width:26px;height:26px;border-radius:7px;border:1px solid #2b3f5c;background:#13213a;color:#cfe0f5;font-size:12px;cursor:pointer}
+.col-stop-ctl button:disabled{opacity:.3;cursor:default}.col-stop-ctl button:hover:not(:disabled){border-color:#5b8def}
+.col-stop .col-stop-num{color:#0b131f;font-weight:800}.col-stop-ok{opacity:.65}.col-stop-ok strong{text-decoration:line-through}
+.col-route-foot{border-top:1px solid #22344d;padding-top:12px;margin-top:10px;display:grid;gap:10px}
+.col-route-foot:empty{display:none}
+.col-route-btns{display:flex;flex-wrap:wrap;gap:6px}
+.col-route-btns .button.primary{flex:1 1 100%}
+.col-motorista-campo{display:grid;gap:4px}.col-motorista-campo span{font-size:10px;font-weight:800;color:#9ab0ce;text-transform:uppercase;letter-spacing:.05em}
+.col-progress{height:7px;border-radius:9px;background:#1a2a41;overflow:hidden;margin:2px 0 8px}.col-progress i{display:block;height:100%;background:linear-gradient(90deg,#22c39b,#4ade80)}
+.col-pos{font-size:11px;color:#9fb3cd;margin-bottom:8px}.col-pos.ok{color:#6ee7b7}.col-pos .linkbtn{background:none;border:0;color:#8ab4ff;font-weight:800;cursor:pointer;padding:0;font-size:11px}
+.col-truck{font-size:26px;filter:drop-shadow(0 2px 3px #0009)}
+.col-table .col-ck{width:34px;text-align:center}.col-row-sel td{background:#14284a!important}
+.button.danger{color:#ff9aa3}
+@media(max-width:1100px){.col-pipe{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:560px){.col-pipe{grid-template-columns:repeat(2,1fr)}}
+/* v3.24.0 */
+.col-pcs{display:grid;gap:5px;margin-bottom:12px;padding:12px;border-radius:12px;background:#0e1a2d;border:1px solid #24395a}
+.col-pcs label{font-size:10px;font-weight:800;color:#9ab0ce;text-transform:uppercase;letter-spacing:.05em}
+.col-pcs div{display:flex;gap:6px}.col-pcs input{flex:1;min-width:0}.col-pcs small{font-size:10.5px;color:#7f95b4}
+#colRouteSub b{color:#dbe6f5}
+.col-hist{margin-top:16px}
+.col-hist-ctl{display:flex;gap:8px;align-items:center}.col-hist-ctl select{text-transform:capitalize}
+.col-hist-kpis{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px;margin-bottom:14px}
+.col-hist-kpis div{background:#0f1b2e;border:1px solid #22344f;border-radius:12px;padding:10px 12px}
+.col-hist-kpis strong{display:block;font-size:19px;letter-spacing:-.03em}.col-hist-kpis span{font-size:10px;color:#9ab0ce;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+@media(max-width:1200px){.col-hist-kpis{grid-template-columns:repeat(4,1fr)}}@media(max-width:560px){.col-hist-kpis{grid-template-columns:repeat(2,1fr)}}

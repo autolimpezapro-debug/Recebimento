@@ -1,0 +1,775 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="app-version" content="3.35.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta name="theme-color" content="#0a1221">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/x-icon" sizes="16x16 32x32 48x48" href="/favicon.ico?v=3131">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/icons/icon-192.png?v=3131">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png?v=3131">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Recebimento Drilling">
+<meta name="description" content="Painel de recebimento de materiais: pedidos de compra, notas fiscais e evidências.">
+<title>Recebimento Drilling | Dashboard e Conferência</title>
+<link rel="stylesheet" href="assets/app.css?v=3.35.0.20261116r1">
+<link rel="stylesheet" href="assets/estoque.css?v=3.35.0.20261116r1">
+<link rel="stylesheet" href="assets/notify.css?v=3.35.0.20261116r1">
+<link rel="stylesheet" href="assets/backup.css?v=3.35.0.20261116r1">
+<link rel="stylesheet" href="assets/importados.css?v=3.35.0.20261116r1">
+<link rel="stylesheet" href="assets/premium.css?v=3.35.0.20261116r1">
+<link rel="stylesheet" href="assets/exportacao.css?v=3.35.0.20261116r1">
+<link rel="stylesheet" href="assets/obras.css?v=3.35.0.20261116r1">
+<link rel="stylesheet" href="assets/avisos.css?v=3.35.0.20261116r1">
+<link rel="stylesheet" href="assets/vendor/leaflet/leaflet.css?v=1.9.4">
+<link rel="stylesheet" href="assets/coletas.css?v=3.35.0.20261116r1">
+<link rel="stylesheet" href="assets/etiquetas.css?v=3.35.0.20261116r1">
+<link rel="stylesheet" href="assets/acesso.css?v=3.35.0.20261116r1">
+<script src="assets/datas.js?v=3.35.0.20261116r1" defer></script>
+<script src="assets/upload.js?v=3.35.0.20261116r1" defer></script>
+<script src="assets/app.js?v=3.35.0.20261116r1" defer></script>
+<script src="assets/nf.js?v=3.35.0.20261116r1" defer></script>
+<script src="assets/push.js?v=3.35.0.20261116r1" defer></script>
+<script src="assets/wizard.js?v=3.35.0.20261116r1" defer></script>
+<script src="assets/pwa.js?v=3.35.0.20261116r1" defer></script>
+<script src="assets/whatsapp-import.js?v=3.35.0.20261116r1" defer></script>
+<script src="assets/admin-backup.js?v=3.35.0.20261116r1" defer></script>
+<script src="assets/estoque.js?v=3.35.0.20261116r1" defer></script>
+<script src="assets/notify.js?v=3.35.0.20261116r1" defer></script>
+<script src="assets/backup.js?v=3.35.0.20261116r1" defer></script>
+<script src="assets/vendor/leaflet/leaflet.js?v=1.9.4" defer></script>
+<script src="assets/coletas.js?v=3.35.0.20261116r1" defer></script>
+<script src="assets/etiquetas.js?v=3.35.0.20261116r1" defer></script>
+<script src="assets/acesso.js?v=3.35.0.20261116r1" defer></script>
+<script src="assets/assinatura.js?v=3.35.0.20261116r1" defer></script>
+<script src="assets/ferramentas.js?v=3.35.0.20261116r1" defer></script>
+<script src="assets/locacoes.js?v=3.35.0.20261116r1" defer></script>
+<script src="assets/obras.js?v=3.35.0.20261116r1" defer></script>
+<link rel="stylesheet" href="assets/locacoes.css?v=3.35.0.20261116r1">
+<script src="assets/importados.js?v=3.35.0.20261116r1" defer></script>
+<script src="assets/novo-pedido.js?v=3.35.0.20261116r1" defer></script>
+<script src="assets/exportacao.js?v=3.35.0.20261116r1" defer></script>
+<script src="assets/alertas.js?v=3.35.0.20261116r1" defer></script>
+<script src="assets/avisos.js?v=3.35.0.20261116r1" defer></script>
+</head>
+<body>
+<div class="rd-login" id="rdLogin" hidden role="dialog" aria-modal="true" aria-labelledby="rdLoginTitle">
+  <form class="rd-login-card" id="rdLoginForm">
+    <h2 id="rdLoginTitle">Recebimento Drilling</h2>
+    <p>Entre com o usuário e a senha fornecidos pelo administrador. Cada pessoa vê somente o que pode fazer.</p>
+    <label>Usuário<input id="rdLoginUser" name="username" autocomplete="username" maxlength="60" required></label>
+    <label>Senha<input id="rdLoginPass" name="password" type="password" autocomplete="current-password" maxlength="128" required></label>
+    <p class="rd-login-erro" id="rdLoginErro" role="alert" aria-live="assertive"></p>
+    <button class="button primary" type="submit" id="rdLoginSubmit" style="width:100%">Entrar</button>
+    <p class="rd-login-foot">Esqueceu a senha? O administrador redefine em Administração → Usuários, perfis e permissões. Após 6 tentativas o acesso fica bloqueado por 15 minutos.</p>
+  </form>
+</div>
+<div id="offlineBanner" class="offline-banner" role="status" hidden>Sem internet — interface disponível, mas consultas, alterações e anexos exigem conexão. Nenhum recebimento offline será salvo.</div>
+<div class="shell">
+  <aside class="sidebar" aria-label="Menu principal">
+    <div class="brand"><span class="brand-logo">R<span>✓</span></span><div><strong>Recebimento <em>Drilling</em></strong><small>Operações & rastreabilidade</small></div></div>
+    <div class="side-heading">MENU PRINCIPAL</div>
+    <nav class="nav" aria-label="Seções">
+      <button class="nav-link active" data-page="dashboard" onclick="goPage('dashboard')"><span>◫</span> Dashboard <small>Visão geral</small></button>
+      <button class="nav-link" data-page="inicio" onclick="goPage('inicio')"><span>⌂</span> Início <small>Guia de 1 minuto</small></button>
+      <button class="nav-link" data-page="ferramentas" onclick="goPage('ferramentas')"><span>⚒</span> Ferramentas <small>Empréstimos</small></button>
+      <button class="nav-link" data-page="obras" onclick="goPage('obras')"><span>🏗</span> Obras <small>Envios, notas e fotos</small></button>
+      <button class="nav-link" data-page="locacoes" onclick="goPage('locacoes')"><span>⛟</span> Locações <small>Equipamentos alugados</small></button>
+      <button class="nav-link" data-page="importados" onclick="goPage('importados')"><span>◆</span> Importados <small>Materiais críticos</small></button>
+      <button class="nav-link" type="button" onclick="location.href='indicadores/'"><span>◔</span> Indicadores <small>Diretoria</small></button>
+      <button class="nav-link" data-page="pedidos" onclick="goPage('pedidos')"><span>▤</span> Pedidos <small id="menuOrders">—</small><span id="menuNewOrders" class="nav-new-count" hidden>0 novos</span></button>
+      <button class="nav-link" data-page="importacao" onclick="goPage('importacao')"><span>⇧</span> Importar pedidos <small>ZIP ou PDF individual</small></button>
+      <button class="nav-link" data-page="estoque" onclick="goPage('estoque')"><span>▦</span> Estoque <small>Entrada, conferência e saída</small></button>
+      <button class="nav-link" data-page="coletas" onclick="goPage('coletas')"><span>◈</span> Coletas <small>Mapa, rota e agenda</small></button>
+      <button class="nav-link" data-page="exportacao" onclick="goPage('exportacao')"><span>↗</span> Exportação <small>PDF e Excel</small></button>
+      <button class="nav-link" data-page="administracao" onclick="goPage('administracao')"><span>⚙</span> Administração <small>Backup e restauração</small></button>
+      <button class="nav-link" data-page="notificacoes" onclick="goPage('notificacoes')"><span>🔔</span> Notificações <small>Avisos em tempo real</small></button>
+      <button class="nav-link" type="button" onclick="openTutorial()"><span>ⓘ</span> Tutorial <small>Passo a passo</small></button>
+    </nav>
+    <div class="side-foot"><div class="connection" id="connectionLabel"><i></i> Verificando conexão</div><small>Recebimento Drilling · v3.35.0</small></div>
+  </aside>
+  <div class="main">
+    <aside class="notification-panel" id="notificationPanel" aria-label="Notificações de atualização" hidden>
+      <div class="notification-head"><div><strong>Notificações de recebimento</strong><small id="notifyStatus">Sincronização iniciando…</small></div><button class="icon-btn" aria-label="Fechar notificações" onclick="toggleNotifications(false)">✕</button></div>
+      <div class="notification-tools"><button class="button ghost small" onclick="requestBrowserAlerts()" id="enableBrowserAlerts">Ativar Web Push no navegador</button><button class="button ghost small" id="disableBrowserAlerts" onclick="disablePushAlerts()" hidden>Desativar neste dispositivo</button><button class="button ghost small" onclick="markNotificationsRead()">Marcar como lidas</button></div>
+      <div class="notification-list" id="notificationList"><div class="notice-empty">Nenhuma atualização recente.</div></div>
+      <div class="notification-foot">Movimentações com a página aberta a cada 10 segundos. Recebimentos finalizados também são enviados por Web Push aos dispositivos inscritos. <button onclick="pollEvents(true)">Verificar agora</button></div>
+    </aside>
+    <aside class="nt-panel" id="ntPanel" hidden aria-label="Notificações em tempo real">
+      <div class="nt-head"><div><strong>Notificações</strong><small id="ntOnline">Verificando operadores…</small></div><button class="icon-btn" aria-label="Fechar notificações" onclick="ntToggle(false)">✕</button></div>
+      <div class="nt-tools">
+        <button class="button ghost" onclick="ntMarcarTodas()">Marcar todas como lidas</button>
+        <button class="button ghost" onclick="ntTestar()">Testar aviso</button>
+        <button class="button ghost" onclick="ntAtivarNavegador()">Ativar no navegador</button>
+        <button class="button ghost" onclick="goPage('notificacoes')">Configurar</button>
+      </div>
+      <div class="nt-list" id="ntLista"><div class="nt-empty">Carregando…</div></div>
+      <div class="nt-foot"><span id="ntStatus">Atualização automática a cada 5 segundos.</span><button class="text-action" onclick="ntPoll(true)">Verificar agora</button></div>
+    </aside>
+    <div class="nt-banner" id="ntBanner" hidden role="status" aria-live="polite"></div>
+    <header class="topbar">
+      <div class="crumb" id="breadcrumb">Operações <span>/</span> Dashboard</div>
+      <div class="top-actions"><span class="rd-who" id="rdUserChip" hidden></span><span class="today" id="todayText"></span><span id="networkStatus" class="network-state" aria-live="polite">● Online</span><button id="installPwa" type="button" class="button ghost small install-button" hidden>⬇ Instalar app</button><div class="nt-anchor"><button id="ntBtn" type="button" class="button ghost small nt-btn" aria-label="Abrir notificações" aria-expanded="false" aria-controls="ntPanel" onclick="ntToggle()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><span class="alerts-label">Avisos</span><span id="ntBadge" class="nt-badge" hidden>0</span></button></div><button class="button ghost small" onclick="refreshData()" title="Atualizar dados">↻ Atualizar</button><button class="button primary small" onclick="goPage('exportacao')">⇩ Exportar</button></div>
+    </header>
+    <main class="content"><div id="loadError" class="load-error" role="alert" hidden><strong>Não foi possível carregar os dados do servidor.</strong><p>Confira a conexão e tente novamente. Os pedidos existentes permanecem preservados.</p><button class="button ghost small" onclick="load()">Tentar novamente</button></div>
+      <section id="page-acessonegado" class="page" aria-label="Acesso negado"><div class="pagehead"><div><div class="eyebrow">ACESSO</div><h1 style="font-size:22px">Permissão necessária</h1></div></div><div id="page-negado"></div></section>
+      <section id="page-dashboard" class="page active" aria-labelledby="dashTitle">
+        <div class="pagehead"><div><div class="eyebrow">CENTRAL OPERACIONAL</div><h1 id="dashTitle">Dashboard de recebimento</h1><p>Indicadores de chegada, conferência documental e rastreabilidade de materiais.</p></div><label class="picker-label">Período das chegadas<select id="dashPeriod" onchange="renderDashboard()"><option value="all">Todo o histórico</option><option value="7">Últimos 7 dias</option><option value="30">Últimos 30 dias</option><option value="90">Últimos 90 dias</option></select></label></div>
+        <div class="hero-grid">
+          <div class="hero-panel"><div class="hero-kicker">COBERTURA DE RECEBIMENTO</div><div class="hero-inner"><div><div class="hero-percent" id="heroPercent">0%</div><div class="hero-descr" id="heroText">Pedidos com chegada total ou parcial</div></div><div class="ring" id="heroRing"><span id="ringPct">0%</span></div></div><div class="progress-track"><div id="heroProgress"></div></div><div class="hero-hint" id="heroHint">Aguardando leitura dos registros</div></div>
+          <div class="hero-side"><div class="mini-header"><strong>Fila operacional</strong><span>Pedidos que requerem acompanhamento</span></div><div class="queue-grid" id="queueGrid"></div></div>
+        </div>
+        <div class="kpi-grid" id="kpiGrid"></div>
+        <div class="charts-grid">
+          <article class="panel"><div class="panel-heading"><div><h2>Situação dos pedidos</h2><p>Distribuição geral por status de chegada</p></div><span class="panel-caption">Todos os PCs</span></div><div id="statusChart" class="status-chart"></div></article>
+          <article class="panel"><div class="panel-heading"><div><h2>Recebimentos por dia</h2><p>Últimos 14 dias com registro de chegada</p></div><span class="panel-caption">SIM + PARCIAL</span></div><div id="trendChart" class="trend-chart"></div></article>
+          <article class="panel"><div class="panel-heading"><div><h2>Fornecedores em destaque</h2><p>Maior número de pedidos cadastrados</p></div><span class="panel-caption">Top 7</span></div><div id="suppliersChart" class="suppliers-chart"></div></article>
+          <article class="panel"><div class="panel-heading"><div><h2>Qualidade dos registros</h2><p>Cobertura documental nos pedidos recebidos</p></div><span class="panel-caption">Rastreabilidade</span></div><div id="qualityChart" class="quality-chart"></div></article>
+        </div>
+        <div class="panel recent-panel"><div class="panel-heading"><div><h2>Últimas atualizações</h2><p>Pedidos com movimentações salvas</p></div><button class="text-action" onclick="goPage('pedidos')">Abrir todos →</button></div><div id="recentRows" class="recent-rows"></div></div>
+      </section>
+
+      <section id="page-inicio" class="page" aria-labelledby="inicioTitle">
+        <div class="pagehead"><div><div class="eyebrow">COMECE AQUI</div><h1 id="inicioTitle">Início</h1><p>Um guia curto do que fazer em cada tipo de aparelho.</p></div><div class="est-head-actions"><button class="button primary" onclick="goPage('pedidos')">Abrir pedidos</button><button class="button ghost" onclick="openTutorial()">Ver tutorial completo</button></div></div>
+        <div class="charts-grid">
+          <article class="panel"><div class="panel-heading"><div><h2>💻 No desktop — quem gerencia</h2><p>Visão completa, conferência e relatórios</p></div></div>
+            <ol class="ix-list">
+              <li><strong>Pedidos</strong> — abra o PC, confira insumo por insumo e finalize o recebimento.</li>
+              <li><strong>Importar pedidos</strong> — envie o ZIP do WhatsApp ou um PDF avulso para cadastrar novos PCs.</li>
+              <li><strong>Estoque</strong> — gere a entrada do PC, confira, receba e dê saída nos materiais.</li>
+              <li><strong>Exportação</strong> — relatórios em PDF e planilhas para Excel.</li>
+              <li><strong>Administração</strong> — backup completo automático e restauração.</li>
+            </ol></article>
+          <article class="panel"><div class="panel-heading"><div><h2>📱 No tablet — quem recebe no campo</h2><p>Interface em cartões, sem tabela larga</p></div></div>
+            <ol class="ix-list">
+              <li><strong>Pedidos</strong> — toque no PC e preencha a quantidade recebida de cada insumo.</li>
+              <li><strong>Fotos e NF</strong> — use a câmera do tablet direto na conferência.</li>
+              <li><strong>Finalizar</strong> — a data/hora é gravada e todos os logados recebem o aviso.</li>
+              <li><strong>Sino no topo</strong> — mostra quem finalizou e abre o pedido no toque.</li>
+              <li><strong>Instalar o app</strong> — no Chrome do tablet, use “Adicionar à tela inicial”.</li>
+            </ol></article>
+        </div>
+        <div class="panel" style="margin-top:16px"><div class="panel-heading"><div><h2>Atalhos</h2><p>Tudo o que existe no sistema</p></div></div>
+          <div class="ix-shortcuts">
+            <button class="ix-card" onclick="goPage('pedidos')"><strong>▤ Pedidos</strong><small>Conferência e recebimento</small></button>
+            <button class="ix-card" onclick="goPage('estoque')"><strong>▦ Estoque</strong><small>Entrada, saldo e saída</small></button>
+            <button class="ix-card" onclick="goPage('importacao')"><strong>⇧ Importar</strong><small>WhatsApp e PDF</small></button>
+            <button class="ix-card" onclick="goPage('exportacao')"><strong>↗ Exportação</strong><small>PDF e Excel</small></button>
+            <button class="ix-card" onclick="goPage('notificacoes')"><strong>🔔 Notificações</strong><small>Som e dispositivos</small></button>
+            <button class="ix-card" onclick="goPage('administracao')"><strong>⚙ Administração</strong><small>Backup e restauração</small></button>
+          </div></div>
+      </section>
+      <section id="page-pedidos" class="page" aria-labelledby="ordersTitle">
+        <div class="pagehead"><div><div class="eyebrow">OPERAÇÃO EM CAMPO</div><h1 id="ordersTitle">Pedidos de compra</h1><p>Lista compacta, detalhes completos em painel lateral e conferência por PC.</p></div><div class="wa-import-shortcuts"><button class="button ghost" onclick="goPage('importacao')">⇧ Importar pedidos</button><button class="button ghost" onclick="avisoPendencias()" title="Pedidos sem destinatário para o e-mail de chegada">✉ Avisos de chegada <span id="avisoBadge" class="aviso-badge" hidden></span></button><button class="button ghost" onclick="npAbrir()">+ Cadastrar PC manualmente</button><button class="button primary" onclick="selectReceived()">✓ Selecionar recebidos</button></div></div>
+        <div class="filterpanel">
+          <div class="filterrow"><label class="searchbox"><span>⌕</span><input id="q" type="search" placeholder="Pesquisar PC, fornecedor, material ou NF…" oninput="filtersChanged()"></label><select id="statusFilter" onchange="filtersChanged()" aria-label="Filtrar status"><option value="all">Todos os status</option><option value="novo">✦ Somente novos</option><option value="pendente">Sem status</option><option value="SIM">Recebido</option><option value="PARCIAL">Parcial</option><option value="NÃO">Não chegou</option><option value="EM TRÂNSITO">Em trânsito</option><option value="N/A">Não se aplica</option><option value="fotos">Com fotos</option><option value="semNF">Recebidos sem NF</option></select><select id="supplierFilter" onchange="filtersChanged()" aria-label="Filtrar fornecedor"><option value="">Todos os fornecedores</option></select><select id="obraFilter" onchange="filtersChanged()" aria-label="Filtrar por obra ou setor"><option value="">Todas as obras / setores</option></select><select id="orderSort" onchange="filtersChanged()" aria-label="Ordenar"><option value="novos" selected>✦ Novos primeiro</option><option value="pc_desc">PC: maior primeiro</option><option value="pc_asc">PC: menor primeiro</option><option value="recent">Última atualização</option><option value="fornecedor">Fornecedor A–Z</option></select></div>
+          <div class="filter-bottom"><span id="resultCount">Carregando…</span><div class="filter-bottom-right"><button class="text-action" onclick="clearFilters()">Limpar filtros</button><label>Por página <select id="pageSize" onchange="filtersChanged()"><option value="10">10</option><option value="20" selected>20</option><option value="50">50</option><option value="100">100</option></select></label></div></div>
+        </div>
+        <div class="selection-toolbar" id="selectionToolbar" hidden><strong><span id="selCount">0</span> selecionado(s)</strong><div><button class="button ghost small" onclick="clearSelection()">Limpar seleção</button><button class="button primary small" onclick="exportSelected()">⇩ Exportar selecionados</button><button class="button wa small" onclick="openWA('selecionados')">WhatsApp</button></div></div>
+        <div class="table-panel"><div class="table-scroll"><table class="orders-table"><thead><tr><th class="checkcol"><input type="checkbox" id="selectPage" aria-label="Selecionar página" onchange="togglePageSelection(this.checked)"></th><th>PC</th><th>Fornecedor / Material</th><th>Situação automática</th><th>Chegada</th><th>Data</th><th>Nº NF</th><th>Comprovantes</th><th>Conferência</th><th>Ação</th></tr></thead><tbody id="ordersBody"><tr><td colspan="10" class="empty">Carregando pedidos…</td></tr></tbody></table></div><div id="mobileCards" class="mobile-cards"></div><div class="pagination"><span id="pageInfo"></span><div><button class="button ghost small" id="prevPage" onclick="changePage(-1)">← Anterior</button><button class="button ghost small" id="nextPage" onclick="changePage(1)">Próxima →</button></div></div></div>
+      </section>
+      <section id="page-importacao" class="page" aria-labelledby="waImportTitle">
+        <div class="pagehead"><div><div class="eyebrow">ALIMENTAÇÃO AUTOMÁTICA DOS PEDIDOS</div><h1 id="waImportTitle">Importar pedidos de compra</h1><p>Envie um ZIP do WhatsApp ou um PDF de PC avulsa. Revise os itens e confirme antes de gravar.</p></div></div>
+        <article id="waImportLock" class="wa-auth-panel" aria-labelledby="waAuthTitle">
+          <div class="wa-auth-icon" aria-hidden="true">🔒</div>
+          <h2 id="waAuthTitle">Importação protegida</h2>
+          <p>Somente pessoas autorizadas podem importar ou atualizar pedidos de compra.</p>
+          <form id="waAuthForm" onsubmit="waImportLogin(event)">
+            <label for="waImportPassword">Senha de importação</label>
+            <div class="wa-auth-fields"><input id="waImportPassword" name="password" type="password" placeholder="Digite a senha" autocomplete="off" required maxlength="128"><button type="submit" class="button primary" id="waAuthSubmit">Liberar importação</button></div>
+            <p id="waAuthError" class="wa-auth-error" role="alert" aria-live="polite"></p>
+          </form>
+          <small>A autorização é individual para este navegador e expira após inatividade.</small>
+        </article>
+        <div id="waImportProtected" hidden>
+        <div class="wa-auth-toolbar"><span>🔓 Importação autorizada</span><button type="button" class="button ghost small" onclick="waImportLogout()">Bloquear importação</button></div>
+        <div class="wa-import-layout">
+          <article class="wa-import-panel">
+            <h2>Envie a exportação da conversa</h2>
+            <p>O sistema reconhece PDFs de pedidos SAP Business One e extrai os insumos, as quantidades compradas e dados do fornecedor. As mensagens não são tratadas como confirmação de recebimento.</p>
+            <div class="wa-import-steps"><span>1 · Escolher ZIP ou PDF</span><span>2 · Analisar pedido</span><span>3 · Conferir prévia</span><span>4 · Confirmar importação</span></div>
+            <div id="waImportDrop" class="wa-import-drop" tabindex="0" role="button" aria-label="Selecionar arquivo ZIP do WhatsApp" onclick="waImportChoose()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();waImportChoose()}" ondragover="waImportDragged(event)" ondragleave="waImportDragLeave()" ondrop="waImportDropped(event)"><span style="font-size:32px" aria-hidden="true">📦</span><strong>Selecionar exportação ZIP</strong><small id="waImportFileLabel">Nenhum arquivo selecionado</small><small>WhatsApp → Exportar conversa → Incluir mídia · até 1 GB</small></div>
+            <input type="file" id="waImportFile" accept=".zip,application/zip,application/x-zip-compressed" hidden onchange="waImportFileChanged()">
+            <div class="wa-pdf-single"><div><strong>📄 Complementar com PDF individual</strong><small>Para PC avulsa que não veio no ZIP. Aceita PDF SAP com texto legível (até 30 MB).</small></div><button type="button" class="button ghost" onclick="waPdfChoose()">Selecionar PDF</button><input type="file" id="waPdfFile" accept=".pdf,application/pdf" hidden onchange="waPdfFileChanged()"><span class="wa-pdf-filename" id="waPdfFileLabel">Nenhum PDF selecionado</span></div>
+            <div class="wa-import-controls"><button id="waImportPreviewBtn" type="button" class="button primary" disabled onclick="waImportPreview()">Analisar pedidos</button><button id="waManualBtn" type="button" class="button ghost" onclick="npAbrir()">+ Cadastrar PC manualmente</button><small>O envio não altera os pedidos até sua confirmação. Se o SAP e a IA não reconhecerem um PDF, use “Cadastrar PC manualmente”.</small></div>
+            <p class="wa-import-message" id="waImportStatus" role="status" aria-live="polite">Selecione um ZIP do WhatsApp ou um PDF de pedido de compra.</p>
+          </article>
+          <article class="wa-import-panel" id="waImportResults" hidden>
+            <h2>Prévia dos pedidos encontrados</h2><p>Pedidos com recebimento iniciado ou finalizado, ou que já possuem insumos, não serão sobrescritos.</p>
+            <div class="wa-import-metrics" id="waImportMetrics"></div>
+            <div class="wa-import-filterbar"><input id="waImportFilter" type="search" placeholder="Buscar PC ou fornecedor…" oninput="waImportRender()" aria-label="Buscar pedidos na importação"><select id="waImportType" onchange="waImportRender()" aria-label="Situação do pedido importado"><option value="todos">Todas as situações</option><option value="completar">Completar insumos</option><option value="novo">Pedidos novos</option><option value="ja_detalhado">Já detalhados</option><option value="protegido">Recebimentos protegidos</option><option value="sem_itens">Sem itens reconhecidos</option></select></div>
+            <div class="wa-import-select"><label><input id="waImportSelectAll" type="checkbox" onchange="waImportToggleAll(this.checked)"> Selecionar todos os elegíveis</label><span id="waImportSelected">0 selecionados</span><button id="waAvisoBulk" class="button ghost small" type="button" hidden onclick="waAvisoAceitarTodas()"></button></div>
+            <div id="waImportRows" class="wa-import-list"></div>
+            <div id="waImportWarnings" class="wa-import-warnings"></div>
+            <div class="wa-import-actions"><small>Somente a importação confirmada modifica a lista de pedidos.</small><button class="button primary" id="waImportConfirm" onclick="waImportConfirm()" disabled>Importar pedidos selecionados</button><button class="button ghost" id="waImportManual" onclick="npAbrir()">+ Cadastrar PC manualmente</button></div>
+          </article>
+          <article class="wa-import-result" id="waImportSummary" hidden></article>
+          <article class="wa-import-panel" id="etqIaPanel">
+            <h2>Leitura assistida por IA (Gemini)</h2>
+            <p>Quando o leitor nativo não conclui um PDF de pedido, o arquivo é enviado ao Gemini e volta para esta prévia marcado como <strong>“Lido por IA”</strong>. A IA nunca grava nada sozinha: você continua conferindo e confirmando.</p>
+            <div class="wa-import-metrics" id="iaStatus"><div class="wa-metric"><strong>—</strong><span>Verificando IA…</span></div></div>
+            <div class="form-grid">
+              <label class="form-line full"><span>Situação</span><select id="iaEnabled" onchange="waIaSalvar()"><option value="1">Ativada — IA completa o que o leitor não concluiu</option><option value="0">Desativada — só o leitor nativo</option></select></label>
+              <label class="form-line"><span>Modelo</span><select id="iaModel" onchange="waIaSalvar()"></select></label>
+              <label class="form-line"><span>Chave de API</span><input id="iaKey" type="password" autocomplete="new-password" maxlength="200" placeholder="Deixe vazio para manter a chave atual"><small id="iaKeyHint" style="font-weight:400;color:var(--muted)">A chave fica só no servidor e não entra no backup.</small></label>
+              <label class="form-line full"><span>URL da API</span><input id="iaUrl" type="text" maxlength="160" placeholder="https://generativelanguage.googleapis.com/v1beta"></label>
+            </div>
+            <div class="wa-import-actions"><button type="button" class="button ghost" onclick="waIaTestar()" id="iaTestBtn">Testar conexão</button><button type="button" class="button primary" onclick="waIaSalvar()" id="iaSaveBtn">Salvar configuração</button></div>
+            <p class="wa-import-message" id="iaMsg" role="status" aria-live="polite"></p>
+            <p><strong>Limites:</strong> arquivo de até 1 GB (enviado em partes; o anexo não fica salvo no servidor — só os dados dos pedidos). A IA lê até 25 PDFs sem texto por lote. Falha de IA não interrompe os demais pedidos e nada é gravado sem a sua confirmação.</p>
+          </article>
+          <article class="wa-import-panel"><h2>Importação complementar de PC</h2><p>O PDF avulso entra no mesmo controle de revisão e duplicidades do ZIP. Se a PC já tiver materiais ou conferência iniciada, ela será preservada. O PDF original de uma PC importada por essa opção é guardado em pasta privada e incluído no backup do sistema. PDFs digitalizados sem texto legível não são extraídos automaticamente.</p><h2>Como exportar pelo WhatsApp</h2><p>No celular, abra o grupo PEDIDO COMPRA COLETA, toque nos três pontos → <strong>Mais → Exportar conversa → Incluir mídia</strong>. Envie o ZIP para este dispositivo e carregue acima. O grupo pode gerar ZIPs parciais; você pode repetir a importação sem duplicar os pedidos.</p><p><strong>Proteção:</strong> fotos, notas fiscais, conferências finalizadas e histórico de entregas não serão modificados pela importação. PDFs digitalizados sem texto podem exigir complemento manual ou nova versão legível.</p></article>
+        </div>
+        </div>
+      </section>
+
+      <section id="page-administracao" class="page" aria-labelledby="adminTitle">
+        <div class="alt-admin" id="altAdmin"><div><div class="eyebrow">AVISOS POR E-MAIL</div><strong>Alertas de estoque e aviso de chegada de pedidos</strong>
+          <small>Cadastre nome e e-mail de quem deve ser avisado quando o pedido chegar; configure também quem recebe o alerta de estoque baixo e a conta que envia (SMTP).</small></div>
+          <div class="alt-admin-btns"><button class="button primary" type="button" onclick="altContatos()">👤 Nome e e-mail — aviso de chegada</button><button class="button ghost" type="button" onclick="altAbrir();altAba('cfg')">✉ Alertas de estoque e conta de envio</button><button class="button ghost" type="button" onclick="goPage('estoque');setTimeout(()=>estGo('funcionarios'),1500)">Funcionários</button></div></div>
+        <div id="usSection" hidden style="margin-bottom:20px">
+          <div class="pagehead"><div><div class="eyebrow">CONTROLE DE ACESSO</div><h1 style="font-size:22px">Usuários, perfis e permissões</h1><p>Cada pessoa recebe exatamente o acesso necessário para a sua função. A decisão é aplicada no servidor e registrada em trilha de auditoria.</p></div></div>
+          <div id="usRoot"></div>
+        </div>
+        <div class="pagehead"><div><div class="eyebrow">ÁREA PROTEGIDA</div><h1 id="adminTitle">Administração e Backup</h1><p>Cópia completa e restauração dos dados e do código do Recebimento Drilling, com senha de administrador.</p></div><div style="display:flex;gap:8px;align-items:center"><a class="button ghost small" href="banco.php" style="text-decoration:none">🗄 Banco de dados</a><span class="panel-caption" id="backupBadge">Acesso protegido</span></div></div>
+        <div class="backup-hero"><strong>Os arquivos permanecem no servidor HostGator</strong><p>O backup inclui pedidos, conferências, histórico, fotos, XMLs, notificações e arquivos do aplicativo. O ZIP baixado contém informações confidenciais. Não inclui senhas da administração de backup nem outros sites do cPanel.</p></div>
+        <p class="backup-message" id="backupMessage" role="status" aria-live="polite"></p>
+        <div class="backup-warning" id="backupZipWarning" hidden>O PHP precisa da extensão <strong>ZipArchive</strong>. Habilite PHP ZIP no MultiPHP INI Editor ou solicite à HostGator.</div>
+        <article class="panel" id="backupSetup" hidden>
+          <div class="panel-heading"><div><h2>Ativar a administração</h2><p>Etapa obrigatória apenas no primeiro acesso</p></div></div>
+          <p>Para impedir que outra pessoa configure a senha, abra pelo cPanel o arquivo privado <code>data/backup_setup.key</code>, copie o código e defina uma senha de pelo menos 12 caracteres. <strong>Não envie esse código nem sua senha pelo WhatsApp.</strong></p>
+          <form class="backup-fields" onsubmit="backupSetup(event)"><label>Código inicial (cPanel)<input id="backupActivation" type="text" autocomplete="off" required></label><label>Nova senha administrativa<input id="backupNewPassword" type="password" minlength="8" autocomplete="new-password" required></label><button class="button primary" type="submit">Ativar administração</button></form>
+        </article>
+        <article class="panel" id="backupLogin" hidden>
+          <div class="panel-heading"><div><h2>Entrar como administrador</h2><p>Acesso protegido · sessão de 15 minutos</p></div></div>
+          <form class="backup-fields" onsubmit="backupLogin(event)"><label>Senha administrativa<input id="backupLoginPassword" type="password" autocomplete="current-password" required></label><button class="button primary" type="submit">Desbloquear módulo</button></form>
+        </article>
+        <div id="backupControls" hidden>
+          <div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button type="button" class="button ghost small" onclick="backupLogout()">Sair da administração</button></div>
+          <div class="backup-layout">
+            <article class="panel"><div class="panel-heading"><div><h2>Baixar backup completo</h2><p>Gerar ZIP sob demanda</p></div></div><p>Inclui os registros e documentos salvos no servidor, além dos arquivos do sistema. Nada será apagado ou zerado durante o download.</p><div class="backup-warning">Guarde o arquivo em local seguro. Contém dados de fornecedores, documentos fiscais e configurações privadas.</div><button type="button" id="backupDownloadButton" class="button primary" onclick="backupCreate()">⇩ Gerar e baixar backup ZIP</button></article>
+            <article class="panel"><div class="panel-heading"><div><h2>Restaurar um backup</h2><p>Somente backups completos gerados por este módulo</p></div></div><div class="backup-warning"><strong>Atenção:</strong> os arquivos e registros atuais serão substituídos pela versão do ZIP. O sistema cria uma cópia completa do estado atual ANTES de restaurar.</div>
+              <form class="backup-fields" onsubmit="backupRestore(event)"><label>Selecione o ZIP de backup<input id="backupRestoreFile" type="file" accept=".zip,application/zip" required></label><label>Confirme a senha administrativa<input id="backupRestorePassword" type="password" autocomplete="off" required></label><label>Digite RESTAURAR<input id="backupRestoreConfirm" type="text" autocomplete="off" required></label><label class="backup-confirm-line"><input id="backupRestoreAccept" type="checkbox" required>Estou ciente de que os dados atuais serão substituídos.</label><button class="button primary" id="backupRestoreButton" type="submit">⟲ Conferir e restaurar backup</button></form>
+            </article>
+            <article class="panel backup-full"><div class="panel-heading"><div><h2>Cópias de segurança pré-restauração</h2><p>Geradas automaticamente no servidor antes de cada restauração</p></div><button type="button" class="button ghost small" onclick="backupLoadSnapshots()">Atualizar</button></div><div id="backupSnapshots">Carregando cópias…</div><p>As cópias ficam em <code>data/backups/</code>, protegidas contra acesso público. Faça também um download para local externo à hospedagem.</p></article>
+          </div>
+        </div>
+
+        <div class="pagehead" style="margin-top:28px"><div><div class="eyebrow">PROTEÇÃO AUTOMÁTICA</div><h2 style="font-size:20px">Backup completo automatizado</h2><p>Cópia diária de todos os dados e do código, com verificação por hash e retenção configurável.</p></div><button class="button primary" id="bkGerar" onclick="bkGerarAgora()">⛁ Gerar backup completo agora</button></div>
+        <p class="backup-message" id="bkStatus" role="status" aria-live="polite"></p>
+        <div class="kpi-grid bk-grid" id="bkCards"></div>
+        <div id="bkAlertas"></div>
+        <div class="backup-layout">
+          <article class="panel"><div class="panel-heading"><div><h2>O que será copiado</h2><p>Contagem atual dos dados protegidos</p></div></div><div id="bkDados"></div>
+            <p class="est-hint">Entram no ZIP: pedidos e conferências, fotos, notas, PDFs de pedido, XMLs, estoque, notificações, usuários e todo o código do sistema. Ficam fora: senhas administrativas, controles de tentativa, travas e os próprios backups.</p></article>
+          <article class="panel"><div class="panel-heading"><div><h2>Backup automático (cron)</h2><p>Um snapshot por dia, sem intervenção</p></div></div>
+            <p class="est-hint">No cPanel → Cron Jobs, agende uma vez por dia (ex.: 02:30):</p>
+            <div class="bk-cron"><code id="bkCron">—</code><button class="button ghost small" onclick="bkCopiarCron()">Copiar</button></div>
+            <p class="est-hint" id="bkEstadoErro"></p>
+            <div class="bk-fields">
+              <label>Backups diários<input id="bkDias" type="number" min="1" max="90" value="14"></label>
+              <label>Backups semanais<input id="bkSemanas" type="number" min="1" max="52" value="8"></label>
+              <button class="button ghost" onclick="bkSalvarRetencao()">Salvar retenção</button>
+            </div>
+            <p class="est-hint">A limpeza remove apenas backups gerados por esta rotina, respeitando a quantidade acima. Cópias pré-restauração nunca são apagadas.</p></article>
+          <article class="panel backup-full"><div class="panel-heading"><div><h2>Backups guardados no servidor</h2><p>Verifique o hash, baixe ou gere uma cópia externa</p></div><button class="button ghost small" onclick="bkCarregar()">Atualizar</button></div><div id="bkLista">Carregando…</div></article>
+        </div>
+      </section>
+
+      <section id="page-estoque" class="page" aria-labelledby="estoqueTitle">
+        <div class="pagehead">
+          <div><div class="eyebrow">CONTROLE DE MATERIAIS</div><h1 id="estoqueTitle">Módulo de estoque</h1>
+          <p>Entrada → conferência → recebimento → saída. O saldo nunca é digitado: resulta das movimentações conferidas.</p></div>
+          <div class="est-head-actions">
+            <button class="button ghost" onclick="estAbrirNovaEntrada()">⇩ Nova entrada</button>
+            <button class="button primary" onclick="estNovaSaida()">⇧ Nova saída</button>
+          </div>
+        </div>
+        <div class="est-tabs" role="tablist">
+          <button type="button" class="est-tab active" data-est-tab="painel" onclick="estGo('painel')">Painel</button>
+          <button type="button" class="est-tab" data-est-tab="entradas" onclick="estGo('entradas')">Entradas &amp; conferência</button>
+          <button type="button" class="est-tab" data-est-tab="itens" onclick="estGo('itens')">Itens &amp; saldos</button>
+          <button type="button" class="est-tab" data-est-tab="saidas" onclick="estGo('saidas')">Saídas</button>
+          <button type="button" class="est-tab" data-est-tab="movimentos" onclick="estGo('movimentos')">Movimentações</button>
+          <button type="button" class="est-tab" data-est-tab="funcionarios" onclick="estGo('funcionarios')">Funcionários</button>
+          <button type="button" class="est-tab" data-est-tab="sap" onclick="estGo('sap')">Inventário SAP</button>
+          <button type="button" class="est-tab" data-est-tab="inventario" onclick="estGo('inventario')">Inventário</button>
+          <button type="button" class="est-tab" data-est-tab="reservas" onclick="estGo('reservas')">Reservas</button>
+          <button type="button" class="est-tab" data-est-tab="reposicao" onclick="estGo('reposicao')">Reposição</button>
+          <button type="button" class="est-tab" data-est-tab="abc" onclick="estGo('abc')">Curva ABC</button>
+          <button type="button" class="est-tab" data-est-tab="etiquetas" onclick="estGo('etiquetas')">Etiquetas e identificação</button>
+          <button type="button" class="est-tab" data-est-tab="integridade" onclick="estGo('integridade')">Integridade dos pedidos</button>
+        </div>
+
+        <div class="est-page active" data-est-page="painel">
+          <div id="estIntegridadeBanner"></div>
+          <div class="estd-toolbar">
+            <div><h2>Painel do estoque</h2><p id="estdGerado">Carregando…</p></div>
+            <div class="estd-actions">
+              <div class="estd-seg" role="group" aria-label="Período de análise">
+                <button data-dias="30">30 dias</button><button data-dias="90" class="active">90 dias</button><button data-dias="180">180 dias</button><button data-dias="365">12 meses</button>
+              </div>
+              <button class="button ghost" onclick="estLoadDashboard()" title="Atualizar">↻</button>
+              <button class="button ghost" onclick="window.print()" title="Imprimir / salvar PDF">⎙ Imprimir</button>
+            </div>
+          </div>
+          <div class="kpi-grid est-kpis" id="estKpis"></div>
+          <div id="estdAlertas" class="estd-alertas"></div>
+          <div class="estd-grid">
+            <article class="panel estd-wide"><div class="panel-heading"><div><h2>Entradas × saídas (R$)</h2><p>Últimos 12 meses, valorizado pelo custo médio</p></div><span class="estd-legend"><i class="e"></i>Entradas <i class="s"></i>Saídas <i class="i"></i>Inventário SAP</span></div><div id="estdMensal" class="estd-chart"></div></article>
+            <article class="panel"><div class="panel-heading"><div><h2>Origem do saldo</h2><p>Histórico de origem do valor em estoque</p></div></div><div id="estdOrigem"></div></article>
+            <article class="panel"><div class="panel-heading"><div><h2>Valor por família</h2><p>Agrupado pelo prefixo do SKU</p></div></div><div id="estdFamilias" class="estd-bars"></div></article>
+            <article class="panel"><div class="panel-heading"><div><h2>Curva ABC do consumo</h2><p>Classificação pelo valor consumido no período</p></div><button class="text-action" onclick="estGo('abc')">Detalhar →</button></div><div id="estdAbc"></div></article>
+            <article class="panel"><div class="panel-heading"><div><h2>Consumo por obra / setor</h2><p>Saídas valorizadas no período</p></div></div><div id="estdObras" class="estd-bars"></div></article>
+            <article class="panel"><div class="panel-heading"><div><h2>Risco de ruptura</h2><p>Dias de cobertura pelo consumo do período</p></div><button class="text-action" onclick="estGo('reposicao')">Reposição →</button></div><div id="estdCobertura" class="est-mini-list"></div></article>
+            <article class="panel"><div class="panel-heading"><div><h2>Mais consumidos</h2><p>Top 10 por valor de saída</p></div></div><div id="estdConsumo" class="est-mini-list"></div></article>
+            <article class="panel"><div class="panel-heading"><div><h2>Maior valor imobilizado</h2><p>Top 10 itens em estoque</p></div><button class="text-action" onclick="estGo('itens')">Itens →</button></div><div id="estdTopValor" class="est-mini-list"></div></article>
+            <article class="panel"><div class="panel-heading"><div><h2>Retiradas por pessoa</h2><p>Quem mais retirou material no período</p></div><button class="text-action" onclick="estGo('funcionarios')">Funcionários →</button></div><div id="estdPessoas" class="estd-bars"></div></article>
+            <article class="panel"><div class="panel-heading"><div><h2>Itens parados</h2><p>Com saldo e sem movimento há mais de 180 dias</p></div></div><div id="estdParados" class="est-mini-list"></div></article>
+            <article class="panel"><div class="panel-heading"><div><h2>Abaixo do mínimo</h2><p>Prioridade de reposição</p></div><span class="panel-caption">Top 10</span></div><div id="estAbaixo" class="est-mini-list"></div></article>
+            <article class="panel"><div class="panel-heading"><div><h2>Últimas movimentações</h2><p>Entradas e saídas registradas</p></div><button class="text-action" onclick="estGo('movimentos')">Ver todas →</button></div><div id="estUltimos" class="est-mini-list"></div></article>
+          </div>
+        </div>
+
+        <div class="est-page" data-est-page="entradas">
+          <div class="filterpanel">
+            <div class="filterrow est-filterrow">
+              <select id="estEntStatus" onchange="estLoadEntradas()" aria-label="Filtrar status da entrada">
+                <option value="">Todas as entradas</option>
+                <option value="pendente">Pendentes de conferência</option>
+                <option value="conferido">Conferidas (prontas para receber)</option>
+                <option value="recebido">Recebidas</option>
+              </select>
+              <button class="button ghost" onclick="estAbrirNovaEntrada()">⇩ Gerar entrada de um PC</button>
+              <button class="button ghost" onclick="estNovaEntradaManual()">+ Entrada manual</button>
+            </div>
+          </div>
+          <div class="table-panel"><div class="table-scroll"><table class="orders-table">
+            <thead><tr><th>PC / Entrada</th><th>Fornecedor / NF</th><th>Linhas</th><th>Pedido / Recebido</th><th>Status</th><th>Criada em</th><th>Ação</th></tr></thead>
+            <tbody id="estEntradasBody"><tr><td colspan="7" class="empty">Carregando entradas…</td></tr></tbody>
+          </table></div></div>
+        </div>
+
+        <div class="est-page" data-est-page="itens">
+          <div class="filterpanel">
+            <div class="filterrow est-filterrow">
+              <label class="searchbox"><span>⌕</span><input id="estQ" type="search" placeholder="Buscar código, descrição ou apelido…" oninput="estFiltroChanged()"></label>
+              <select id="estStatus" onchange="estFiltroChanged()" aria-label="Status do item"><option value="">Todos os status</option><option value="OK">OK</option><option value="ATENÇÃO">Atenção</option><option value="CRÍTICO">Crítico</option><option value="SEM ESTOQUE">Sem estoque</option></select>
+              <select id="estCat" onchange="estFiltroChanged()" aria-label="Categoria"><option value="">Todas as categorias</option></select>
+              <select id="estSort" onchange="estFiltroChanged()" aria-label="Ordenar"><option value="descricao">Descrição A–Z</option><option value="codigo">Código</option><option value="saldo_asc">Menor saldo</option><option value="saldo_desc">Maior saldo</option><option value="atualizado">Atualizados recentemente</option></select>
+            </div>
+            <div class="filter-bottom"><span id="estItensCount">—</span><div class="filter-bottom-right"><button class="text-action" onclick="estNovoItem()">+ Novo item</button><button class="text-action" onclick="estExportar('itens')">⇩ CSV</button></div></div>
+          </div>
+          <div class="table-panel"><div class="table-scroll"><table class="orders-table">
+            <thead><tr><th>Código</th><th>Descrição</th><th>UN</th><th>Saldo</th><th>Mínimo</th><th>Status</th><th>Custo médio</th><th>Ações</th></tr></thead>
+            <tbody id="estItensBody"><tr><td colspan="8" class="empty">Carregando itens…</td></tr></tbody>
+          </table></div></div>
+        </div>
+
+        <div class="est-page" data-est-page="saidas">
+          <div class="pagehead est-sub-head"><div><h2>Saídas e requisições</h2><p>A baixa só é permitida com saldo disponível; cada saída gera movimento com responsável e setor.</p></div><button class="button primary" onclick="estNovaSaida()">⇧ Nova saída</button></div>
+          <div class="table-panel"><div class="table-scroll"><table class="orders-table">
+            <thead><tr><th>Requisição</th><th>Setor / Solicitante</th><th>Itens</th><th>Status</th><th>Atendida em</th></tr></thead>
+            <tbody id="estReqBody"><tr><td colspan="5" class="empty">Carregando…</td></tr></tbody>
+          </table></div></div>
+        </div>
+
+        <div class="est-page" data-est-page="movimentos">
+          <div class="filterpanel"><div class="filterrow est-filterrow">
+            <select id="estMovTipo" onchange="estMovFiltroChanged()" aria-label="Tipo de movimento"><option value="">Todos os tipos</option></select>
+            <input type="date" id="estMovDe" onchange="estMovFiltroChanged()" aria-label="De">
+            <input type="date" id="estMovAte" onchange="estMovFiltroChanged()" aria-label="Até">
+            <button class="button ghost" onclick="estExportar('movimentos')">⇩ CSV</button>
+          </div><div class="filter-bottom"><span id="estMovCount">—</span></div></div>
+          <div class="table-panel"><div class="table-scroll"><table class="orders-table">
+            <thead><tr><th>ID</th><th>Data/hora</th><th>Tipo</th><th>Item</th><th>Quantidade</th><th>Saldo</th><th>Origem</th></tr></thead>
+            <tbody id="estMovBody"><tr><td colspan="7" class="empty">Carregando…</td></tr></tbody>
+          </table></div></div>
+        </div>
+
+        <div class="est-page" data-est-page="funcionarios">
+          <div class="pagehead est-sub-head"><div><h2>Funcionários autorizados a retirar material</h2><p>Na saída, quem retira é escolhido desta lista e assina na tela. Terceiros (motoristas, visitantes) só retiram informando documento.</p><small class="muted" id="funInfo"></small></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap"><label class="button ghost">⇧ Importar planilha<input type="file" accept=".xlsx,.xls,.csv" hidden onchange="funLerPlanilha(this)"></label><button class="button primary" onclick="funEditar()">＋ Novo funcionário</button></div></div>
+          <div id="funPrevia"></div>
+          <div class="fun-top"><input type="search" placeholder="Buscar nome ou matrícula" oninput="FUN.q=this.value;funRender()"><label style="font-size:12px;display:flex;gap:6px;align-items:center"><input type="checkbox" onchange="FUN.inativos=this.checked;funRender()"> Mostrar inativos</label></div>
+          <div class="table-panel"><div class="table-scroll"><table class="orders-table">
+            <thead><tr><th>Nome</th><th>Matrícula</th><th>Setor / função</th><th>Status</th><th>Retiradas</th><th>Última retirada</th><th>Ação</th></tr></thead>
+            <tbody id="funBody"><tr><td colspan="7" class="empty">Carregando…</td></tr></tbody></table></div></div>
+        </div>
+
+        <div class="est-page" data-est-page="sap">
+          <div class="pagehead est-sub-head"><div><h2>Inventário SAP · conciliação com pedidos de compra</h2><p>Importe a planilha "Inventário no relatório do depósito" exportada do SAP HANA. O saldo final de cada item = quantidade do SAP + o que entrou pelos pedidos de compra desde a última conciliação. Cada parte fica registrada com a sua origem.</p></div></div>
+          <div class="panel" style="margin-bottom:14px">
+            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:end">
+              <label class="picker-label">Planilha do SAP (.xlsx, .xls ou .csv)<input type="file" id="estSapFile" accept=".xlsx,.xls,.csv" onchange="estSapLer()"></label>
+              <label class="picker-label">Data-base do relatório<input type="date" id="estSapData"></label>
+              <label style="display:flex;gap:8px;align-items:center;font-size:12px;max-width:430px"><input type="checkbox" id="estSapSomar" checked onchange="estSapPrevia()"> Somar os recebimentos dos pedidos de compra ainda não conciliados (desmarque se a planilha do SAP já inclui essas notas)</label>
+            </div>
+            <div id="estSapStatus" class="est-hint" style="margin-top:10px">Selecione a planilha para ver a prévia. Nada é gravado antes de você confirmar.</div>
+          </div>
+          <div id="estSapPrevia"></div>
+          <div class="pagehead est-sub-head" style="margin-top:22px"><div><h2 style="font-size:15px">Histórico de conciliações</h2><p>Cada importação fica guardada com a planilha original, o usuário e as divergências encontradas.</p></div></div>
+          <div class="table-panel"><div class="table-scroll"><table class="orders-table">
+            <thead><tr><th>Importação</th><th>Data</th><th>Usuário</th><th>Itens</th><th>Valor SAP</th><th>+ Pedidos</th><th>Valor final</th><th>Divergências</th></tr></thead>
+            <tbody id="estSapHist"><tr><td colspan="8" class="empty">Carregando…</td></tr></tbody></table></div></div>
+        </div>
+
+        <div class="est-page" data-est-page="inventario">
+          <div class="pagehead est-sub-head"><div><h2>Inventário cíclico</h2><p>Conte o estoque por categoria, endereço ou itens escolhidos. Ao aplicar, as diferenças viram movimentos auditados.</p></div><button class="button primary" onclick="estNovaContagem()">＋ Nova contagem</button></div>
+          <div class="table-panel"><div class="table-scroll"><table class="orders-table">
+            <thead><tr><th>Contagem</th><th>Escopo</th><th>Itens</th><th>Divergências</th><th>Status</th><th>Criada</th><th>Ação</th></tr></thead>
+            <tbody id="estInvBody"><tr><td colspan="7" class="empty">Carregando…</td></tr></tbody></table></div></div>
+        </div>
+
+        <div class="est-page" data-est-page="reservas">
+          <div class="pagehead est-sub-head"><div><h2>Reservas de material</h2><p>Separe material para um PC ou obra. O saldo reservado não pode ser usado em outra saída.</p></div><button class="button primary" onclick="estNovaReserva()">＋ Nova reserva</button></div>
+          <div class="table-panel"><div class="table-scroll"><table class="orders-table">
+            <thead><tr><th>Reserva</th><th>PC</th><th>Itens</th><th>Status</th><th>Atualizada</th><th>Ação</th></tr></thead>
+            <tbody id="estResBody"><tr><td colspan="6" class="empty">Carregando…</td></tr></tbody></table></div></div>
+        </div>
+
+        <div class="est-page" data-est-page="reposicao">
+          <div class="pagehead est-sub-head"><div><h2>Reposição de estoque</h2><p>Itens no ponto de pedido, com quantidade sugerida até o estoque máximo.</p></div><button class="button ghost" onclick="estExportar('itens')">⇩ CSV</button></div>
+          <div class="table-panel"><div class="table-scroll"><table class="orders-table">
+            <thead><tr><th>Item</th><th>Saldo</th><th>Mínimo</th><th>Ponto de pedido</th><th>Máximo</th><th>Comprar</th><th>Fornecedor</th><th>Urgência</th></tr></thead>
+            <tbody id="estRepBody"><tr><td colspan="8" class="empty">Carregando…</td></tr></tbody></table></div></div>
+        </div>
+
+        <div class="est-page" data-est-page="abc">
+          <div class="pagehead est-sub-head"><div><h2>Curva ABC</h2><p>Classificação por valor movimentado em saídas no período.</p></div>
+            <div class="est-head-actions"><input type="date" id="estAbcDe" onchange="estLoadAbc()"><input type="date" id="estAbcAte" onchange="estLoadAbc()"></div></div>
+          <div class="table-panel"><div class="table-scroll"><table class="orders-table">
+            <thead><tr><th>Classe</th><th>Item</th><th>Valor movimentado</th><th>%</th><th>Acumulado</th></tr></thead>
+            <tbody id="estAbcBody"><tr><td colspan="5" class="empty">Carregando…</td></tr></tbody></table></div></div>
+        </div>
+
+        <div class="est-page" data-est-page="etiquetas">
+          <div class="pagehead est-sub-head"><div><h2>Etiquetas e identificação de materiais</h2><p>Etiquetas FOR-COM-001 (6 por folha A4) geradas do catálogo oficial de SKUs. Etiquetar não altera saldo nem gera movimentação.</p></div></div>
+          <div id="etqRoot"></div>
+        </div>
+
+        <div class="est-page" data-est-page="integridade">
+          <div class="panel"><div class="panel-heading"><div><h2>Proteção dos dados já lançados</h2><p>O módulo de estoque não altera conferências, fotos, NFs, entregas nem histórico de retificações.</p></div></div><div id="estIntegridadeBody">Carregando…</div></div>
+        </div>
+      </section>
+
+
+
+      <section id="page-ferramentas" class="page" aria-labelledby="ferTitle">
+        <div class="pagehead"><div><div class="eyebrow">CONTROLE DE EMPRÉSTIMOS</div><h1 id="ferTitle">Ferramentas</h1><p>Quem está com cada ferramenta, para qual obra e até quando. Toda retirada é assinada na tela por um funcionário cadastrado.</p></div>
+          <button class="button primary fer-btn-novo" onclick="ferNovoEmprestimo()">＋ Novo empréstimo</button></div>
+        <div class="imp-kpis" id="ferKpis"></div>
+        <div class="imp-filtros"><button class="est-tab active" data-fer-aba="abertos" onclick="ferAba('abertos')">Emprestadas agora</button><button class="est-tab" data-fer-aba="ferramentas" onclick="ferAba('ferramentas')">Ferramentas</button><button class="est-tab" data-fer-aba="historico" onclick="ferAba('historico')">Histórico de empréstimos</button></div>
+        <div id="ferConteudo"><div class="empty">Carregando…</div></div>
+      </section>
+
+      <section id="page-obras" class="page" aria-labelledby="obTitle">
+        <div class="pagehead"><div><div class="eyebrow">CONTROLE DE OBRAS</div><h1 id="obTitle">Obras</h1><p>Cada envio de material para a obra com a nota (remessa, romaneio) e as fotos do carregamento — e tudo o que o sistema já mandou para lá.</p></div>
+          <div class="est-head-actions"><button class="button ghost" onclick="obNovaObra()">＋ Nova obra</button><button class="button primary" onclick="obNovoEnvio()">＋ Novo envio</button></div></div>
+        <div class="imp-kpis" id="obKpis"></div>
+        <div class="ob-layout">
+          <aside class="ob-lista"><label class="searchbox"><span>⌕</span><input id="obBusca" type="search" placeholder="Buscar obra…" oninput="obRenderLista()"></label><div id="obLista"><div class="empty">Carregando…</div></div></aside>
+          <div class="ob-detalhe" id="obDetalhe"><div class="ob-vazio"><span>🏗</span><strong>Escolha uma obra</strong><small>Os envios aparecem aqui, com notas e fotos.</small></div></div>
+        </div>
+      </section>
+      <section id="page-locacoes" class="page" aria-labelledby="locTitle">
+        <div class="pagehead"><div><div class="eyebrow">EQUIPAMENTOS ALUGADOS DE FORNECEDORES</div><h1 id="locTitle">Locações</h1><p>Máquinas de solda, furadeiras, lixadeiras e outros equipamentos alugados de locadoras. Onde cada um está (matriz ou obra) e quanto custa — por equipamento, obra e fornecedor.</p></div>
+          <div class="est-head-actions"><button class="button ghost" onclick="locCsv()">⇩ Exportar CSV</button><button class="button primary" onclick="locNova()">＋ Nova locação</button></div></div>
+        <div class="imp-kpis loc-kpis" id="locKpis"></div>
+        <div id="locAlertas"></div>
+        <div class="imp-filtros"><button class="est-tab active" data-loc-aba="ativas" onclick="locAba('ativas')">Locados agora</button><button class="est-tab" data-loc-aba="custos" onclick="locAba('custos')">Custos por obra</button><button class="est-tab" data-loc-aba="fornecedores" onclick="locAba('fornecedores')">Fornecedores</button><button class="est-tab" data-loc-aba="historico" onclick="locAba('historico')">Histórico</button></div>
+        <div id="locConteudo"><div class="empty">Carregando…</div></div>
+        <datalist id="locLocais"></datalist><datalist id="locFornecedores"></datalist><datalist id="locEquipamentos"></datalist><datalist id="locCategorias"></datalist>
+      </section>
+
+      <section id="page-importados" class="page" aria-labelledby="impTitle">
+        <div class="pagehead"><div><div class="eyebrow">MATERIAIS CRÍTICOS</div><h1 id="impTitle">Importados</h1><p>Brocas, bases, bits e insumos importados da China. Saldo, consumo, cobertura e histórico com obra e solicitante.</p><small class="muted" id="impCargaInfo"></small></div>
+          <div class="imp-busca"><input type="search" placeholder="Buscar produto ou código" oninput="IMP.busca=this.value;impRender()"></div></div>
+        <div class="imp-kpis" id="impKpis"></div>
+        <div class="imp-filtros"><button class="est-tab active" data-imp-f="todos" onclick="impFiltro('todos')">Todos</button><button class="est-tab" data-imp-f="alerta" onclick="impFiltro('alerta')">Precisam de ação</button><button class="est-tab" data-imp-f="COMPRAR" onclick="impFiltro('COMPRAR')">Comprar</button><button class="est-tab" data-imp-f="FABRICAR" onclick="impFiltro('FABRICAR')">Fabricar</button><button class="est-tab" data-imp-f="SEM ESTOQUE" onclick="impFiltro('SEM ESTOQUE')">Sem estoque</button><button class="est-tab" data-imp-f="OK" onclick="impFiltro('OK')">OK</button></div>
+        <div class="panel imp-carga" id="impCargaBox" hidden><h3>Carregar a planilha CONTROLE IMPORTADOS</h3><p class="muted">Uma única vez: traz produtos, ponto de disparo, estoque recomendado e todo o histórico (data, obra, solicitante). Depois os lançamentos são feitos aqui.</p><input type="file" accept=".xlsx,.xls" onchange="impLerPlanilha(this)"><div id="impCargaPrevia"></div></div>
+        <div class="imp-grid" id="impGrid"><div class="empty">Carregando…</div></div>
+        <datalist id="impObras"></datalist>
+        <div class="modal-bg" id="impModal" onclick="if(event.target===this)impFechar()"><div class="modal imp-modal"><div class="modal-head"><h2 id="impFichaTitulo">Item</h2><button class="icon-btn" onclick="impFechar()">×</button></div><div class="modal-body" id="impFichaBody"></div></div></div>
+      </section>
+
+      <section id="page-coletas" class="page" aria-labelledby="coletasTitle">
+        <div class="pagehead">
+          <div><div class="eyebrow">CONTROLE INDEPENDENTE</div><h1 id="coletasTitle">Coletas</h1>
+          <p>Agenda, mapa e rota das retiradas nos fornecedores. Módulo de controle — não movimenta pedidos nem estoque.</p></div>
+          <div class="est-head-actions">
+            <a class="button ghost" href="motorista.html" target="_blank" rel="noopener">🚚 Modo motorista</a>
+            <button class="button ghost" onclick="colGeocodarTodas()">⌖ Localizar pendentes</button>
+            <button class="button ghost" onclick="colImportarPedidos()" title="PDF do pedido ou ZIP do WhatsApp — cria só coletas">⇪ Importar pedidos</button>
+            <button class="button primary" onclick="colNovaColeta()">＋ Nova coleta</button>
+          </div>
+        </div>
+
+        <div class="col-pipe" id="colKpis" role="tablist" aria-label="Situação das coletas"></div>
+
+        <div class="col-layout">
+          <article class="panel col-map-panel">
+            <div class="panel-heading"><div><h2>Mapa dos fornecedores</h2><p id="colMapSub">Clique numa parada para abrir os detalhes</p></div>
+              <select id="colTiles" onchange="colTrocarTiles()" aria-label="Camada do mapa">
+                <option value="osm">OpenStreetMap</option><option value="voyager">CARTO Voyager (requer chave)</option><option value="hot">OSM Humanitário</option>
+              </select></div>
+            <div id="colMap" class="col-map"></div>
+            <div class="col-map-legend" id="colLegend"></div>
+          </article>
+
+          <article class="panel col-route-panel" id="colRoutePanel">
+            <div class="panel-heading"><div><h2 id="colRouteTitulo">Rota de coleta</h2><p id="colRouteSub">0 paradas</p></div>
+              <span class="col-route-badge" id="colRouteBadge" hidden></span></div>
+            <form class="col-pcs" id="colPcsForm" onsubmit="colRotaPorPcs(event)">
+              <label for="colPcs">Números dos pedidos (PC)</label>
+              <div><input id="colPcs" inputmode="numeric" autocomplete="off" placeholder="Ex.: 4980 4985 4990"><button class="button primary small" type="submit">Montar rota</button></div>
+              <small>Separe por espaço, vírgula ou linha. PC sem coleta é criado com o endereço do fornecedor.</small>
+            </form>
+            <div id="colRouteMotorista"></div>
+            <ol id="colRouteList" class="col-route-list"><li class="col-empty">Carregando…</li></ol>
+            <div class="col-route-foot" id="colRouteAct"></div>
+          </article>
+        </div>
+
+        <div class="filterpanel" style="margin-top:16px">
+          <div class="filterrow col-filterrow">
+            <label class="searchbox"><span>⌕</span><input id="colQ" type="search" placeholder="Buscar PC, fornecedor, endereço…" oninput="colFiltro()"></label>
+            <select id="colStatusFiltro" onchange="colFiltro()" aria-label="Status"><option value="">Todos os status</option><option value="ABERTAS">Somente abertas</option><option value="ATRASADAS">Atrasadas</option><option value="SEM_LOCAL">Sem localização</option><option value="AGUARDANDO">Aguardando retirada</option><option value="ROTA">Rota de coleta</option><option value="ESTOQUE">Estoque</option><option value="FABRICACAO">Fabricação</option><option value="COLETADO">Coletado</option><option value="TRANSPORTE">Em transporte</option><option value="CHEGOU">Chegou ao almoxarifado</option></select>
+            <input type="date" id="colDiaFiltro" onchange="colFiltro()" aria-label="Dia agendado">
+            <select id="colOrdem" onchange="colFiltro()" aria-label="Ordenar"><option value="prioridade">Prioridade e data</option><option value="fornecedor">Fornecedor A–Z</option></select>
+          </div>
+        </div>
+
+        <div class="table-panel" style="margin-top:12px"><div class="table-scroll"><table class="orders-table col-table">
+          <thead><tr><th class="col-ck"><input type="checkbox" id="colSelTodas" aria-label="Marcar todas as abertas com local" onchange="colMarcarTodas(this.checked)"></th><th>Coleta</th><th>Fornecedor / endereço</th><th>Agendada</th><th>Status</th><th>Local</th><th>Ação</th></tr></thead>
+          <tbody id="colBody"><tr><td colspan="7" class="empty">Carregando coletas…</td></tr></tbody>
+        </table></div></div>
+
+        <article class="panel col-hist" id="colHist">
+          <div class="panel-heading"><div><h2>Rotas realizadas</h2><p id="colHistSub">Quantas rotas, km e tempo de deslocamento no período</p></div>
+            <div class="col-hist-ctl"><select id="colHistMes" onchange="colCarregarHist()" aria-label="Mês"></select><button class="button ghost small" onclick="colHistExcel()">▦ Excel</button></div></div>
+          <div class="col-hist-kpis" id="colHistKpis"></div>
+          <div class="table-scroll"><table class="orders-table"><thead><tr><th>Rota</th><th>Motorista</th><th>Paradas</th><th>Coletadas</th><th>Km</th><th>Deslocamento</th><th>Duração total</th></tr></thead><tbody id="colHistBody"></tbody></table></div>
+        </article>
+      </section>
+      <section id="page-notificacoes" class="page" aria-labelledby="notifTitle">
+        <div class="pagehead">
+          <div><div class="eyebrow">AVISOS EM TEMPO REAL</div><h1 id="notifTitle">Notificações</h1>
+          <p>Toda conferência finalizada avisa <strong>todos os operadores logados</strong> — em qualquer tela e em qualquer dispositivo.</p></div>
+          <div class="est-head-actions"><button class="button ghost" onclick="ntTestar()">🔔 Enviar aviso de teste</button><button class="button primary" onclick="ntAtivarNavegador()">Ativar neste dispositivo</button></div>
+        </div>
+        <div class="nt-config">
+          <div class="nt-config-grid">
+            <article class="nt-card">
+              <h2>Este dispositivo</h2>
+              <p>As preferências ficam salvas neste navegador e valem para o recebimento de todos os avisos.</p>
+              <label class="nt-switch"><span>Som ao receber aviso</span><input type="checkbox" id="ntPrefSom" onchange="ntSalvarPrefs()"></label>
+              <label class="nt-switch"><span>Notificação do navegador (aba aberta)</span><input type="checkbox" id="ntPrefNavegador" onchange="ntSalvarPrefs()"></label>
+              <label class="nt-switch"><span>Web Push (aba fechada)</span><span id="ntPushState" class="nt-pill">—</span></label>
+              <div class="nt-tools" style="border:0;background:transparent;padding:8px 0 0">
+                <button class="button ghost small" onclick="ntTestarSom()">Ouvir o som</button>
+                <button class="button ghost small" onclick="ntTestar()">Testar aviso</button>
+              </div>
+              <p id="ntConfigStatus" class="nt-foot" style="border:0;padding:8px 0 0"></p>
+            </article>
+            <article class="nt-card">
+              <h2>Quais avisos receber</h2>
+              <p>Desmarque o que não é útil para o seu trabalho. A conferência finalizada é o aviso principal.</p>
+              <div class="nt-cats" id="ntCats"></div>
+            </article>
+          </div>
+          <article class="nt-card">
+            <h2>Operadores logados</h2>
+            <p>Quem está com o sistema aberto recebe o aviso imediatamente. Quem estiver offline recebe ao voltar.</p>
+            <div id="ntDevices">Carregando…</div>
+          </article>
+          <article class="nt-card">
+            <h2>Como o aviso chega</h2>
+            <p>Quatro canais independentes — se um falhar, os outros continuam.</p>
+            <div class="nt-table-scroll"><table class="nt-table"><thead><tr><th>Canal</th><th>Quando aparece</th><th>Depende de</th></tr></thead><tbody>
+              <tr><td>Sino com contador</td><td>Sempre, em qualquer tela</td><td>Nada (consulta a cada 5s)</td></tr>
+              <tr><td>Banner no topo</td><td>Ao finalizar uma conferência</td><td>Nada</td></tr>
+              <tr><td>Som</td><td>Junto com o banner</td><td>Preferência ativada neste dispositivo</td></tr>
+              <tr><td>Notificação do sistema / Web Push</td><td>Aba aberta ou fechada</td><td>Permissão do navegador + HTTPS</td></tr>
+            </tbody></table></div>
+          </article>
+        </div>
+      </section>
+      <section id="page-exportacao" class="page" aria-labelledby="expTitle">
+        <div class="pagehead xp-head"><div><div class="eyebrow">DOCUMENTAÇÃO & CONTROLE</div><h1 id="expTitle">Central de exportação</h1><p>Escolha o relatório, filtre os pedidos e baixe em PDF, Excel ou CSV.</p></div>
+          <div class="xp-stats" id="xpStats" aria-live="polite"></div></div>
+        <select id="exportMode" hidden onchange="renderExportPreview()"><option value="manual">manual</option><option value="completo">completo</option><option value="insumos">insumos</option></select>
+        <select id="exportScope" hidden onchange="renderExportPreview()"><option value="todos">todos</option><option value="filtrados">filtrados</option><option value="recebidos">recebidos</option><option value="selecionados">selecionados</option></select>
+        <div class="xp-grid">
+          <div class="xp-config">
+            <article class="panel xp-step"><div class="xp-step-head"><span class="xp-num">1</span><div><h2>Tipo de relatório</h2><p>O que vai aparecer em cada linha</p></div></div>
+              <div class="xp-models" id="xpModels" role="radiogroup" aria-label="Tipo de relatório"></div></article>
+            <article class="panel xp-step"><div class="xp-step-head"><span class="xp-num">2</span><div><h2>Quais pedidos</h2><p>Defina o conjunto e refine se precisar</p></div></div>
+              <div class="xp-scopes" id="xpScopes" role="radiogroup" aria-label="Pedidos incluídos"></div>
+              <div class="xp-refine">
+                <label class="xp-field xp-search"><span>Buscar</span><input id="xpBusca" type="search" placeholder="PC, fornecedor, NF, solicitante…" oninput="renderExportPreview()"></label>
+                <label class="xp-field"><span>Obra / setor</span><select id="xpDestino" onchange="renderExportPreview()"><option value="">Todos</option></select></label>
+                <label class="xp-field"><span>Situação</span><select id="xpSituacao" onchange="renderExportPreview()"><option value="">Todas</option><option value="recebido">Recebido total</option><option value="parcial">Recebido parcial</option><option value="pendente">Aguardando</option><option value="urgente">Somente urgentes</option></select></label>
+                <label class="xp-field"><span>Recebido de</span><input id="xpDe" type="date" onchange="renderExportPreview()"></label>
+                <label class="xp-field"><span>até</span><input id="xpAte" type="date" onchange="renderExportPreview()"></label>
+                <button type="button" class="xp-clear" id="xpLimpar" onclick="xpLimpar()" hidden>✕ Limpar refinamentos</button>
+              </div></article>
+            <article class="panel xp-step xp-actions-panel"><div class="xp-step-head"><span class="xp-num">3</span><div><h2>Baixar</h2><p id="exportTotals" class="xp-totals"></p></div></div>
+              <div class="xp-actions" id="xpActions">
+                <button class="xp-act primary" onclick="printReport()"><b>▤</b><span><strong>PDF / Imprimir</strong><small>A4 paisagem, pronto para assinar</small></span></button>
+                <button class="xp-act" onclick="xpExcel()"><b>▦</b><span><strong>Excel (.xlsx)</strong><small>Planilha com filtros e colunas ajustadas</small></span></button>
+                <button class="xp-act" onclick="downloadCSV()"><b>⇩</b><span><strong>CSV</strong><small>Para importar em outros sistemas</small></span></button>
+                <button class="xp-act wa" onclick="openWA('resumo')"><b>◉</b><span><strong>Resumo WhatsApp</strong><small>Texto curto para o grupo</small></span></button>
+              </div>
+              <p class="xp-note">✓ Campos vazios continuam vazios — nada é preenchido com dados inventados.</p></article>
+          </div>
+          <article class="panel export-preview xp-preview"><div class="panel-heading"><div><h2>Pré-visualização</h2><p id="previewNote">Primeiros registros do relatório</p></div>
+              <div class="xp-prev-tools"><span class="panel-caption" id="xpCols"></span><button class="button ghost small" id="xpMais" onclick="xpMaisLinhas()">Ver mais linhas</button></div></div>
+            <div class="preview-scroller"><table class="preview-table"><thead id="previewHead"></thead><tbody id="previewRows"></tbody></table></div>
+            <p class="export-muted">A impressão e os arquivos levam todas as linhas do conjunto escolhido, mesmo que a pré-visualização mostre só uma parte.</p></article>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+<div class="drawer-mask" id="drawerMask" onclick="closeDrawer()"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-label="Detalhes do pedido" aria-hidden="true"><div class="drawer-head"><div><div class="eyebrow">CONFERÊNCIA DE RECEBIMENTO</div><h2 id="drawerTitle">Pedido</h2><span id="drawerSubtitle"></span></div><button class="icon-btn" aria-label="Fechar detalhes" onclick="closeDrawer()">✕</button></div><div class="drawer-content" id="drawerContent"></div><div class="drawer-foot"><span id="drawerSaveHint">Data e hora confirmadas automaticamente ao finalizar</span><div class="drawer-foot-actions"><button class="button ghost" onclick="closeDrawer()">Fechar</button><button id="receiptActionBtn" class="button primary" onclick="receiptAction()">▶ Iniciar recebimento</button></div></div></aside>
+<div class="modal-bg" id="waModal" onclick="if(event.target===this)closeWA()"><div class="modal"><div class="modal-head"><h2>Relatório para WhatsApp</h2><button class="icon-btn" onclick="closeWA()">✕</button></div><div class="modal-body"><label class="form-line">Conteúdo<select id="waScope" onchange="refreshWA()"><option value="selecionados">Pedidos selecionados</option><option value="recebidos">Pedidos recebidos</option><option value="resumo">Resumo geral</option></select></label><pre id="waPre"></pre></div><div class="modal-actions"><button class="button ghost" onclick="copyWA()">Copiar texto</button><button class="button wa" onclick="sendWA()">Abrir WhatsApp</button></div></div></div>
+<div class="modal-bg" id="nfModal" role="dialog" aria-modal="true" aria-labelledby="nfTitle"><div class="modal nf-dialog"><div class="modal-head"><div><h2 id="nfTitle">Conferir dados da nota fiscal</h2><small id="nfMethodLabel">Dados sugeridos — revise antes de gravar</small></div><button class="icon-btn" aria-label="Fechar revisão" onclick="closeNFPreview()">✕</button></div><div class="modal-body"><div id="nfMessages" class="nf-feedback"></div><div id="nfIa" class="nf-ia"></div><div class="form-grid nf-preview-grid"><label class="form-line"><span>Nº da NF</span><input id="nfNum" autocomplete="off"></label><label class="form-line"><span>Série</span><input id="nfSerie"></label><label class="form-line"><span>Chave (44 dígitos)</span><input id="nfKey" inputmode="numeric" maxlength="44"></label><label class="form-line"><span>CNPJ do emitente</span><input id="nfCnpj"></label><label class="form-line full"><span>Fornecedor (razão social)</span><input id="nfSupplier"></label><label class="form-line"><span>Emissão</span><input id="nfEmission" type="date"></label><label class="form-line"><span>Valor da NF (R$)</span><input id="nfTotal" inputmode="decimal"></label><label class="form-line full"><span>Itens encontrados (somente leitura / referência)</span><textarea id="nfProducts" rows="4"></textarea></label><label class="form-line full"><span>Observação sobre a extração</span><small id="nfConfidence">Os dados serão conferidos pelo responsável.</small></label><label class="nf-check full"><input type="checkbox" id="nfReplaceSupplier"> Substituir fornecedor do pedido pelo encontrado na NF</label></div></div><div class="modal-actions"><button class="button ghost" onclick="closeNFPreview()">Cancelar</button><button class="button primary" id="nfSaveBtn" onclick="confirmNFPreview()">✓ Confirmar e preencher</button></div></div></div>
+<div class="modal-bg" id="scanModal" role="dialog" aria-modal="true" aria-labelledby="scanTitle"><div class="modal nf-dialog"><div class="modal-head"><h2 id="scanTitle">Leitura da chave / QR Code</h2><button class="icon-btn" onclick="closeScan()">✕</button></div><div class="modal-body"><video id="scanVideo" autoplay muted playsinline class="scan-video"></video><p class="inline-hint" id="scanStatus">Aponte a câmera para o QR Code da NFC-e ou o código de barras do DANFE.</p><div class="photo-actions"><button class="button ghost small" onclick="chooseScanImage()">Ler imagem da galeria</button></div></div><div class="modal-actions"><button class="button ghost" onclick="closeScan()">Fechar câmera</button></div></div></div>
+<input type="file" id="fileXml" accept=".xml,text/xml,application/xml" hidden>
+<input type="file" id="fileScan" accept="image/*" hidden>
+<input type="file" id="fileDanfeIA" accept="image/*,application/pdf" capture="environment" hidden onchange="nfFotoIASelecionada(event)">
+
+<!-- Galeria de anexos: leitura independente do estado da conferência. -->
+<div class="modal-bg attachment-modal" id="attachmentViewer" role="dialog" aria-modal="true" aria-label="Visualização dos anexos" aria-hidden="true" onclick="if(event.target===this)closeAttachmentViewer()">
+  <section class="attachment-dialog">
+    <header class="attachment-dialog-head"><div><h2 id="attachmentViewerTitle">Anexo</h2><small id="attachmentViewerCounter"></small></div><button type="button" id="attachmentViewerClose" class="icon-btn" aria-label="Fechar visualização" onclick="closeAttachmentViewer()">✕</button></header>
+    <div id="attachmentViewerContent" class="attachment-view-content" aria-live="off"></div>
+    <p id="attachmentViewerMessage" class="attachment-view-message" role="status"></p>
+    <footer class="attachment-dialog-actions"><button type="button" id="attachmentViewerPrev" class="button ghost small" onclick="moveAttachmentViewer(-1)">← Anterior</button><a id="attachmentViewerOpen" class="button ghost small" target="_blank" rel="noopener noreferrer">Abrir em outra aba</a><button type="button" id="attachmentViewerNext" class="button ghost small" onclick="moveAttachmentViewer(1)">Próximo →</button></footer>
+  </section>
+</div>
+
+<div class="tutorial-backdrop" id="tutorialBackdrop" hidden role="presentation">
+  <section class="tutorial-modal" role="dialog" aria-modal="true" aria-labelledby="tutorialTitle" aria-describedby="tutorialDescription" tabindex="-1">
+    <div class="tutorial-top"><span class="tutorial-eyebrow">GUIA DE OPERAÇÃO · RECEBIMENTO DRILLING</span><button type="button" class="icon-btn" id="tutorialClose" onclick="closeTutorial()" aria-label="Fechar tutorial">✕</button></div>
+    <div class="tutorial-hero"><div class="tutorial-illustration" id="tutorialIcon" aria-hidden="true">📦</div><div><p class="tutorial-step" id="tutorialCounter">ETAPA 1 DE 8</p><h2 id="tutorialTitle">Bem-vindo ao recebimento</h2><p id="tutorialDescription">Acompanhe o fluxo com segurança.</p></div></div>
+    <div class="tutorial-progress" id="tutorialProgress" aria-label="Progresso do tutorial"></div>
+    <div class="tutorial-content" id="tutorialContent"></div>
+    <div class="tutorial-bottom"><button class="button ghost small" type="button" onclick="closeTutorial()">Pular tutorial</button><div class="tutorial-bottom-right"><button class="button ghost" type="button" id="tutorialBack" onclick="tutorialPrevious()">← Voltar</button><button class="button primary" type="button" id="tutorialNext" onclick="tutorialNext()">Próximo →</button></div></div>
+  </section>
+</div>
+
+
+<div class="modal-bg" id="estNovaEntrada" onclick="if(event.target===this)this.classList.remove('on')"><div class="modal"><div class="modal-head"><h2>Gerar entrada a partir de um PC</h2><button class="icon-btn" onclick="estEl('estNovaEntrada').classList.remove('on')">✕</button></div><div class="modal-body"><label class="form-line">Número do PC<input id="estNovaPc" type="number" min="1" placeholder="Ex.: 4899"></label><p class="est-hint">As linhas e quantidades pedidas do PC são copiadas para a entrada pendente. O saldo só muda após a conferência e o recebimento.</p></div><div class="modal-actions"><button class="button ghost" onclick="estEl('estNovaEntrada').classList.remove('on')">Cancelar</button><button class="button primary" onclick="estGerarEntradaPedido()">Gerar entrada</button></div></div></div>
+
+<div class="modal-bg" id="estEntradaModal" onclick="if(event.target===this)estFecharEntrada()"><div class="modal est-modal-wide"><div class="modal-head"><div><h2 id="estEntradaTitle">Conferência</h2><small id="estEntradaSub"></small></div><button class="icon-btn" onclick="estFecharEntrada()">✕</button></div><div class="modal-body"><div id="estEntradaStatus" class="est-status-line"></div><div class="est-table-scroll"><table class="orders-table est-conf-table"><thead><tr><th>Material</th><th>UN</th><th>Qtd pedida</th><th>Qtd conferida</th><th>Motivo da divergência</th><th>Situação</th></tr></thead><tbody id="estEntradaLinhas"></tbody></table></div><p class="est-hint">A conferência exige quantidade em cada linha. Divergência (quantidade menor que a pedida) exige motivo. “Não chegou” registra zero explicitamente.</p></div><div class="modal-actions" id="estEntradaFoot"></div></div></div>
+
+<div class="modal-bg" id="estManualModal" onclick="if(event.target===this)this.classList.remove('on')"><div class="modal est-modal-wide"><div class="modal-head"><h2>Entrada manual no estoque</h2><button class="icon-btn" onclick="estEl('estManualModal').classList.remove('on')">✕</button></div><form id="estManualForm" onsubmit="estSalvarManual(event)"><div class="modal-body"><div class="form-grid"><label class="form-line"><span>Fornecedor</span><input id="estManualForn" maxlength="200"></label><label class="form-line"><span>Nº NF</span><input id="estManualNF" maxlength="60"></label><label class="form-line full"><span>Observação</span><input id="estManualObs" maxlength="1000"></label></div><div class="est-lines-head"><strong>Itens</strong><button type="button" class="button ghost small" onclick="estManualLinha()">+ Linha</button></div><div id="estManualLinhas" class="est-lines"></div><p class="est-hint">A entrada manual já dá saldo ao item (útil para devolução, sobra de obra ou compra sem PC). Fica registrada com o seu usuário.</p></div><div class="modal-actions"><button type="button" class="button ghost" onclick="estEl('estManualModal').classList.remove('on')">Cancelar</button><button type="submit" class="button primary">Registrar entrada</button></div></form></div></div>
+
+<div class="modal-bg" id="estSaidaModal" onclick="if(event.target===this)estFecharSaida()"><div class="modal est-modal-wide"><div class="modal-head"><h2>Saída de material</h2><button class="icon-btn" onclick="estFecharSaida()">✕</button></div><form id="estSaidaForm" onsubmit="estSalvarSaida(event)"><div class="modal-body"><div class="est-busca"><label class="form-line full"><span>Buscar material ou pedido</span><input id="estSaidaBusca" type="search" autocomplete="off" maxlength="120" placeholder="PC (ex.: 1000), SKU ou nome" enterkeyhint="search" inputmode="search" oninput="estBuscaDigitou()" onkeydown="estBuscaTecla(event)"></label><div id="estSaidaBuscaRes" class="est-busca-res" hidden></div></div><div class="form-grid"><label class="form-line"><span>Setor *</span><select id="estSaidaSetor" required onchange="estSaidaSetorMudou()"><option value="">Selecione…</option><option value="OBRA">Obra</option><option value="CALDEIRARIA">Caldeiraria</option><option value="MANUTENCAO">Manutenção</option><option value="EXPEDICAO">Expedição</option><option value="LOGISTICA">Logística</option><option value="ADM">ADM</option></select></label><label class="form-line" id="estSaidaObraBox" hidden><span>Qual obra? *</span><select id="estSaidaObra" onchange="estSaidaSetorMudou()"><option value="">Selecione a obra…</option></select></label><label class="form-line" id="estSaidaObraOutraBox" hidden><span>Nome da obra *</span><input id="estSaidaObraOutra" maxlength="80"></label><label class="form-line"><span>Solicitante</span><input id="estSaidaSolicitante" maxlength="160"></label><label class="form-line"><span>Ordem de serviço (OS) <small>— opcional</small></span><input id="estSaidaOS" maxlength="40" autocomplete="off" placeholder="Ex.: 1234 (deixe vazio se não houver)"></label><label class="form-line"><span>Equipamento aplicado <small>— opcional</small></span><input id="estSaidaEquip" maxlength="120" list="estEquipLista" autocomplete="off" placeholder="Digite ou escolha — ex.: Perfuratriz SR-30 · PAT 800509"></label><small id="estSaidaOSInfo" class="est-sub form-line full" hidden></small><datalist id="estEquipLista"></datalist><label class="form-line full"><span>Finalidade</span><input id="estSaidaFinalidade" maxlength="400"></label></div><div class="est-lines-head"><strong>Materiais</strong><button type="button" class="button ghost small" onclick="estSaidaLinha()">+ Linha</button></div><div id="estSaidaLinhas" class="est-lines"></div><p class="est-hint">A saída é validada linha a linha: se algum material não tiver saldo disponível, nada é debitado.</p></div><div class="modal-actions"><button type="button" class="button ghost" onclick="estFecharSaida()">Cancelar</button><button type="submit" class="button primary">Registrar saída</button></div></form></div></div>
+
+<div class="modal-bg" id="npModal" aria-labelledby="npTitle">
+ <div class="modal" style="max-width:1000px;width:min(1000px,96vw)">
+  <div class="modal-head"><h2 id="npTitle">Cadastrar pedido de compra manualmente</h2><button class="icon-btn" type="button" aria-label="Fechar" onclick="npFechar()">✕</button></div>
+  <form id="npForm"><div class="modal-body">
+   <p class="est-hint">Use quando o PC <b>não veio no ZIP do WhatsApp</b> nem em PDF avulso: anotação de papel, telefone, e-mail ou pedido urgente. O pedido entra na mesma base, com o mesmo controle de conferência, fotos e nota fiscal. Se o PC já existir, o sistema avisa e não sobrescreve nada.</p>
+   <div class="form-grid">
+    <label class="form-line"><span>Nº do PC (pedido) *</span><input id="npPc" inputmode="numeric" maxlength="8" required></label>
+    <label class="form-line"><span>Fornecedor *</span><input id="npFornecedor" maxlength="280" required list="npFornList"><datalist id="npFornList"></datalist></label>
+    <label class="form-line"><span>Solicitante</span><input id="npSolicitante" maxlength="280"></label>
+    <label class="form-line"><span>Data do pedido</span><input id="npData" type="date"></label>
+    <label class="form-line"><span>Origem da entrega</span><select id="npOrigem"><option value="">— informar na conferência —</option><option value="COLETA_DRILLING">Coleta interna Drilling</option><option value="ENTREGA_FORNECEDOR">Entrega do fornecedor</option></select></label>
+    <label class="form-line"><span>Chegada (opcional)</span><select id="npChegada"><option value="">— ainda sem informação —</option><option value="NÃO">Não chegou</option><option value="EM TRÂNSITO">Em trânsito</option><option value="N/A">Não se aplica</option></select></label>
+    <label class="form-line full"><span>Observações</span><textarea id="npObs" maxlength="12000" rows="2" placeholder="Ex.: pedido urgente para o GP02, combinado por telefone com o fornecedor."></textarea></label>
+   </div>
+   <div class="form-grid" style="margin-top:10px">
+    <label class="form-line"><span>Nº da NF</span><input id="npNumeroNF" maxlength="60"></label>
+    <label class="form-line"><span>Série</span><input id="npSerieNF" maxlength="60"></label>
+    <label class="form-line"><span>Valor da NF (R$)</span><input id="npValor" maxlength="60" inputmode="decimal"></label>
+    <label class="form-line"><span>Emissão da NF</span><input id="npEmissao" maxlength="60" placeholder="dd/mm/aaaa"></label>
+    <label class="form-line"><span>CNPJ do emitente</span><input id="npCnpj" inputmode="numeric" maxlength="18" placeholder="14 dígitos"></label>
+    <label class="form-line"><span>Chave da NF</span><input id="npChave" inputmode="numeric" maxlength="48" placeholder="44 dígitos"></label>
+    <label class="form-line full"><span>Itens fiscais / texto da nota</span><textarea id="npItensNF" rows="2" maxlength="12000"></textarea></label>
+   </div>
+   <div style="margin-top:16px"><div class="est-lines-head"><strong>Insumos do pedido</strong>
+     <span class="est-head-actions"><button type="button" class="button ghost small" onclick="npLinha()">+ Insumo</button></span></div>
+    <div class="table-panel"><div class="table-scroll"><table class="orders-table"><thead><tr><th style="width:110px">Código</th><th>Descrição do material</th><th style="width:90px">Un.</th><th style="width:120px">Qtd. pedida</th><th style="width:44px"></th></tr></thead>
+      <tbody id="npLinhas"></tbody></table></div></div>
+    <p class="est-hint" id="npResumo"></p>
+    <label class="form-line full" style="margin-top:10px"><span>Ou cole a descrição do material (uma linha por item)</span>
+      <textarea id="npMaterial" rows="4" maxlength="12000" placeholder="1) FILTRO DE OLEO W940/18 MANN-FILTER&#10;2) CORREIA 3967026 CUMMINS"></textarea></label>
+    <button type="button" class="button ghost small" style="margin-top:8px" onclick="npLerMaterial()">⇩ Converter em insumos</button>
+   </div>
+   <p class="wa-import-message error" id="npErro" role="alert" aria-live="assertive"></p>
+  </div>
+  <div class="modal-actions"><button type="button" class="button ghost" onclick="npFechar()">Cancelar</button><button class="button primary" type="submit" id="npSalvar">Cadastrar pedido</button></div>
+  </form>
+ </div>
+</div>
+
+<div class="modal-bg" id="estItemModal" onclick="if(event.target===this)estFecharItem()"><div class="modal"><div class="modal-head"><h2 id="estItemFormTitle">Item de estoque</h2><button class="icon-btn" onclick="estFecharItem()">✕</button></div><form id="estItemForm" onsubmit="estSalvarItem(event)"><div class="modal-body"><div class="form-grid"><label class="form-line"><span>Código</span><input id="estItemCodigo" maxlength="70"></label><label class="form-line"><span>Unidade</span><input id="estItemUn" maxlength="12" value="UN"></label><label class="form-line full"><span>Descrição</span><input id="estItemDesc" maxlength="600" required></label><label class="form-line"><span>Categoria</span><input id="estItemCat" maxlength="80"></label><label class="form-line"><span>Localização</span><input id="estItemLoc" maxlength="80"></label><label class="form-line"><span>Estoque mínimo</span><input id="estItemMin" type="number" min="0" step="any" value="0"></label><label class="form-line"><span>Ponto de pedido</span><input id="estItemPonto" type="number" min="0" step="any" value="0"></label><label class="form-line"><span>Estoque máximo</span><input id="estItemMax" type="number" min="0" step="any" value="0"></label><label class="form-line full"><span>Fornecedor padrão</span><input id="estItemForn" maxlength="200"></label></div></div><div class="modal-actions"><button type="button" class="button ghost" onclick="estFecharItem()">Cancelar</button><button type="submit" class="button primary">Salvar item</button></div></form></div></div>
+
+<div class="modal-bg" id="estFicha" onclick="if(event.target===this)estFecharFicha()"><div class="modal est-modal-wide"><div class="modal-head"><h2 id="estFichaTitle">Ficha do item</h2><button class="icon-btn" onclick="estFecharFicha()">✕</button></div><div class="modal-body" id="estFichaBody"></div><div class="modal-actions"><button class="button ghost" onclick="estFecharFicha()">Fechar</button></div></div></div>
+<div class="modal-bg" id="estInvModal" onclick="if(event.target===this)estFecharInv()"><div class="modal est-modal-wide"><div class="modal-head"><div><h2 id="estInvTitle">Contagem de inventário</h2><small id="estInvSub"></small></div><button class="icon-btn" onclick="estFecharInv()">✕</button></div><div class="modal-body"><div id="estInvStatus" class="est-status-line"></div><div class="est-table-scroll"><table class="orders-table"><thead><tr><th>Item</th><th>Endereço</th><th>Sistema</th><th>Contado</th><th>Diferença</th></tr></thead><tbody id="estInvLinhas"></tbody></table></div><p class="est-hint">Ao aplicar, cada diferença gera um movimento “Ajuste por contagem de inventário”. Nada é apagado: o histórico fica no extrato do item.</p></div><div class="modal-actions" id="estInvFoot"></div></div></div>
+
+<div class="modal-bg" id="estInvNova" onclick="if(event.target===this)this.classList.remove('on')"><div class="modal"><div class="modal-head"><h2>Nova contagem</h2><button class="icon-btn" onclick="estEl('estInvNova').classList.remove('on')">✕</button></div><div class="modal-body"><div class="form-grid"><label class="form-line"><span>Escopo</span><select id="estInvEscopo" onchange="estEl('estInvFiltro').disabled=(this.value==='TODOS')"><option value="TODOS">Todos os itens</option><option value="CATEGORIA">Por categoria</option><option value="LOCALIZACAO">Por endereço</option></select></label><label class="form-line"><span>Filtro</span><input id="estInvFiltro" placeholder="Ex.: FILTROS ou A1-P2" disabled></label></div></div><div class="modal-actions"><button class="button ghost" onclick="estEl('estInvNova').classList.remove('on')">Cancelar</button><button class="button primary" onclick="estCriarContagem()">Iniciar contagem</button></div></div></div>
+
+<div class="modal-bg" id="estResModal" onclick="if(event.target===this)this.classList.remove('on')"><div class="modal"><div class="modal-head"><h2>Nova reserva</h2><button class="icon-btn" onclick="estEl('estResModal').classList.remove('on')">✕</button></div><form id="estResForm" onsubmit="estSalvarReserva(event)"><div class="modal-body"><label class="form-line"><span>PC / obra</span><input id="estResPc" type="number" min="1" required></label><label class="form-line"><span>Material</span><input list="estSaidaDatalist" id="estResDesc" required></label><label class="form-line"><span>Quantidade</span><input id="estResQtd" type="number" min="0.001" step="any" required></label><p class="est-hint">A reserva reduz o saldo disponível; o material fica separado até a saída ou o cancelamento.</p></div><div class="modal-actions"><button type="button" class="button ghost" onclick="estEl('estResModal').classList.remove('on')">Cancelar</button><button type="submit" class="button primary">Reservar</button></div></form></div></div>
+
+<datalist id="estSaidaDatalist"></datalist>
+
+
+<div class="modal-bg" id="colModal" onclick="if(event.target===this)colFechar()"><div class="modal col-modal-wide"><div class="modal-head"><div><h2 id="colModalTitle">Nova coleta</h2><small id="colModalSub"></small></div><button class="icon-btn" onclick="colFechar()">✕</button></div>
+  <form id="colForm" onsubmit="colSalvar(event)">
+    <div class="modal-body">
+      <div class="form-grid col-form">
+        <label class="form-line"><span>PC</span><input id="colPc" type="number" min="0" placeholder="Ex.: 4850" onchange="colPuxarPedido()"></label>
+        <label class="form-line"><span>Fornecedor</span><input id="colFornecedor" maxlength="200"></label>
+        <label class="form-line"><span>CNPJ</span><input id="colCnpj" maxlength="20"></label>
+        <label class="form-line"><span>Contato</span><input id="colContato" maxlength="120"></label>
+        <label class="form-line full"><span>Endereço</span><input id="colEndereco" maxlength="240" placeholder="Rua / avenida"></label>
+        <label class="form-line"><span>Número</span><input id="colNumero" maxlength="20"></label>
+        <label class="form-line"><span>Complemento</span><input id="colComplemento" maxlength="80"></label>
+        <label class="form-line"><span>Bairro</span><input id="colBairro" maxlength="80"></label>
+        <label class="form-line"><span>Cidade</span><input id="colCidade" maxlength="80"></label>
+        <label class="form-line"><span>UF</span><input id="colUf" maxlength="2"></label>
+        <label class="form-line"><span>CEP</span><input id="colCep" maxlength="10"></label>
+        <label class="form-line"><span>Dia da coleta</span><input id="colData" type="date"></label>
+        <label class="form-line"><span>Horário</span><input id="colHora" type="time"></label>
+        <label class="form-line"><span>Motivo do atraso (se atrasar)</span><select id="colMotivoAtraso"><option value="">— sem atraso —</option><option value="FORNECEDOR">Fornecedor (material não liberado/pronto)</option><option value="TRANSPORTADORA">Transportadora / veículo</option><option value="PLANEJAMENTO">Planejamento / rota</option><option value="DOCUMENTACAO">Documentação fiscal</option><option value="OBRA">Obra / solicitante</option><option value="OUTRO">Outro</option></select></label>
+        <label class="form-line"><span>Prioridade</span><select id="colPrioridade"><option value="NORMAL">Normal</option><option value="ALTA">Alta</option><option value="URGENTE">Urgente</option><option value="BAIXA">Baixa</option></select></label>
+        <label class="form-line full"><span>Observação</span><input id="colObs" maxlength="600"></label>
+      </div>
+      <div class="col-geo-box">
+        <div><strong>Localização no mapa</strong><small id="colGeoStatus">Ainda não localizada</small></div>
+        <div class="col-geo-actions">
+          <button type="button" class="button ghost small" onclick="colGeocodarAtual()">⌖ Localizar endereço</button>
+          <button type="button" class="button ghost small" onclick="colAbrirMapaPicker()">◎ Escolher no mapa</button>
+        </div>
+      </div>
+      <div id="colPicker" class="col-picker" hidden><div id="colPickerMap" class="col-map-small"></div><small>Clique no ponto exato e depois em “Usar este ponto”.</small><div class="col-geo-actions"><button type="button" class="button primary small" onclick="colUsarPicker()">Usar este ponto</button><button type="button" class="button ghost small" onclick="colFecharPicker()">Cancelar</button></div></div>
+    </div>
+    <div class="modal-actions"><button type="button" class="button ghost" onclick="colFechar()">Cancelar</button><button type="submit" class="button primary">Salvar coleta</button></div>
+  </form>
+</div></div>
+
+<div class="modal-bg" id="colDetalhe" onclick="if(event.target===this)colFecharDetalhe()"><div class="modal col-modal-wide"><div class="modal-head"><div><h2 id="colDetTitle">Coleta</h2><small id="colDetSub"></small></div><button class="icon-btn" onclick="colFecharDetalhe()">✕</button></div><div class="modal-body" id="colDetBody"></div><div class="modal-actions" id="colDetFoot"></div></div></div>
+
+<div class="modal-bg" id="colRetornoModal" onclick="if(event.target===this)this.classList.remove('on')"><div class="modal"><div class="modal-head"><h2>Registrar retorno</h2><small>O motorista foi e não conseguiu coletar</small></div>
+  <form id="colRetornoForm" onsubmit="colSalvarRetorno(event)"><div class="modal-body">
+    <label class="form-line"><span>Motivo</span><select id="colRetMotivo"></select></label>
+    <label class="form-line"><span>Observação</span><input id="colRetObs" maxlength="500"></label>
+    <div class="form-grid"><label class="form-line"><span>Reagendar para</span><input id="colRetData" type="date"></label><label class="form-line"><span>Horário</span><input id="colRetHora" type="time"></label></div>
+  </div><div class="modal-actions"><button type="button" class="button ghost" onclick="document.getElementById('colRetornoModal').classList.remove('on')">Cancelar</button><button type="submit" class="button primary">Registrar retorno</button></div></form>
+</div></div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="fileCam" accept="image/*" capture="environment" hidden>
+<input type="file" id="fileGal" accept="image/*,application/pdf" hidden>
+</body>
+</html>

@@ -1,0 +1,24 @@
+/* Recebimento Drilling v3.29.0 — aviso de chegada (cores herdam do tema) */
+.aviso-ed{display:grid;gap:8px}
+.aviso-st{font-size:13px}
+.aviso-chips{display:flex;flex-wrap:wrap;gap:6px}
+.aviso-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 10px;border:1px solid rgba(128,140,160,.45);border-radius:999px;font-size:12px;background:rgba(128,140,160,.12)}
+.aviso-chip small{opacity:.7}
+.aviso-chip button{border:0;background:transparent;color:inherit;cursor:pointer;font-size:12px;padding:0 4px;opacity:.75}
+.aviso-chip button:hover{opacity:1}
+.aviso-cands{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.aviso-add{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap}
+.aviso-add input{min-width:190px;max-width:100%}
+.aviso-acoes{display:flex;flex-wrap:wrap;gap:8px}
+.aviso-modal{max-width:640px}
+.aviso-modal.wide{max-width:1020px}
+.aviso-pacoes{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.aviso-badge{display:inline-block;min-width:18px;padding:1px 6px;margin-left:4px;border-radius:999px;background:#d92d20;color:#fff;font-size:11px;font-weight:700;text-align:center}
+.aviso-badge[hidden]{display:none}
+/* importação: bloco por PC */
+.wa-aviso{margin-top:8px;padding:8px 10px;border-left:3px solid rgba(128,140,160,.6);border-radius:6px;background:rgba(128,140,160,.1);display:grid;gap:6px;font-size:12px}
+.wa-aviso.ok{border-left-color:#12b76a}
+.wa-aviso.sug{border-left-color:#f79009}
+.wa-aviso.sem{border-left-color:#d92d20}
+.wa-aviso.cinza{border-left-color:#98a2b3}
+.wa-aviso .aviso-add input{min-width:160px}

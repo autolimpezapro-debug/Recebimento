@@ -1,0 +1,12 @@
+# Dados de producao: nunca versionar
+data/*.json
+data/*.aplicada
+data/locacoes_docs/
+data/fotos*/
+data/uploads/
+data/backup*/
+!data/carga_inicial/
+db_config.php
+smtp_config.php
+*.log
+.DS_Store

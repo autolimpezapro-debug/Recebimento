@@ -1,0 +1,64 @@
+RECEBIMENTO DRILLING v3.2.0 — INSTALAÇÃO EM 1 CLIQUE (cPanel / HostGator)
+================================================================================
+
+PASSO A PASSO (5 minutos)
+-------------------------
+1. No cPanel, abra "Gerenciador de Arquivos" e entre na pasta do site
+   (Normalmente public_html ou a pasta do subdomínio).
+
+2. Envie o ZIP deste pacote para essa pasta e clique em "Extrair".
+   - ATUALIZAÇÃO de um site que já usa o sistema: pode extrair por cima.
+     A pasta data/ do pacote NÃO substitui a sua (o ZIP não leva items.json,
+     fotos, PDFs, XMLs, senhas nem usuários).
+   - INSTALAÇÃO NOVA: extraia normalmente.
+
+3. Abra no navegador:
+   https://SEU-DOMINIO/instalar.php
+
+4. Confira o diagnóstico e clique em "Instalar agora".
+   O instalador faz tudo sozinho:
+     - cria data/, data/photos, data/xml, data/order_pdfs, data/backups,
+       data/imports e data/estoque com as permissões corretas;
+     - aplica os .htaccess de proteção (dados não ficam públicos);
+     - cria a base de pedidos a partir de data/seed.php (somente se não existir);
+     - inicializa o módulo de estoque e a cópia de segurança dos pedidos;
+     - inicializa o sistema de notificações;
+     - gera o PRIMEIRO BACKUP COMPLETO em data/backups/;
+     - registra a versão em data/.installed e se bloqueia.
+
+5. Clique em "Abrir o Recebimento Drilling" e force a recarga (Ctrl+F5).
+
+6. Agende o backup automático (cPanel → Cron Jobs), uma vez por dia:
+      php -q /home/SEU_USUARIO/public_html/backup_cli.php
+   O caminho exato aparece na tela final do instalador.
+
+7. Proteja o acesso (cPanel → Directory Privacy) ou crie usuários individuais.
+   O sistema não deve ficar aberto na internet sem senha.
+
+
+O QUE O INSTALADOR NUNCA FAZ
+----------------------------
+- Não apaga nem sobrescreve data/items.json, fotos, PDFs, XMLs ou usuários.
+- Não altera nenhuma conferência já finalizada.
+- Não mexe em outros sites da hospedagem.
+
+
+INSTALAÇÃO NOVA x ATUALIZAÇÃO
+-----------------------------
+O instalador detecta sozinho:
+  - se já existe data/items.json  → ATUALIZAÇÃO (dados preservados)
+  - se não existe                 → INSTALAÇÃO NOVA (base criada pelo seed)
+
+
+RODAR DE NOVO
+-------------
+Para reexecutar o instalador, apague o arquivo data/.installed no
+Gerenciador de Arquivos. O instalador volta a mostrar o diagnóstico.
+
+
+REQUISITOS
+----------
+PHP 8.0+ com OpenSSL e JSON. ZIP e GD são recomendados (backup e fotos).
+HTTPS é recomendado para instalar o app no tablet e receber notificações.
+
+Versão do pacote: 3.2.0
