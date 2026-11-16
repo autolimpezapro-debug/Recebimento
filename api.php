@@ -47,7 +47,7 @@ define('MAX_PRODUCT_PHOTOS', 3);
 define('MAX_UPLOAD_BYTES', 4 * 1024 * 1024);
 define('EVENTS_FILE', DATA_DIR . '/events.json');
 define('XML_DIR', DATA_DIR . '/xml');
-define('APP_VERSION', '3.36.1');
+define('APP_VERSION', '3.37.0');
 
 if (!is_dir(DATA_DIR)) mkdir(DATA_DIR, 0755, true);
 if (!is_dir(PHOTOS_DIR)) mkdir(PHOTOS_DIR, 0755, true);
@@ -466,6 +466,15 @@ if (strncmp((string)$action, 'estoque_', 8) === 0 && ($_SERVER['REQUEST_METHOD']
         try { require_once __DIR__ . '/alertas_lib.php'; alt_verificar('movimento'); } catch (Throwable $e) { error_log('Alertas: ' . $e->getMessage()); }
     });
 }
+// v3.37.0: checagem de Origem (anti-CSRF) para TODA gravação, inclusive as rotas dos módulos
+// (estoque, locações, protocolos, obras...), que são atendidas antes do bloco de POST abaixo.
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !empty($_SERVER['HTTP_ORIGIN'])) {
+    $rdH0 = (string)($_SERVER['HTTP_HOST'] ?? ''); $rdO0 = (string)$_SERVER['HTTP_ORIGIN'];
+    if ($rdH0 === '' || ($rdO0 !== 'https://' . $rdH0 && $rdO0 !== 'http://' . $rdH0)) {
+        respond(['ok' => false, 'error' => 'Origem não autorizada'], 403);
+    }
+}
+
 // Módulo de Estoque (v3.0.0): rotas estoque_* vivem em estoque_api.php e
 // compartilham a mesma sessão, a mesma origem e a mesma trava de escrita.
 // Somente leitura de data/estoque.json — nunca toca em data/items.json.

@@ -88,6 +88,7 @@ function rd_carga_locacoes(): void {
     $dir = DATA_DIR . '/carga_inicial';
     $arqs = glob($dir . '/locacoes_*.json') ?: [];
     if (!$arqs) return;
+    if (!is_file($dir . '/.htaccess')) @file_put_contents($dir . '/.htaccess', "Require all denied\nOptions -Indexes\n");
     foreach ($arqs as $arq) {
         $flag = $dir . '/.' . basename($arq, '.json') . '.aplicada';
         if (is_file($flag)) continue;

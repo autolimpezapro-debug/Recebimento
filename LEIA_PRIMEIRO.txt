@@ -1,3 +1,11 @@
+v3.37.0 — Filtro por insumo/SKU + auditoria completa
+ * Pedidos: novo campo "Filtrar por insumo ou SKU". Mostra todo pedido que tenha o item (nome ou código),
+   destaca o item encontrado e soma quantidades pedidas/recebidas/pendentes.
+ * Segurança (auditoria): TODA gravação (inclusive módulos Estoque, Locações, Protocolos, Obras) agora
+   valida a origem da requisição (anti-CSRF). Pasta data/carga_inicial protegida contra acesso direto
+   (.htaccess) — os PDFs da carga não ficam mais públicos.
+ * Filtro por obra: em Pedidos já existe "Todas as obras / setores".
+
 v3.36.1 (16/11/2026) - PROTOCOLO DE NFs: DOWNLOAD. Cada protocolo agora pode ser baixado em PDF (A4, 2 vias, com campos de assinatura, gerado pelo proprio servidor) e em Excel/CSV (uma linha por NF) - botoes 'Baixar PDF' e 'Excel (CSV)' no cartao do protocolo, na janela que abre ao gerar e na pagina de impressao. O PDF pode ser enviado por e-mail ou impresso em qualquer computador.
 
 v3.36.0 (16/11/2026) - PROTOCOLO DE NFs (menu 'Protocolo de NFs'). Para entregar ao Financeiro as notas dos pedidos ja recebidos: (1) aba 'Novo protocolo' lista os pedidos recebidos que tem numero de NF e ainda nao estao em nenhum protocolo; marque os que vao juntos (filtro por fornecedor, periodo, busca por PC/NF) e clique em 'Gerar protocolo'; (2) abre a pagina de impressao A4 em 2 vias (1a Financeiro, 2a Recebimento) com PC, fornecedor, NF/serie, emissao, data do recebimento, valor, total e campos de assinatura de quem entrega e de quem recebe; (3) em 'Protocolos gerados' acompanhe: Aguardando entrega > 'Marcar entregue' (nome de quem do Financeiro recebeu) > 'Anexar via assinada' (foto ou PDF) > 'Arquivar como assinado'. Protocolo parado ha 3 dias ou mais fica destacado. 'Cancelar' devolve as NFs a lista (exige motivo); assinado so reabre com motivo. A aba 'Recebidos sem NF' mostra pedidos recebidos sem numero de NF (cadastre a NF no pedido para eles entrarem). Cada NF so pode estar em um protocolo ativo. Dados em data/protocolos_nf.json e vias em data/protocolos_docs/ (acesso direto bloqueado). Permissoes: usa o modulo Pedidos (listar, editar, anexar, baixar).

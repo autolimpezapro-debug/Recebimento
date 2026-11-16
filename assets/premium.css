@@ -531,3 +531,10 @@ input[type=checkbox], input[type=radio] { accent-color: var(--rd-accent); width:
 /* v3.20.0 destino do pedido */
 .destino-tag{display:inline-block;margin-left:6px;font-size:10.5px;font-weight:650;padding:1px 8px;border-radius:999px;background:var(--rd-surface-3,rgba(255,255,255,.07));color:var(--rd-text-2,#b5c6dc);vertical-align:1px}
 .destino-tag.obra{background:var(--rd-accent-soft,rgba(91,141,239,.16));color:var(--rd-accent-2,#8db4ff)}
+
+/* v3.37.0 — filtro por insumo / SKU */
+.insumo-box{border-color:rgba(91,141,239,.6)!important}.insumo-box span{flex:0 0 auto;width:auto!important;min-width:26px;font-size:15px;text-align:center}.insumo-box input{min-width:0}
+.insumo-hit{margin-top:6px;padding:6px 8px;border-left:3px solid var(--blue,#4f8cff);background:rgba(91,141,239,.09);border-radius:6px;font-size:12px;line-height:1.4}
+.insumo-hit mark{background:rgba(255,196,0,.35);color:inherit;border-radius:3px;padding:0 1px}
+.insumo-hit .muted{color:var(--muted)}
+.insumo-resumo{display:inline-block;margin-left:12px;font-size:12.5px;color:var(--text)}
