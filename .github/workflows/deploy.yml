@@ -48,8 +48,22 @@ jobs:
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: |
           SSH="ssh -T -o LogLevel=ERROR -p ${SSH_PORT:-22} $SSH_USER@$SSH_HOST"
-          # teste de conexao
-          $SSH "echo CONEXAO_OK; test -d '$DEPLOY_PATH' && echo PASTA_OK" | grep -q PASTA_OK || { echo "Pasta do sistema nao encontrada: verifique DEPLOY_PATH"; exit 1; }
+          # descobrir a pasta real dentro do SSH (a HostGator mostra /home/USUARIO em vez de /home4/USUARIO)
+          DP="$(printf '%s' "$DEPLOY_PATH" | tr -d '\r\n ' | sed 's#/*$##')"
+          NOME="$(basename "$DP")"
+          ALT="$(printf '%s' "$DP" | sed -E 's#^/home[0-9]*/#/home/#')"
+          REAL=""
+          for tentativa in "cd '$DP'" "cd '$ALT'" "cd ~/'$NOME'" "cd ~/public_html/'$NOME'"; do
+            R="$($SSH "$tentativa 2>/dev/null && pwd" 2>/dev/null | grep '^/' | tail -n1 || true)"
+            if [ -n "$R" ]; then REAL="$R"; break; fi
+          done
+          if [ -z "$REAL" ]; then
+            echo "Pasta do sistema nao encontrada. Pastas visiveis na conta:"
+            $SSH 'pwd; ls -1 ~ 2>/dev/null | head -40' || true
+            exit 1
+          fi
+          echo "Pasta de destino encontrada no servidor: $REAL"
+          DEPLOY_PATH="$REAL"
           # 1) codigo: nunca envia data/, configuracoes do servidor nem arquivos de repositorio; nao apaga nada
           tar czf - --exclude=./data --exclude=./db_config.php --exclude=./smtp_config.php \
             --exclude=./.git --exclude=./.github --exclude=./.gitignore . \
