@@ -520,10 +520,40 @@ const RCB_SEMENTE = [
     ['EXPEDIÇÃO', 'expedicao@drilling.com.br', 'EXPEDICAO'],
     ['WILLIAM RAMOS', 'william.ramos@drilling.com.br', ''],
     ['KENNETON FERREIRA', 'manutencao@drilling.com.br', 'MANUTENÇÃO, MECÂNICA'],
-    ['SEGURANÇA DRILLING', 'seguranca.drilling@drilling.com.br', ''],
-    ['SEGURANÇA 2', 'seguranca2@drilling.com.br', ''],
+    ['ALINE', 'seguranca.drilling@drilling.com.br', 'SEGURANÇA, SEGURANCA'],
+    ['DAIANA', 'seguranca2@drilling.com.br', 'SEGURANÇA, SEGURANCA'],
 ];
+/** v3.35.1: Aline e Daiana (Segurança). Corrige o NOME dos dois e-mails ja semeados com nome generico, UMA vez; nome editado a mao nao e tocado. */
+function rcb_semear_nomes_seguranca(): void {
+    $marca = DATA_DIR . '/.contatos-seguranca-3351';
+    if (!is_dir(DATA_DIR) || is_file($marca) || !is_file(RCB_CONTATOS)) return;
+    $mapa = [
+        'seguranca.drilling@drilling.com.br' => ['SEGURANÇA DRILLING', 'ALINE'],
+        'seguranca2@drilling.com.br' => ['SEGURANÇA 2', 'DAIANA'],
+    ];
+    $j = json_decode((string)@file_get_contents(RCB_CONTATOS), true);
+    $lista = array_values(array_filter((array)($j['contatos'] ?? []), 'is_array'));
+    $mudou = false;
+    foreach ($lista as &$c) {
+        $em = strtolower((string)($c['email'] ?? ''));
+        if (!isset($mapa[$em])) continue;
+        if (mb_strtoupper(trim((string)($c['nome'] ?? ''))) === $mapa[$em][0]) {
+            $c['nome'] = $mapa[$em][1];
+            if (trim((string)($c['apelidos'] ?? '')) === '') $c['apelidos'] = 'SEGURANÇA, SEGURANCA';
+            $mudou = true;
+        }
+    }
+    unset($c);
+    try {
+        if ($mudou) {
+            usort($lista, fn($a, $b) => strcmp((string)$a['nome'], (string)$b['nome']));
+            alt_json_write(RCB_CONTATOS, ['contatos' => $lista, 'atualizado_em' => date('c'), 'atualizado_por' => 'carga v3.35.1']);
+        }
+        @file_put_contents($marca, date('c'));
+    } catch (Throwable $e) { error_log('Contatos Seguranca: ' . $e->getMessage()); }
+}
 function rcb_semear(): void {
+    rcb_semear_nomes_seguranca();
     // O marcador guarda QUAIS e-mails já foram semeados: só entram os que nunca foram (um e-mail apagado depois não volta).
     // Marcador antigo (só uma data, da primeira versão) = os 10 primeiros já foram semeados.
     $marca = DATA_DIR . '/.contatos-aviso-3290';
