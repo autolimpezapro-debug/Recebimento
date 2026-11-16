@@ -47,14 +47,14 @@ jobs:
           SSH_PORT: ${{ secrets.SSH_PORT }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: |
-          RSH="ssh -p ${SSH_PORT:-22}"
-          DEST="$SSH_USER@$SSH_HOST:$DEPLOY_PATH"
+          SSH="ssh -T -o LogLevel=ERROR -p ${SSH_PORT:-22} $SSH_USER@$SSH_HOST"
+          # teste de conexao
+          $SSH "echo CONEXAO_OK; test -d '$DEPLOY_PATH' && echo PASTA_OK" | grep -q PASTA_OK || { echo "Pasta do sistema nao encontrada: verifique DEPLOY_PATH"; exit 1; }
           # 1) codigo: nunca envia data/, configuracoes do servidor nem arquivos de repositorio; nao apaga nada
-          rsync -rltz -e "$RSH" \
-            --exclude='/data/' --exclude='/db_config.php' --exclude='/smtp_config.php' \
-            --exclude='/.git/' --exclude='/.github/' --exclude='/.gitignore' \
-            ./ "$DEST/"
+          tar czf - --exclude=./data --exclude=./db_config.php --exclude=./smtp_config.php \
+            --exclude=./.git --exclude=./.github --exclude=./.gitignore . \
+            | $SSH "cd '$DEPLOY_PATH' && tar xzf -"
           # 2) cargas iniciais: so adiciona arquivos novos (nunca sobrescreve o que o servidor ja usou)
-          rsync -rltz -e "$RSH" --ignore-existing --relative \
-            ./data/carga_inicial/ ./data/seed.php "$DEST/" 2>/dev/null || \
-          rsync -rltz -e "$RSH" --ignore-existing ./data/carga_inicial/ "$DEST/data/carga_inicial/"
+          tar czf - ./data/carga_inicial ./data/seed.php \
+            | $SSH "cd '$DEPLOY_PATH' && mkdir -p data && tar xzkf - 2>/dev/null; true"
+          echo "Publicacao concluida"
