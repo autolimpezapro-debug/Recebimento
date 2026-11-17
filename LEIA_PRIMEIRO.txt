@@ -1,3 +1,10 @@
+v3.48.1 — REVISÃO GERAL (correções)
+  - Push: o envio não segura mais a trava da fila durante a rede (salvar um recebimento nunca espera outro envio);
+    fila é podada mesmo sem nada a enviar; dois processos não enviam o mesmo aviso ao mesmo aparelho.
+  - Link público de Importados: acesso simultâneo não reativa mais um link recém-revogado (trava de gravação).
+  - Alertas de estoque: salvar a configuração sem o campo "repetir_horas" gravava 0 (agora mantém 24).
+  - Ajustes de texto de versão. Nenhuma mudança de tela.
+
 v3.48.0 — PUSH POR MÓDULO: O ADMINISTRADOR ESCOLHE QUEM RECEBE
   No painel de notificações (sino) há o botão "Quem recebe push (administrador)". Para cada módulo (Recebimento,
   Estoque, Estoque abaixo do mínimo, Locações, Agenda, Ferramentas, Obras, Avisos gerais) escolha: Todos os

@@ -229,38 +229,75 @@ function push_send(array $sub,array $conf,array $payload): int {
     return preg_match('~^HTTP/\S+\s+(\d{3})~',$first,$m)?(int)$m[1]:0;
 }
 /** Processa lote, para ser chamado pela requisição e pelo cron. Não inventa sucesso sem resposta HTTP 201/202. */
+function push_payload_do_job(array $job): array {
+    if (isset($job['title'])) return ['title'=>$job['title'],'body'=>$job['body']??'','pc'=>($job['pc']??0)?:null,'url'=>$job['url']??'/','tag'=>$job['tag']??('notif-'.$job['id'])];
+    return ['title'=>'Recebimento Drilling • PC '.$job['pc'],
+        'body'=>(($job['arrival']??'')==='PARCIAL'?'Pedido chegou: conferência parcial finalizada. Confira os insumos pendentes.':'Pedido chegou e foi conferido integralmente. Toque para abrir o recebimento.'),
+        'pc'=>$job['pc'],'url'=>'/?pc='.$job['pc'],'tag'=>'recebimento-'.$job['id']];
+}
+/**
+ * Processa a fila em 3 etapas para NÃO segurar a trava durante a rede (v3.48.1):
+ *  1) sob trava (rápido): escolhe o lote e marca "em envio";  2) sem trava: envia;  3) sob trava (rápido): grava os resultados.
+ * Assim, salvar um recebimento nunca espera outro processo que está falando com o Chrome/Firefox.
+ */
 function push_process_queue(int $max=20,int $seconds=5): array {
-    return push_locked(function() use ($max,$seconds){
+    $lote=push_locked(function() use ($max){
         $jobs=push_jsonread(PUSH_QUEUE); $subs=push_jsonread(PUSH_SUBS);
-        if (!$jobs) return ['sent'=>0,'pending'=>0,'subscriptions'=>count($subs)];
+        if (!$jobs) return ['vazio'=>true,'subs'=>count($subs),'pend'=>0];
         $conf=push_jsonread(PUSH_CONFIG); if(!isset($conf['privatePem'])) throw new RuntimeException('VAPID ainda não inicializado');
-        $total=0; $start=microtime(true);
-        foreach($jobs as &$job){
-            if(time()-($job['created']??0)>86400){$job['done']=true;continue;}
-            foreach($subs as $id=>$sub){
-                if(!in_array($id,$job['targets']??[],true)) continue;
-                if(isset($job['sent'][$id]) || (int)($job['failed'][$id]??0)>=3) continue;
-                if($total>=$max || microtime(true)-$start>=$seconds) break 2;
-                try {
-                    $result=isset($job['title']) ? push_send($sub,$conf,[
-                        'title'=>$job['title'],'body'=>$job['body']??'','pc'=>$job['pc']?:null,'url'=>$job['url']??'/','tag'=>$job['tag']??('notif-'.$job['id'])
-                    ]) : push_send($sub,$conf,[
-                        'title'=>'Recebimento Drilling • PC '.$job['pc'],
-                        'body'=>($job['arrival']==='PARCIAL'?'Pedido chegou: conferência parcial finalizada. Confira os insumos pendentes.':'Pedido chegou e foi conferido integralmente. Toque para abrir o recebimento.'),
-                        'pc'=>$job['pc'], 'url'=>'/?pc='.$job['pc'], 'tag'=>'recebimento-'.$job['id']]);
-                }catch(Throwable $e){error_log('Push falhou: '.$e->getMessage());$result=0;}
-                if($result>=200&&$result<300){$job['sent'][$id]=true;$total++;}
-                elseif($result===404||$result===410){unset($subs[$id]);$job['sent'][$id]=true;}
-                else {$job['failed'][$id]=(int)($job['failed'][$id]??0)+1;}
+        $pares=[]; $agora=time();
+        foreach ($jobs as &$job) {
+            if ($agora-($job['created']??0)>86400) { $job['done']=true; continue; }
+            foreach ($subs as $id=>$sub) {
+                if (!in_array($id,$job['targets']??[],true)) continue;
+                if (isset($job['sent'][$id]) || (int)($job['failed'][$id]??0)>=3) continue;
+                if ((int)($job['inflight'][$id]??0) > $agora-90) continue;   // outro processo já está enviando este par
+                if (count($pares)>=$max) break 2;
+                $job['inflight'][$id]=$agora;
+                $pares[]=['job'=>$job['id'],'sub'=>$id,'payload'=>push_payload_do_job($job),'dados'=>$sub];
             }
         }
         unset($job);
-        $jobs=array_values(array_filter($jobs,function($job)use($subs){
-            if(!empty($job['done']))return false;
-            foreach($subs as $id=>$sub){if(in_array($id,$job['targets']??[],true) && empty($job['sent'][$id]) && ($job['failed'][$id]??0)<3)return true;}
+        // poda jobs vencidos/esgotados mesmo quando não há nada a enviar (a fila nunca fica crescendo)
+        $manter=array_values(array_filter($jobs,function($job) use ($subs){
+            if (!empty($job['done'])) return false;
+            foreach ($subs as $id=>$sub) { if (in_array($id,$job['targets']??[],true) && empty($job['sent'][$id]) && ($job['failed'][$id]??0)<3) return true; }
             return false;
         }));
-        push_jsonwrite(PUSH_QUEUE,$jobs);push_jsonwrite(PUSH_SUBS,$subs);
+        if ($pares) push_jsonwrite(PUSH_QUEUE,$jobs);
+        elseif (count($manter)!==count($jobs)) push_jsonwrite(PUSH_QUEUE,$manter);
+        return ['pares'=>$pares,'conf'=>$conf,'subs'=>count($subs),'pend'=>count($manter)];
+    });
+    if (!empty($lote['vazio'])) return ['sent'=>0,'pending'=>0,'subscriptions'=>$lote['subs']];
+    if (empty($lote['pares'])) return ['sent'=>0,'pending'=>$lote['pend'],'subscriptions'=>$lote['subs']];
+    // 2) envio, sem trava
+    $res=[]; $inicio=microtime(true);
+    foreach ($lote['pares'] as $par) {
+        if (microtime(true)-$inicio>=$seconds) { $res[]=[$par['job'],$par['sub'],null]; continue; }   // sem tempo: devolve para a fila
+        try { $r=push_send($par['dados'],$lote['conf'],$par['payload']); }
+        catch (Throwable $e) { error_log('Push falhou: '.$e->getMessage()); $r=0; }
+        $res[]=[$par['job'],$par['sub'],$r];
+    }
+    // 3) resultados, sob trava
+    return push_locked(function() use ($res){
+        $jobs=push_jsonread(PUSH_QUEUE); $subs=push_jsonread(PUSH_SUBS); $total=0;
+        $porId=[]; foreach ($jobs as $k=>$j) $porId[$j['id']]=$k;
+        foreach ($res as [$jid,$sid,$r]) {
+            if (!isset($porId[$jid])) continue;
+            $job=&$jobs[$porId[$jid]];
+            unset($job['inflight'][$sid]);
+            if ($r===null) { unset($job); continue; }
+            if ($r>=200 && $r<300) { $job['sent'][$sid]=true; $total++; }
+            elseif ($r===404 || $r===410) { unset($subs[$sid]); $job['sent'][$sid]=true; }
+            else { $job['failed'][$sid]=(int)($job['failed'][$sid]??0)+1; }
+            unset($job);
+        }
+        $jobs=array_values(array_filter($jobs,function($job) use ($subs){
+            if (!empty($job['done'])) return false;
+            foreach ($subs as $id=>$sub) { if (in_array($id,$job['targets']??[],true) && empty($job['sent'][$id]) && ($job['failed'][$id]??0)<3) return true; }
+            return false;
+        }));
+        push_jsonwrite(PUSH_QUEUE,$jobs); push_jsonwrite(PUSH_SUBS,$subs);
         return ['sent'=>$total,'pending'=>count($jobs),'subscriptions'=>count($subs)];
     });
 }

@@ -1,7 +1,7 @@
 /* Recebimento Drilling v3.0.0 — conferência por insumo + módulo de estoque */
 'use strict';
 const API='api.php';
-const APP_VERSION='3.48.0';
+const APP_VERSION='3.48.1';
 const notificationClientId='receb_'+Math.random().toString(36).slice(2)+Date.now().toString(36);
 const STATUS=['SIM','PARCIAL','NÃO','EM TRÂNSITO','N/A'];
 const STATUS_NAMES={'SIM':'Recebido','PARCIAL':'Parcial','NÃO':'Não chegou','EM TRÂNSITO':'Em trânsito','N/A':'N/A','':'Sem status'};
@@ -58,7 +58,7 @@ function populateObra(){const sel=$('obraFilter');if(!sel)return;const old=sel.v
  const totObra=obras.reduce((t,k)=>t+cont[k],0);
  sel.innerHTML='<option value="">Todas as obras / setores</option>'+(totObra?`<option value="OBRA:*">Todas as obras (${totObra})</option>`:'')+(obras.length?'<optgroup label="Obras">'+obras.map(k=>`<option value="${html(k)}">${html(k.slice(5)||'Obra (não identificada)')} (${cont[k]})</option>`).join('')+'</optgroup>':'')+(setores.length?'<optgroup label="Setores">'+setores.map(k=>`<option value="${k}">${RD_SETOR_NOMES[k]} (${cont[k]})</option>`).join('')+'</optgroup>':'')+(cont.__sem?`<option value="__sem">Sem destino identificado (${cont.__sem})</option>`:'');
  sel.value=[...sel.options].some(o=>o.value===old)?old:'';}
-/* v3.48.0 — filtro por insumo / SKU: o PC entra se ALGUMA linha dele tiver todas as palavras digitadas (descrição ou SKU, sem acento). */
+/* v3.48.1 — filtro por insumo / SKU: o PC entra se ALGUMA linha dele tiver todas as palavras digitadas (descrição ou SKU, sem acento). */
 const insumoHits=new Map();
 const nSemAcento=t=>String(t==null?'':t).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 function insumoTermos(){const el=$('insumoQ');return el?nSemAcento(el.value).split(/\s+/).filter(Boolean):[]}

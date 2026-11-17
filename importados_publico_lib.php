@@ -8,6 +8,7 @@
 if (!defined('DATA_DIR')) { http_response_code(403); exit; }
 
 const IMPP_ARQ = DATA_DIR . '/importados_publico.json';
+const IMPP_TRAVA = DATA_DIR . '/.importados_publico.lock';
 const IMPP_TENT = DATA_DIR . '/.importados_publico_tentativas.json';
 const IMPP_PADRAO = ['ativo' => false, 'token' => '', 'criado_em' => null, 'criado_por' => '', 'ultimo_acesso' => null, 'acessos' => 0, 'recentes' => []];
 
@@ -21,12 +22,24 @@ function impp_gravar(array $d): void {
         throw new RuntimeException('Não foi possível gravar o link público.');
     @chmod(IMPP_ARQ, 0640);
 }
+/** Ler-alterar-gravar com trava: um acesso simultâneo nunca "ressuscita" um link que acabou de ser revogado. */
+function impp_trava(callable $fn) {
+    $fp = @fopen(IMPP_TRAVA, 'c');
+    if (!$fp || !flock($fp, LOCK_EX)) { if ($fp) fclose($fp); throw new RuntimeException('Trava do link público indisponível.'); }
+    try { return $fn(); } finally { flock($fp, LOCK_UN); fclose($fp); }
+}
 function impp_gerar(string $usuario): array {
+    return impp_trava(function () use ($usuario) { return impp_gerar_i($usuario); });
+}
+function impp_gerar_i(string $usuario): array {
     $d = ['ativo' => true, 'token' => bin2hex(random_bytes(24)), 'criado_em' => date('c'), 'criado_por' => $usuario, 'ultimo_acesso' => null, 'acessos' => 0, 'recentes' => []];
     impp_gravar($d);
     return $d;
 }
 function impp_revogar(): array {
+    return impp_trava(function () { return impp_revogar_i(); });
+}
+function impp_revogar_i(): array {
     $d = impp_ler(); $d['ativo'] = false; $d['token'] = '';
     impp_gravar($d);
     return $d;
@@ -62,7 +75,12 @@ function impp_token_ok(string $k): bool {
     return $d['ativo'] && $d['token'] !== '' && $k !== '' && hash_equals((string)$d['token'], $k);
 }
 function impp_registrar_acesso(): void {
-    $d = impp_ler(); $d['acessos'] = (int)$d['acessos'] + 1; $d['ultimo_acesso'] = date('c');
+    try { impp_trava(function () { impp_registrar_acesso_i(); }); } catch (Throwable $e) { /* visualização nunca falha por causa do registro */ }
+}
+function impp_registrar_acesso_i(): void {
+    $d = impp_ler();
+    if (!$d['ativo']) return;   // revogado enquanto este acesso era processado
+    $d['acessos'] = (int)$d['acessos'] + 1; $d['ultimo_acesso'] = date('c');
     $d['recentes'] = array_slice(array_merge([['em' => date('c'), 'ip' => impp_ip_mascarado(impp_ip()), 'agente' => mb_substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 80)]], (array)$d['recentes']), 0, 10);
     try { impp_gravar($d); } catch (Throwable $e) { /* visualização nunca falha por causa do registro */ }
 }

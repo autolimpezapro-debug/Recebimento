@@ -47,7 +47,8 @@ function alt_config_salvar(array $in): array {
     $emails = preg_split('/[\s,;]+/', is_array($in['emails'] ?? null) ? implode(',', $in['emails']) : (string)($in['emails'] ?? ''));
     $c['emails'] = array_values(array_unique(array_filter(array_map('trim', $emails), fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))));
     if (count($c['emails']) > 20) throw new InvalidArgumentException('No máximo 20 e-mails.');
-    $c['repetir_horas'] = in_array((int)($in['repetir_horas'] ?? 24), [6, 12, 24, 48, 72], true) ? (int)$in['repetir_horas'] : 24;
+    $rh = (int)($in['repetir_horas'] ?? 24);
+    $c['repetir_horas'] = in_array($rh, [6, 12, 24, 48, 72], true) ? $rh : 24;
     $c['escopo'] = in_array($in['escopo'] ?? '', ['com_parametro', 'importados', 'categorias'], true) ? $in['escopo'] : 'com_parametro';
     $c['categorias'] = array_values(array_filter(array_map(fn($x) => mb_substr(trim((string)$x), 0, 60), (array)($in['categorias'] ?? []))));
     $c['avisar_reposto'] = !empty($in['avisar_reposto']);
