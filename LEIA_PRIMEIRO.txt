@@ -1,3 +1,5 @@
+v3.38.1 — Correção: o menu lateral agora rola (em zoom 100% os últimos itens ficavam cortados e sem como acessar).
+
 v3.38.0 — Assinatura digital do Protocolo de NFs
  * Protocolos gerados: novo botão "✍ Assinar no sistema". Quem recebe (Financeiro) assina na tela com o
    dedo, caneta ou mouse, informa nome/cargo e confirma o recebimento. O protocolo vai direto para

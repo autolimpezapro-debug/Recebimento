@@ -538,3 +538,11 @@ input[type=checkbox], input[type=radio] { accent-color: var(--rd-accent); width:
 .insumo-hit mark{background:rgba(255,196,0,.35);color:inherit;border-radius:3px;padding:0 1px}
 .insumo-hit .muted{color:var(--muted)}
 .insumo-resumo{display:inline-block;margin-left:12px;font-size:12.5px;color:var(--text)}
+
+/* v3.38.1 — menu lateral rola quando a tela/zoom não comporta todos os itens (antes os últimos ficavam cortados) */
+@media (min-width: 791px) {
+  .sidebar { overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(120,140,170,.35) transparent; }
+  .sidebar > * { flex-shrink: 0; }
+  .sidebar::-webkit-scrollbar { width: 6px; }
+  .sidebar::-webkit-scrollbar-thumb { background: rgba(120,140,170,.35); border-radius: 6px; }
+}

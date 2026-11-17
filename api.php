@@ -47,7 +47,7 @@ define('MAX_PRODUCT_PHOTOS', 3);
 define('MAX_UPLOAD_BYTES', 4 * 1024 * 1024);
 define('EVENTS_FILE', DATA_DIR . '/events.json');
 define('XML_DIR', DATA_DIR . '/xml');
-define('APP_VERSION', '3.38.0');
+define('APP_VERSION', '3.38.1');
 
 if (!is_dir(DATA_DIR)) mkdir(DATA_DIR, 0755, true);
 if (!is_dir(PHOTOS_DIR)) mkdir(PHOTOS_DIR, 0755, true);
@@ -466,7 +466,7 @@ if (strncmp((string)$action, 'estoque_', 8) === 0 && ($_SERVER['REQUEST_METHOD']
         try { require_once __DIR__ . '/alertas_lib.php'; alt_verificar('movimento'); } catch (Throwable $e) { error_log('Alertas: ' . $e->getMessage()); }
     });
 }
-// v3.38.0: checagem de Origem (anti-CSRF) para TODA gravação, inclusive as rotas dos módulos
+// v3.38.1: checagem de Origem (anti-CSRF) para TODA gravação, inclusive as rotas dos módulos
 // (estoque, locações, protocolos, obras...), que são atendidas antes do bloco de POST abaixo.
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !empty($_SERVER['HTTP_ORIGIN'])) {
     $rdH0 = (string)($_SERVER['HTTP_HOST'] ?? ''); $rdO0 = (string)$_SERVER['HTTP_ORIGIN'];
