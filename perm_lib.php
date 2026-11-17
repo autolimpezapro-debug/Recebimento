@@ -452,7 +452,7 @@ function rd_rota(string $action): ?array {
             'backup_agora' => ['administracao', 'criar'], 'backup_config' => ['administracao', 'admin'],
             'backup_limpar_antigos' => ['administracao', 'excluir'],
             // web push (self-service do próprio dispositivo)
-            'push_public_key' => ['notificacoes', 'ver'], 'push_subscribe' => ['notificacoes', 'ver'],
+            'push_public_key' => ['notificacoes', 'ver'], 'push_subscribe' => ['notificacoes', 'ver'], 'push_regras' => ['administracao', 'admin'], 'push_regras_salvar' => ['administracao', 'admin'],
             'push_unsubscribe' => ['notificacoes', 'ver'],
         ];
     }

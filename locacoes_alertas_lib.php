@@ -112,7 +112,7 @@ function lal_verificar(string $motivo = 'batimento', bool $forcar = false): arra
             if ($cfg['sino']) {
                 try {
                     require_once __DIR__ . '/notify_lib.php';
-                    notif_publish(['tipo' => 'sistema', 'titulo' => $titulo, 'texto' => implode(' · ', array_slice($linhas, 0, 4)) . (count($linhas) > 4 ? ' …' : ''), 'url' => '?pagina=locacoes']);
+                    notif_publish(['tipo' => 'sistema', 'modulo' => 'locacoes', 'titulo' => $titulo, 'texto' => implode(' · ', array_slice($linhas, 0, 4)) . (count($linhas) > 4 ? ' …' : ''), 'url' => '?pagina=locacoes']);
                     $res['sino'] = true;
                 } catch (Throwable $e) { error_log('Locações/sino: ' . $e->getMessage()); }
             }

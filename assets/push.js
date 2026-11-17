@@ -59,3 +59,42 @@ async function restorePushSubscription(){
  renderPushButton();
 }
 window.addEventListener('DOMContentLoaded',()=>rdWhenLogged(restorePushSubscription));
+
+/* v3.48.0 — administrador escolhe quem recebe push em cada módulo. O sino (notificação interna) não muda. */
+let pushRegrasDados=null;
+function pushEsc(t){return String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+async function pushRegrasAbrir(){
+ const m=document.getElementById('pushRegrasModal'),b=document.getElementById('pushRegrasBody');if(!m||!b)return;
+ m.classList.add('on');b.textContent='Carregando…';
+ try{
+  const r=await fetch('api.php?action=push_regras',{cache:'no-store',credentials:'same-origin'});const d=await r.json();
+  if(!r.ok||!d.ok)throw Error(d.error||'Somente o administrador pode alterar estas regras');
+  pushRegrasDados=d;pushRegrasDesenhar();
+ }catch(e){b.innerHTML='<p class="inline-hint">'+pushEsc(e.message)+'</p>'}
+}
+function pushRegrasFechar(){const m=document.getElementById('pushRegrasModal');if(m)m.classList.remove('on')}
+function pushRegrasDesenhar(){
+ const d=pushRegrasDados,b=document.getElementById('pushRegrasBody');if(!d||!b)return;
+ const ativos=d.usuarios.filter(u=>u.push_ativo>0).length;
+ const cards=d.modulos.map(m=>`<div class="drawer-group" data-push-mod="${pushEsc(m.modulo)}"><h3 style="margin-bottom:6px">${pushEsc(m.nome)}</h3>
+  <div class="photo-actions" style="margin-bottom:8px">${[['todos','Todos os inscritos'],['escolhidos','Só os escolhidos'],['ninguem','Ninguém (só o sino)']].map(([v,l])=>`<label style="display:flex;gap:6px;align-items:center;font-size:12px"><input type="radio" name="pushModo_${pushEsc(m.modulo)}" value="${v}" ${m.modo===v?'checked':''} onchange="pushRegrasModo('${pushEsc(m.modulo)}',this.value)"> ${l}</label>`).join('')}</div>
+  <div class="push-users" ${m.modo==='escolhidos'?'':'hidden'} style="display:${m.modo==='escolhidos'?'grid':'none'};grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:4px">${d.usuarios.map(u=>`<label style="display:flex;gap:6px;align-items:center;font-size:12px"><input type="checkbox" data-user="${pushEsc(u.username)}" ${m.usuarios.some(x=>x.toLowerCase()===u.username.toLowerCase())?'checked':''}> ${pushEsc(u.nome)} ${u.push_ativo?'<small title="Tem push ativo em '+u.push_ativo+' aparelho(s)">🔔</small>':'<small title="Ainda não ativou o push" style="opacity:.55">🔕</small>'}</label>`).join('')}</div></div>`).join('');
+ b.innerHTML=`<p class="inline-hint">O <strong>sino</strong> continua igual para todos. Aqui você escolhe só quem recebe o <strong>aviso no celular/PC (push)</strong> de cada módulo. 🔔 = o usuário já ativou o push; 🔕 = ainda não ativou (precisa abrir o sistema e tocar em “Ativar Web Push”). ${ativos} de ${d.usuarios.length} usuário(s) com push ativo${d.sem_dono?` · ${d.sem_dono} aparelho(s) antigo(s) sem dono (passam a ter dono quando o usuário abre o sistema)`:''}.</p>${cards}`;
+}
+function pushRegrasModo(mod,modo){
+ const box=document.querySelector(`[data-push-mod="${mod}"] .push-users`);if(box){box.hidden=modo!=='escolhidos';box.style.display=modo==='escolhidos'?'grid':'none'}
+}
+async function pushRegrasSalvar(){
+ const btn=document.getElementById('pushRegrasSalvar'),regras={};
+ document.querySelectorAll('[data-push-mod]').forEach(card=>{
+  const mod=card.dataset.pushMod;
+  regras[mod]={modo:card.querySelector('input[type=radio]:checked')?.value||'ninguem',usuarios:[...card.querySelectorAll('input[data-user]:checked')].map(x=>x.dataset.user)};
+ });
+ btn.disabled=true;
+ try{
+  const r=await fetch('api.php?action=push_regras_salvar',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({regras})});
+  const d=await r.json();if(!r.ok||!d.ok)throw Error(d.error||'Não foi possível salvar');
+  pushRegrasDados=d;pushRegrasDesenhar();if(typeof toast==='function')toast('Regras de push salvas.');
+ }catch(e){if(typeof toast==='function')toast('Erro: '+e.message,true)}
+ btn.disabled=false;
+}

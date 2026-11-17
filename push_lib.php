@@ -6,6 +6,21 @@ const PUSH_CONFIG = PUSH_STORE . '/push-vapid.json';
 const PUSH_SUBS = PUSH_STORE . '/push-subscriptions.json';
 const PUSH_QUEUE = PUSH_STORE . '/push-queue.json';
 const PUSH_LOCK = PUSH_STORE . '/.push.lock';
+const PUSH_REGRAS = PUSH_STORE . '/push-regras.json';
+/** v3.48.0 — módulos que podem enviar push. O administrador escolhe quem recebe cada um. */
+const PUSH_MODULOS = [
+    'recebimento'  => 'Recebimento de pedidos (conferência finalizada / parcial)',
+    'estoque'      => 'Estoque (movimentações e saídas)',
+    'estoque_baixo'=> 'Estoque abaixo do mínimo',
+    'locacoes'     => 'Locações (devoluções e prazos)',
+    'agenda'       => 'Agenda de retiradas',
+    'ferramentas'  => 'Ferramentas (empréstimos e devoluções)',
+    'obras'        => 'Obras (envios de material)',
+    'sistema'      => 'Avisos gerais do sistema',
+];
+/** Padrão: só o recebimento continua para todos (como era). Os demais ficam desligados até o administrador escolher. */
+const PUSH_MODO_PADRAO = ['recebimento' => 'todos'];
+
 function push_b64(string $bin): string { return rtrim(strtr(base64_encode($bin), '+/', '-_'), '='); }
 function push_unb64(string $s): string|false { return base64_decode(strtr($s, '-_', '+/'), true); }
 function push_jsonread(string $path, array $default=[]): array {
@@ -58,12 +73,54 @@ function push_validate_subscription(array $data): array {
     if ($pubRaw===false||strlen($pubRaw)!==65||$pubRaw[0]!=="\x04" || $authRaw===false||strlen($authRaw)!==16) throw new InvalidArgumentException('Chaves de assinatura inválidas');
     return ['endpoint'=>$endpoint,'keys'=>['p256dh'=>$pub,'auth'=>$auth],'updatedAt'=>date('c')];
 }
-function push_subscribe(array $data): array {
+function push_regras_ler(): array {
+    $raw=push_jsonread(PUSH_REGRAS);
+    $out=[];
+    foreach (PUSH_MODULOS as $m=>$_) {
+        $r=is_array($raw[$m]??null)?$raw[$m]:[];
+        $modo=in_array($r['modo']??'',['todos','ninguem','escolhidos'],true)?$r['modo']:(PUSH_MODO_PADRAO[$m]??'ninguem');
+        $us=array_values(array_unique(array_filter(array_map('strval',(array)($r['usuarios']??[])))));
+        $out[$m]=['modo'=>$modo,'usuarios'=>$us];
+    }
+    return $out;
+}
+function push_regras_salvar(array $in, string $por): array {
+    $cur=push_regras_ler(); $new=$cur;
+    foreach (PUSH_MODULOS as $m=>$_) {
+        if (!isset($in[$m]) || !is_array($in[$m])) continue;
+        $modo=(string)($in[$m]['modo']??'');
+        if (!in_array($modo,['todos','ninguem','escolhidos'],true)) throw new InvalidArgumentException('Modo inválido em '.$m);
+        $us=[];
+        foreach ((array)($in[$m]['usuarios']??[]) as $u) {
+            $u=trim((string)$u);
+            if ($u==='') continue;
+            if (!preg_match('/^[A-Za-z0-9._@-]{1,64}$/',$u)) throw new InvalidArgumentException('Usuário inválido: '.$u);
+            $us[strtolower($u)]=$u;
+        }
+        $new[$m]=['modo'=>$modo,'usuarios'=>array_values($us)];
+    }
+    $new['_atualizado_em']=date('c'); $new['_atualizado_por']=mb_substr($por,0,64);
+    push_locked(function() use ($new){ push_jsonwrite(PUSH_REGRAS,$new); });
+    return push_regras_ler();
+}
+/** Quais inscrições (ids) devem receber o push deste módulo. */
+function push_destinos(string $modulo, array $subs): array {
+    $regras=push_regras_ler();
+    $r=$regras[isset(PUSH_MODULOS[$modulo])?$modulo:'sistema'];
+    if ($r['modo']==='todos') return array_keys($subs);
+    if ($r['modo']==='ninguem') return [];
+    $ok=array_map('strtolower',$r['usuarios']); $ids=[];
+    foreach ($subs as $id=>$sub) if (isset($sub['usuario']) && in_array(strtolower((string)$sub['usuario']),$ok,true)) $ids[]=$id;
+    return $ids;
+}
+function push_subscribe(array $data, string $usuario=''): array {
     $sub=push_validate_subscription($data);
     return push_locked(function() use ($sub){
         $list=push_jsonread(PUSH_SUBS);
         $id=hash('sha256',$sub['endpoint']);
         if(!isset($list[$id]) && count($list)>=500) throw new RuntimeException('Limite de dispositivos inscritos atingido');
+        // v3.48.0: a inscrição passa a lembrar de quem é (para o push por módulo). Sem sessão, mantém o dono anterior.
+        $sub['usuario']=$usuario!=='' ? mb_substr($usuario,0,64) : (string)($list[$id]['usuario']??'');
         $list[$id]=$sub;
         push_jsonwrite(PUSH_SUBS,$list);
         return ['ok'=>true, 'subscriptions'=>count($list)];
@@ -81,7 +138,8 @@ function push_queue_received(int $pc, string $arrival): void {
         $list=push_jsonread(PUSH_QUEUE);
         $subs=push_jsonread(PUSH_SUBS);
         if (!$subs) return; // Não retroenviar eventos anteriores ao consentimento.
-        $list[]= ['id'=>bin2hex(random_bytes(12)), 'created'=>time(), 'pc'=>$pc, 'arrival'=>$arrival,'targets'=>array_keys($subs),'sent'=>[],'failed'=>[]];
+        $alvos=push_destinos('recebimento',$subs); if (!$alvos) return;
+        $list[]= ['id'=>bin2hex(random_bytes(12)), 'created'=>time(), 'pc'=>$pc, 'arrival'=>$arrival,'targets'=>$alvos,'sent'=>[],'failed'=>[]];
         $list=array_slice($list,-250);
         push_jsonwrite(PUSH_QUEUE,$list);
     });
@@ -140,13 +198,14 @@ function push_queue_notificacao(array $n): void {
     push_locked(function() use ($n){
         $subs=push_jsonread(PUSH_SUBS);
         if (!$subs) return;
+        $alvos=push_destinos((string)($n['modulo']??'sistema'),$subs); if (!$alvos) return;
         $url=(string)($n['url']??'');
         if ($url==='' || $url[0]!=='/' || (isset($url[1]) && $url[1]==='/')) $url='/';
         $list=push_jsonread(PUSH_QUEUE);
         $list[]=['id'=>bin2hex(random_bytes(12)),'created'=>time(),'pc'=>(int)($n['pc']??0),'arrival'=>'',
             'title'=>mb_substr((string)($n['titulo']??'Recebimento Drilling'),0,120),
             'body'=>mb_substr((string)($n['texto']??''),0,300),'url'=>$url,'tag'=>'notif-'.(int)($n['id']??0),
-            'targets'=>array_keys($subs),'sent'=>[],'failed'=>[]];
+            'targets'=>$alvos,'sent'=>[],'failed'=>[]];
         push_jsonwrite(PUSH_QUEUE,array_slice($list,-400));
     });
 }

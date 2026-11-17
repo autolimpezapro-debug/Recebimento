@@ -49,4 +49,9 @@ if (function_exists('append_event') && isset($res['envio']) && $action === 'obra
     $e = $res['envio'];
     append_event(0, 'estoque', $e['id'] . ' · envio para ' . $e['obra_nome'] . ($e['numero'] ? ' (' . $e['tipo_label'] . ' ' . $e['numero'] . ')' : ''));
 }
+if (isset($res['envio']) && $action === 'obras_envio_salvar' && is_file(__DIR__ . '/notify_lib.php')) {
+    require_once __DIR__ . '/notify_lib.php';
+    $e = $res['envio'];
+    notif_evento('obras', 'Envio para obra • ' . ($e['obra_nome'] ?? ''), ($e['id'] ?? '') . (!empty($e['numero']) ? ' · ' . ($e['tipo_label'] ?? '') . ' ' . $e['numero'] : '') . ' · por ' . $obUser, '/', $obUser);
+}
 respond(['ok' => true] + $res);

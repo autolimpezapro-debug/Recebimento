@@ -46,4 +46,11 @@ $res = fer_with_lock(function () use ($action, $body, $ferUser) {
 });
 if ($action === 'ferramentas_emprestar' && function_exists('append_event')) append_event(0, 'estoque', 'Empréstimo ' . $res['emprestimo']['id'] . ' → ' . $res['emprestimo']['responsavel']);
 if ($action === 'ferramentas_devolver' && function_exists('append_event')) append_event(0, 'estoque', 'Devolução ' . $res['emprestimo']['id'] . ' (' . $res['emprestimo']['status'] . ')');
+// v3.48.0: aviso (sino + push conforme as regras do administrador) para empréstimos e devoluções.
+if (in_array($action, ['ferramentas_emprestar', 'ferramentas_devolver'], true) && isset($res['emprestimo']) && is_file(__DIR__ . '/notify_lib.php')) {
+    require_once __DIR__ . '/notify_lib.php';
+    $e = $res['emprestimo'];
+    notif_evento('ferramentas', $action === 'ferramentas_emprestar' ? 'Ferramenta emprestada • ' . ($e['responsavel'] ?? '') : 'Ferramenta devolvida • ' . ($e['responsavel'] ?? ''),
+        'Registro ' . ($e['id'] ?? '') . (isset($e['status']) ? ' · ' . $e['status'] : '') . ' · por ' . $ferUser, '/', $ferUser);
+}
 respond(['ok' => true] + $res);

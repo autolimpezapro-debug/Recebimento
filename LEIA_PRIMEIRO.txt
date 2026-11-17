@@ -1,3 +1,12 @@
+v3.48.0 — PUSH POR MÓDULO: O ADMINISTRADOR ESCOLHE QUEM RECEBE
+  No painel de notificações (sino) há o botão "Quem recebe push (administrador)". Para cada módulo (Recebimento,
+  Estoque, Estoque abaixo do mínimo, Locações, Agenda, Ferramentas, Obras, Avisos gerais) escolha: Todos os
+  inscritos / Só os escolhidos (marque os usuários) / Ninguém. O sino (notificação interna) NÃO muda.
+  Padrão: Recebimento = todos (como sempre foi); os demais começam em "Ninguém" até você escolher.
+  Ferramentas (empréstimo/devolução) e Obras (envio de material) agora também geram aviso.
+  A inscrição do push passa a ser ligada ao usuário que a fez. Aparelhos antigos ganham dono quando o usuário
+  abre o sistema. 🔔 = usuário já ativou o push; 🔕 = ainda não (precisa tocar em "Ativar Web Push" uma vez).
+
 v3.47.0 — WEB PUSH PARA TODAS AS NOTIFICAÇÕES
   Antes, o push (aviso no celular/PC com o sistema fechado) só saía na finalização de conferência. Estoque abaixo do
   mínimo, alertas de locação, agenda e avisos do sistema só chegavam ao sino, e só para quem estava com a tela aberta.

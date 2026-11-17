@@ -214,6 +214,7 @@ function notif_publish(array $data) {
             'autor' => mb_substr((string)($data['autor'] ?? 'sistema'), 0, 120),
             'origem_device' => notif_device_id($data['origem_device'] ?? ''),
             'dados' => is_array($data['dados'] ?? null) ? $data['dados'] : [],
+            'modulo' => notif_modulo_de($tipo, (string)($data['autor'] ?? ''), (string)($data['modulo'] ?? '')),
             'em' => $now,
             'ts' => time(),
         ];
@@ -240,6 +241,24 @@ function notif_publish(array $data) {
         notif_push_enviar($notifCriada);
     }
     return $notifCriada;
+}
+
+/** Módulo de origem da notificação (decide quem recebe o push). Explícito > derivado do tipo/autor. */
+function notif_modulo_de($tipo, $autor, $explicito) {
+    $explicito = preg_replace('/[^a-z_]/', '', strtolower((string)$explicito));
+    if ($explicito !== '') return $explicito;
+    if ($tipo === 'recebimento' || $tipo === 'parcial') return 'recebimento';
+    if ($tipo === 'estoque_baixo') return 'estoque_baixo';
+    if ($tipo === 'estoque') return 'estoque';
+    if ($autor === 'agenda') return 'agenda';
+    return 'sistema';
+}
+
+/** Atalho para módulos que ainda não publicavam avisos (ferramentas, obras...). Nunca interrompe quem chamou. */
+function notif_evento($modulo, $titulo, $texto, $url = '', $autor = 'sistema') {
+    try {
+        return notif_publish(['tipo' => 'sistema', 'modulo' => $modulo, 'titulo' => $titulo, 'texto' => $texto, 'url' => $url, 'autor' => $autor]);
+    } catch (Throwable $e) { error_log('Notificação ' . $modulo . ': ' . $e->getMessage()); return null; }
 }
 
 /** Enfileira e dispara o Web Push de uma notificação. Falha aqui nunca derruba quem publicou. */

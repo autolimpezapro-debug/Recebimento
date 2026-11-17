@@ -47,7 +47,7 @@ define('MAX_PRODUCT_PHOTOS', 3);
 define('MAX_UPLOAD_BYTES', 4 * 1024 * 1024);
 define('EVENTS_FILE', DATA_DIR . '/events.json');
 define('XML_DIR', DATA_DIR . '/xml');
-define('APP_VERSION', '3.47.0');
+define('APP_VERSION', '3.48.0');
 
 if (!is_dir(DATA_DIR)) mkdir(DATA_DIR, 0755, true);
 if (!is_dir(PHOTOS_DIR)) mkdir(PHOTOS_DIR, 0755, true);
@@ -58,7 +58,7 @@ if (is_file(DATA_DIR . '/.maintenance')) {
     exit;
 }
 
-// v3.47.0: a versão 3.37.0–3.47.0 trazia um data/.htaccess que negava tudo (inclusive as fotos). Repara sozinho.
+// v3.48.0: a versão 3.37.0–3.48.0 trazia um data/.htaccess que negava tudo (inclusive as fotos). Repara sozinho.
 if (is_file(DATA_DIR . '/.htaccess') && ($h0 = (string)@file_get_contents(DATA_DIR . '/.htaccess')) && stripos($h0, 'FilesMatch') === false && stripos($h0, 'Require all denied') !== false) {
     @file_put_contents(DATA_DIR . '/.htaccess', "# Arquivos privados; fotos públicas por link\n<FilesMatch \"(?i)\\.(json|php|xml|zip|key|lock|tmp|bak|log|pem)$\">\nRequire all denied\n</FilesMatch>\n<FilesMatch \"^\\.\">\nRequire all denied\n</FilesMatch>\nOptions -Indexes\n", LOCK_EX);
 }
@@ -470,7 +470,7 @@ if (strncmp((string)$action, 'estoque_', 8) === 0 && ($_SERVER['REQUEST_METHOD']
         try { require_once __DIR__ . '/alertas_lib.php'; alt_verificar('movimento'); } catch (Throwable $e) { error_log('Alertas: ' . $e->getMessage()); }
     });
 }
-// v3.47.0: checagem de Origem (anti-CSRF) para TODA gravação, inclusive as rotas dos módulos
+// v3.48.0: checagem de Origem (anti-CSRF) para TODA gravação, inclusive as rotas dos módulos
 // (estoque, locações, protocolos, obras...), que são atendidas antes do bloco de POST abaixo.
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !empty($_SERVER['HTTP_ORIGIN'])) {
     $rdH0 = (string)($_SERVER['HTTP_HOST'] ?? ''); $rdO0 = (string)$_SERVER['HTTP_ORIGIN'];
@@ -511,7 +511,7 @@ if ($action === 'notify_heartbeat') {
         rd_liberar_cliente();
         try { require_once __DIR__ . '/alertas_lib.php'; alt_tick(); } catch (Throwable $e) {}
         try { require_once __DIR__ . '/locacoes_lib.php'; require_once __DIR__ . '/locacoes_alertas_lib.php'; lal_tick(); } catch (Throwable $e) {}
-        // v3.47.0: escoa pushes pendentes (tentativas que falharam) mesmo sem cron.
+        // v3.48.0: escoa pushes pendentes (tentativas que falharam) mesmo sem cron.
         try { if (is_file(DATA_DIR . '/push-queue.json') && filesize(DATA_DIR . '/push-queue.json') > 4) { require_once __DIR__ . '/push_lib.php'; push_process_queue(10, 3); } } catch (Throwable $e) {}
     });
 }
@@ -552,7 +552,7 @@ if (strncmp((string)$action, 'locacoes_', 9) === 0) {
 if (strncmp((string)$action, 'protocolos_', 11) === 0) {
     require __DIR__.'/protocolos_api.php';
 }
-// Romaneio de Terceiros (v3.47.0).
+// Romaneio de Terceiros (v3.48.0).
 if (strncmp((string)$action, 'romaneios_', 10) === 0) {
     require __DIR__.'/romaneios_api.php';
 }
@@ -601,6 +601,32 @@ if (in_array($action,['whatsapp_import_preview','whatsapp_import_confirm','gemin
     require __DIR__.'/whatsapp_import_api.php';
 }
 
+// v3.48.0 — regras de push por módulo (somente administrador).
+if ($action === 'push_regras' || $action === 'push_regras_salvar') {
+    require_once __DIR__.'/push_lib.php';
+    try {
+        $subs=push_jsonread(PUSH_SUBS); $porUser=[]; $semDono=0;
+        foreach ($subs as $sb) { $u=strtolower((string)($sb['usuario']??'')); if ($u==='') $semDono++; else $porUser[$u]=($porUser[$u]??0)+1; }
+        if ($action === 'push_regras_salvar') {
+            if ($_SERVER['REQUEST_METHOD']!=='POST') respond(['ok'=>false,'error'=>'Método não permitido'],405);
+            $in=json_decode((string)file_get_contents('php://input'),true);
+            if(!is_array($in)||!is_array($in['regras']??null)) respond(['ok'=>false,'error'=>'Dados inválidos'],422);
+            $quem=(function_exists('rd_identity') && ($__i=rd_identity())) ? (string)$__i['username'] : 'administrador';
+            push_regras_salvar($in['regras'],$quem);
+        }
+        $regras=push_regras_ler(); $mods=[];
+        foreach (PUSH_MODULOS as $m=>$nome) $mods[]=['modulo'=>$m,'nome'=>$nome]+$regras[$m];
+        $users=[]; $nomes=[];
+        $pdb=function_exists('rd_perm_read')?rd_perm_read():['usuarios'=>[]];
+        $lista=function_exists('rd_user_data')?rd_user_data():[];
+        foreach ($lista as $nm=>$row) { if (!empty($row['bloqueado'])||empty($row['enabled'])) continue; $users[$nm]=(string)($pdb['usuarios'][$nm]['nome']??$nm); }
+        if (function_exists('rd_admin_data') && !empty(rd_admin_data()['username'])) { $an=(string)rd_admin_data()['username']; $users[$an]=(string)(rd_admin_data()['nome']??'Administrador principal'); }
+        $us=[]; foreach ($users as $nm=>$nome) $us[]=['username'=>$nm,'nome'=>$nome,'push_ativo'=>($porUser[strtolower($nm)]??0)];
+        respond(['ok'=>true,'modulos'=>$mods,'usuarios'=>$us,'inscritos'=>count($subs),'sem_dono'=>$semDono]);
+    } catch (InvalidArgumentException $e) { respond(['ok'=>false,'error'=>$e->getMessage()],422); }
+    catch (Throwable $e) { error_log('Regras de push: '.$e->getMessage()); respond(['ok'=>false,'error'=>'Não foi possível processar as regras de push'],500); }
+}
+
 // Web Push: inscrição explícita por navegador. A permissão é solicitada somente
 // após um clique do próprio usuário. A API legada NÃO possui contas individuais.
 if (in_array($action, ['push_public_key','push_subscribe','push_unsubscribe'], true)) {
@@ -620,7 +646,7 @@ if (in_array($action, ['push_public_key','push_subscribe','push_unsubscribe'], t
         if (strlen($body)>8192) respond(['ok'=>false,'error'=>'Corpo muito grande'],413);
         $input=json_decode($body,true);
         if(!is_array($input)) respond(['ok'=>false,'error'=>'Dados inválidos'],422);
-        if($action==='push_subscribe') respond(push_subscribe($input));
+        if($action==='push_subscribe') respond(push_subscribe($input, (function_exists('rd_identity') && ($__id=rd_identity())) ? (string)$__id['username'] : ''));
         if($action==='push_unsubscribe') respond(push_unsubscribe((string)($input['endpoint']??'')));
     }catch(InvalidArgumentException $e){respond(['ok'=>false,'error'=>$e->getMessage()],422);}
      catch(Throwable $e){error_log('Web Push: '.$e->getMessage());respond(['ok'=>false,'error'=>'Não foi possível configurar o Web Push. Verifique os requisitos do servidor.'],503);}
@@ -914,7 +940,7 @@ if ($action === 'correct_partial' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     respond(['ok'=>true,'item'=>normalize_item($item),'revision'=>$revision+1]);
 }
 
-// v3.47.0 — Correção de quantidade pelo ADMINISTRADOR em qualquer entrega (parcial ou integral).
+// v3.48.0 — Correção de quantidade pelo ADMINISTRADOR em qualquer entrega (parcial ou integral).
 // Recalcula os acumulados das entregas seguintes, o status e os saldos; guarda o antes/depois no histórico.
 if ($action === 'admin_corrigir_recebimento' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $input=json_decode(file_get_contents('php://input'),true);
