@@ -181,3 +181,6 @@ button.col-pill{cursor:pointer}
 .col-ia-alerta { color: #b45309; }
 .col-ia-lista { margin: 4px 0 8px 18px; padding: 0; }
 .col-ia-lista li { margin: 2px 0; }
+
+/* v3.50.1 — o Leaflet usa z-index 400–1000 internamente; sem isolar, o mapa cobria os modais (ex.: App do motorista). */
+.col-map, .col-map-small, .leaflet-container { position: relative; z-index: 0; isolation: isolate; }

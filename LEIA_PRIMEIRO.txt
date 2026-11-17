@@ -1,3 +1,5 @@
+v3.50.1 — Coletas: o mapa deixava de cobrir janelas (ex.: "App do motorista"). Cada mapa agora tem camada própria, abaixo dos modais.
+
 v3.50.0 — Gemini ajuda no endereço e na rota das Coletas (+ correção da rota "totalmente diferente")
 - CAUSA: o mapa usava o 1º resultado do geocodificador sem checar cidade/UF/CEP; e "Localizar" em coleta já salva usava o endereço ANTIGO; e salvar a coleta transformava o ponto automático em "manual confirmado".
 - Agora: pede vários candidatos, descarta os de outra cidade/UF, pontua por cidade/UF/CEP/rua, tenta o outro provedor e marca confiança (alta/média/baixa) ou "divergente" (fica fora da rota até corrigir).
