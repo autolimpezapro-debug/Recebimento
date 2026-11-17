@@ -61,17 +61,18 @@ function terCard(r) {
   const id = terH(r.id), pode = terPode('editar'), b = [];
   b.push(`<button class="button ghost" onclick="terImprimir('${id}')">🖨 Imprimir</button><a class="button ghost" href="api.php?action=romaneios_pdf&id=${encodeURIComponent(r.id)}" download>⬇ Baixar PDF</a><a class="button ghost" href="api.php?action=romaneios_csv&id=${encodeURIComponent(r.id)}" download>⬇ CSV</a>`);
   if (r.status === 'RASCUNHO' && terPode('criar')) b.push(`<button class="button ghost" onclick="terForm('${id}')">✏ Editar</button>`);
+  if (['EMITIDO', 'ENTREGUE'].includes(r.status) && pode) b.push(`<button class="button ghost" onclick="terForm('${id}')">✏ Alterar (fica no histórico)</button>`);
   if (r.status === 'RASCUNHO' && pode) b.push(`<button class="button primary" onclick="terEmitir('${id}')">Emitir romaneio</button>`);
   if (r.status === 'EMITIDO' && pode) b.push(`<button class="button primary" onclick="terEntregar('${id}')">Marcar entregue</button>`);
   if (terPode('criar')) b.push(`<button class="button ghost" onclick="terDuplicar('${id}')">⧉ Duplicar</button>`);
   if (['RASCUNHO', 'EMITIDO'].includes(r.status) && pode) b.push(`<button class="button ghost" onclick="terCancelar('${id}')">Cancelar</button>`);
-  return `<article class="panel prt-card ${r.status === 'CANCELADO' ? 'prt-cancelado' : ''}"><div class="prt-top"><div><h3>${id} <span class="prt-badge ${cls}">${terH(rot)}</span></h3>
+  return `<article class="panel prt-card ${r.status === 'CANCELADO' ? 'prt-cancelado' : ''}"><div class="prt-top"><div><h3>${id} <span class="prt-badge ${cls}">${terH(rot)}</span>${r.revisao ? ` <span class="prt-badge warn" title="Alterado em ${terD(r.alterado_em)} por ${terH(r.alterado_por)}">Revisão ${r.revisao}</span>` : ''}</h3>
     <p class="muted">${terD(r.data)} · de <b>${terH(r.origem)}</b>${r.responsavel_patio ? ' (' + terH(r.responsavel_patio) + ')' : ''} → <b>${terH(r.obra_nome)}</b> · ${r.qtd_itens} item(ns)${r.motorista || r.placa ? ' · ' + terH([r.motorista, r.placa].filter(Boolean).join(' / ')) : ''}${r.recebido_por ? ' · recebido por <b>' + terH(r.recebido_por) + '</b> em ' + terD(r.entregue_em) : ''}</p></div>
     <div class="prt-acoes">${b.join('')}</div></div>
     <details class="prt-det"><summary>Ver os ${r.qtd_itens} item(ns)</summary><div class="prt-scroll"><table class="orders-table"><thead><tr><th>SKU</th><th>Material</th><th>Un.</th><th>Qtd.</th><th>Obs.</th></tr></thead><tbody>
       ${r.itens.map(i => `<tr><td>${terH(i.sku) || '—'}</td><td><b>${terH(i.descricao)}</b></td><td>${terH(i.unidade)}</td><td><b>${terQtd(i.quantidade)}</b></td><td>${terH(i.obs)}</td></tr>`).join('')}</tbody></table></div>
       ${r.obs ? `<p class="muted"><b>Obs.:</b> ${terH(r.obs)}</p>` : ''}${r.motivo_cancelamento ? `<p class="muted"><b>Cancelado:</b> ${terH(r.motivo_cancelamento)}</p>` : ''}
-      <details class="prt-hist"><summary>Histórico</summary><ul>${(r.historico || []).map(h => `<li>${terD(h.em)} ${terH(String(h.em).slice(11, 16))} · ${terH(h.por)} — ${terH(h.acao)}</li>`).join('')}</ul></details></details></article>`;
+      <details class="prt-hist"><summary>Histórico</summary><ul>${(r.historico || []).map(h => `<li>${terD(h.em)} ${terH(String(h.em).slice(11, 16))} · ${terH(h.por)} — ${terH(h.acao)}${(h.alteracoes || []).length ? `<ul class="ter-alt">${h.alteracoes.map(a => `<li><b>${terH(a.campo)}</b>: ${a.de ? `<s>${terH(a.de)}</s> → ` : ''}${a.para ? terH(a.para) : '<i>(removido)</i>'}</li>`).join('')}</ul>` : ''}</li>`).join('')}</ul></details></details></article>`;
 }
 function terImprimir(id) { window.open(`api.php?action=romaneios_imprimir&id=${encodeURIComponent(id)}`, '_blank'); }
 
@@ -86,7 +87,9 @@ async function terForm(id) {
   const obras = typeof rdCarregarObras === 'function' ? await rdCarregarObras() : [];
   const nomes = obras.map(o => o.nome).filter(Boolean);
   const v = k => terH(r ? r[k] : '');
+  const posEmissao = !!r && r.status !== 'RASCUNHO';
   const bg = terModal(r ? `Editar ${terH(r.id)}` : 'Novo romaneio — Terceiros', `<p class="muted">Material da empresa que está no pátio (fora do estoque) e vai para a obra. Não é nota fiscal e não movimenta o Estoque.</p>
+    ${posEmissao ? '<div class="panel" style="padding:8px 12px;margin:8px 0;border-color:#f5b544">Este romaneio já foi emitido. A alteração gera uma <b>revisão</b>, e o que mudou (antes → depois), quem mudou e o motivo ficam no histórico. Imprima de novo e substitua as vias antigas.</div>' : ''}
     <div class="rd-ass-campos ter-grid">
       <label>Data<input name="data" type="date" value="${r ? terH(r.data) : terHoje()}"></label>
       <label>Origem<input name="origem" maxlength="100" value="${r ? v('origem') : 'Pátio (terceiros)'}"></label>
@@ -100,8 +103,9 @@ async function terForm(id) {
     <h4 style="margin:12px 0 6px">Itens do romaneio</h4>
     <div class="prt-scroll"><table class="ter-itens"><thead><tr><th>SKU</th><th>Material*</th><th>Un.</th><th>Qtd*</th><th>Obs.</th><th></th></tr></thead><tbody id="terItens">${((r && r.itens.length) ? r.itens : [{}, {}, {}]).map(terLinha).join('')}</tbody></table></div>
     <button type="button" class="button ghost" data-add>＋ Adicionar item</button>
-    <div class="rd-ass-campos"><label>Observações<input name="obs" maxlength="600" value="${v('obs')}"></label></div>
-    <div class="rd-ass-acoes"><button type="button" class="button ghost" data-x2>Voltar</button><button type="button" class="button ghost" data-salvar>Salvar rascunho</button><button type="button" class="button primary" data-emitir>Salvar e emitir</button></div>`, 900);
+    <div class="rd-ass-campos"><label>Observações<input name="obs" maxlength="600" value="${v('obs')}"></label>
+      ${posEmissao ? '<label>Motivo da alteração*<input name="motivo_alteracao" maxlength="200" placeholder="Ex.: quantidade corrigida; item incluído a pedido da obra"></label>' : ''}</div>
+    <div class="rd-ass-acoes"><button type="button" class="button ghost" data-x2>Voltar</button>${posEmissao ? '<button type="button" class="button primary" data-alterar>Salvar alteração</button>' : '<button type="button" class="button ghost" data-salvar>Salvar rascunho</button><button type="button" class="button primary" data-emitir>Salvar e emitir</button>'}</div>`, 900);
   const tb = bg.querySelector('#terItens');
   const ligar = () => tb.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { if (tb.querySelectorAll('.ter-it').length > 1) b.closest('tr').remove(); });
   ligar();
@@ -109,24 +113,24 @@ async function terForm(id) {
   tb.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('[data-f="obs"]') && e.target.closest('tr') === tb.lastElementChild) { e.preventDefault(); bg.querySelector('[data-add]').click(); } });
   const coletar = () => {
     const o = { id: r ? r.id : '', itens: [...tb.querySelectorAll('.ter-it')].map(tr => Object.fromEntries([...tr.querySelectorAll('[data-f]')].map(i => [i.dataset.f, i.value]))) };
-    ['data', 'origem', 'responsavel_patio', 'obra_nome', 'solicitante', 'transportadora', 'motorista', 'veiculo', 'placa', 'obs'].forEach(k => o[k] = terVal(bg, k));
+    ['data', 'origem', 'responsavel_patio', 'obra_nome', 'solicitante', 'transportadora', 'motorista', 'veiculo', 'placa', 'obs', 'motivo_alteracao'].forEach(k => o[k] = terVal(bg, k));
     const ob = obras.find(x => x.nome === o.obra_nome); o.obra_id = ob ? ob.id : '';
     return o;
   };
   const gravar = async emitir => {
-    const bs = bg.querySelectorAll('[data-salvar],[data-emitir]'); bs.forEach(b => b.disabled = true);
+    const bs = bg.querySelectorAll('[data-salvar],[data-emitir],[data-alterar]'); bs.forEach(b => b.disabled = true);
     try {
       let x = (await terPost('romaneios_salvar', coletar())).romaneio;
       if (emitir) x = (await terPost('romaneios_status', { id: x.id, acao: 'emitir' })).romaneio;
-      bg.remove(); terToast(emitir ? `Romaneio ${x.id} emitido` : `Rascunho ${x.id} salvo`); await terceirosInit();
-      if (emitir) terPronto(x);
+      const alt = posEmissao; bg.remove(); terToast(alt ? `Romaneio ${x.id} alterado (revisão ${x.revisao})` : emitir ? `Romaneio ${x.id} emitido` : `Rascunho ${x.id} salvo`); await terceirosInit();
+      if (emitir || alt) terPronto(x);
     } catch (e) { terToast(e.message, true); bs.forEach(b => b.disabled = false); }
   };
-  bg.querySelector('[data-salvar]').onclick = () => gravar(false);
-  bg.querySelector('[data-emitir]').onclick = () => gravar(true);
+  const bsv = bg.querySelector('[data-salvar]'), bem = bg.querySelector('[data-emitir]'), bal = bg.querySelector('[data-alterar]');
+  if (bsv) bsv.onclick = () => gravar(false); if (bem) bem.onclick = () => gravar(true); if (bal) bal.onclick = () => gravar(false);
 }
 function terPronto(r) {
-  const bg = terModal(`Romaneio ${terH(r.id)} emitido`, `<p>Imprima 2 vias (Obra e Arquivo) ou baixe o arquivo.</p><div class="prt-pronto">
+  const bg = terModal(`${r.revisao ? 'Romaneio ' + terH(r.id) + ' alterado' : 'Romaneio ' + terH(r.id) + ' emitido'}`, `<p>Imprima 2 vias (Obra e Arquivo) ou baixe o arquivo.${r.revisao ? ' Esta é a <b>revisão ' + r.revisao + '</b>: substitua as vias antigas.' : ''}</p><div class="prt-pronto">
     <button type="button" class="button primary" data-imp>🖨 Imprimir</button><a class="button ghost" href="api.php?action=romaneios_pdf&id=${encodeURIComponent(r.id)}" download>⬇ Baixar PDF</a><a class="button ghost" href="api.php?action=romaneios_csv&id=${encodeURIComponent(r.id)}" download>⬇ CSV</a></div>
     <div class="rd-ass-acoes"><button type="button" class="button ghost" data-x2>Fechar</button></div>`, 480);
   bg.querySelector('[data-imp]').onclick = () => terImprimir(r.id);

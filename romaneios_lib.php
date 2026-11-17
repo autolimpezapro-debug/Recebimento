@@ -77,14 +77,46 @@ function rom_painel(array $d): array {
     return ['kpis' => ['rascunhos' => $k['RASCUNHO'], 'em_transito' => $k['EMITIDO'], 'entregues' => $k['ENTREGUE'], 'cancelados' => $k['CANCELADO']],
         'obras' => array_keys($obras), 'romaneios' => array_map('rom_view', $lista)];
 }
-/** Cria (sem id) ou atualiza (com id, só rascunho) um romaneio salvo como RASCUNHO. */
+const ROM_CAMPOS = ['data' => 'Data', 'origem' => 'Origem', 'responsavel_patio' => 'Responsável pelo pátio', 'obra_nome' => 'Obra de destino', 'solicitante' => 'Solicitante',
+    'transportadora' => 'Transportadora', 'motorista' => 'Motorista', 'veiculo' => 'Veículo', 'placa' => 'Placa', 'obs' => 'Observações'];
+/** Diferenças entre o romaneio gravado e os dados novos: [{campo, de, para}] (cabeçalho e itens). */
+function rom_diff(array $r, array $n): array {
+    $d = [];
+    foreach (ROM_CAMPOS as $k => $rot) {
+        $a = (string)($r[$k] ?? ''); $b = (string)($n[$k] ?? '');
+        if ($a !== $b) $d[] = ['campo' => $rot, 'de' => $k === 'data' ? rom_fmt_data($a) : $a, 'para' => $k === 'data' ? rom_fmt_data($b) : $b];
+    }
+    $chave = fn($it) => mb_strtoupper($it['sku'] . '|' . $it['descricao']);
+    $ant = []; foreach ($r['itens'] as $it) $ant[$chave($it)] = $it;
+    $nov = []; foreach ($n['itens'] as $it) $nov[$chave($it)] = $it;
+    $fmt = fn($it) => rom_fmt_qtd($it['quantidade']) . ' ' . $it['unidade'];
+    foreach ($nov as $k => $it) {
+        if (!isset($ant[$k])) { $d[] = ['campo' => 'Item incluído', 'de' => '', 'para' => $it['descricao'] . ' — ' . $fmt($it)]; continue; }
+        $o = $ant[$k];
+        if ($fmt($o) !== $fmt($it)) $d[] = ['campo' => 'Quantidade — ' . $it['descricao'], 'de' => $fmt($o), 'para' => $fmt($it)];
+        if ($o['obs'] !== $it['obs']) $d[] = ['campo' => 'Obs. do item — ' . $it['descricao'], 'de' => $o['obs'], 'para' => $it['obs']];
+    }
+    foreach ($ant as $k => $it) if (!isset($nov[$k])) $d[] = ['campo' => 'Item removido', 'de' => $it['descricao'] . ' — ' . $fmt($it), 'para' => ''];
+    return $d;
+}
+/** Cria (sem id) ou atualiza um romaneio. Rascunho edita livremente; emitido/entregue também pode ser editado, mas exige motivo e registra as alterações. */
 function rom_salvar(array &$d, array $in, string $user): array {
     $n = rom_norm($in); $id = prt_str($in['id'] ?? '', 20);
     if ($id !== '') {
         $r = &rom_get($d, $id);
-        if ($r['status'] !== 'RASCUNHO') prt_fail('Só um rascunho pode ser editado. Para mudar um romaneio emitido, cancele e duplique.');
-        $r = array_merge($r, $n); $r['atualizado_em'] = date('c');
-        $r['historico'][] = ['em' => date('c'), 'por' => $user, 'acao' => 'Rascunho atualizado (' . count($n['itens']) . ' item(ns))'];
+        if ($r['status'] === 'CANCELADO') prt_fail('Romaneio cancelado não pode ser editado. Use "Duplicar" para criar um novo.');
+        $agora = date('c');
+        if ($r['status'] === 'RASCUNHO') {
+            $r = array_merge($r, $n); $r['atualizado_em'] = $agora;
+            $r['historico'][] = ['em' => $agora, 'por' => $user, 'acao' => 'Rascunho atualizado (' . count($n['itens']) . ' item(ns))'];
+            return $r;
+        }
+        $motivo = prt_str($in['motivo_alteracao'] ?? '', 200);
+        if (mb_strlen($motivo) < 3) prt_fail('Informe o motivo da alteração.');
+        $dif = rom_diff($r, $n);
+        if (!$dif) prt_fail('Nada foi alterado.');
+        $r = array_merge($r, $n); $r['revisao'] = (int)($r['revisao'] ?? 0) + 1; $r['alterado_em'] = $agora; $r['alterado_por'] = $user; $r['atualizado_em'] = $agora;
+        $r['historico'][] = ['em' => $agora, 'por' => $user, 'acao' => 'Alterado após ' . ($r['status'] === 'ENTREGUE' ? 'a entrega' : 'a emissão') . ' (revisão ' . $r['revisao'] . '): ' . $motivo, 'motivo' => $motivo, 'alteracoes' => array_slice($dif, 0, 80)];
         return $r;
     }
     $d['seq'] = (int)$d['seq'] + 1;
@@ -98,7 +130,7 @@ function rom_status(array &$d, array $in, string $user): array {
     $id = prt_str($in['id'] ?? '', 20); $ac = (string)($in['acao'] ?? ''); $agora = date('c');
     if ($ac === 'duplicar') {
         $o = rom_get($d, $id); $copia = $o;
-        foreach (['id', 'status', 'criado_em', 'criado_por', 'historico', 'emitido_em', 'emitido_por', 'entregue_em', 'recebido_por', 'cancelado_em', 'motivo_cancelamento', 'atualizado_em'] as $k) unset($copia[$k]);
+        foreach (['id', 'status', 'criado_em', 'criado_por', 'historico', 'emitido_em', 'emitido_por', 'entregue_em', 'recebido_por', 'cancelado_em', 'motivo_cancelamento', 'atualizado_em', 'revisao', 'alterado_em', 'alterado_por'] as $k) unset($copia[$k]);
         $copia['data'] = date('Y-m-d'); $copia['obs'] = $o['obs'];
         $n = rom_salvar($d, $copia, $user); $nova = &rom_get($d, $n['id']);
         $nova['historico'][] = ['em' => $agora, 'por' => $user, 'acao' => 'Duplicado de ' . $id];
@@ -133,7 +165,7 @@ function rom_html_impressao(array $r): string {
     $rasc = ($r['status'] ?? '') === 'RASCUNHO' ? '<div class="rasc">RASCUNHO — não emitido</div>' : (($r['status'] ?? '') === 'CANCELADO' ? '<div class="rasc">CANCELADO</div>' : '');
     $meta = fn($k, $v) => '<div><small>' . $e($k) . '</small><b>' . ($v !== '' ? $e($v) : '—') . '</b></div>';
     $via = function (string $titulo) use ($e, $r, $linhas, $meta, $rasc): string {
-        return '<section class="via">' . $rasc . '<header><div><div class="emp">DRILLING DO BRASIL</div><div class="sub">Controle de materiais</div></div><div class="num"><small>' . $e($titulo) . '</small><br><b>' . $e($r['id']) . '</b></div></header>'
+        return '<section class="via">' . $rasc . '<header><div><div class="emp">DRILLING DO BRASIL</div><div class="sub">Controle de materiais</div></div><div class="num"><small>' . $e($titulo) . '</small><br><b>' . $e($r['id']) . '</b>' . (!empty($r['revisao']) ? '<br><small>Revisão ' . (int)$r['revisao'] . ' — alterado em ' . $e(date('d/m/Y H:i', strtotime((string)$r['alterado_em']))) . '</small>' : '') . '</div></header>'
             . '<h1>ROMANEIO DE SAÍDA DE MATERIAL — TERCEIROS</h1>'
             . '<div class="meta">' . $meta('Data', rom_fmt_data($r['data'])) . $meta('Origem', $r['origem']) . '<div class="w2"><small>Responsável pelo pátio</small><b>' . ($r['responsavel_patio'] !== '' ? $e($r['responsavel_patio']) : '—') . '</b></div>'
             . '<div class="w4 dest"><small>Destino (obra)</small><b>' . $e($r['obra_nome']) . '</b></div>'
@@ -169,7 +201,7 @@ function rom_pdf(array $r): string {
         $pdf->page(); $y = 44;
         $cab = function () use ($pdf, $mx, $cw, &$y, $r, $via) {
             $pdf->t($mx, $y + 14, 'DRILLING DO BRASIL', 17, true); $pdf->t($mx, $y + 28, 'Controle de materiais', 9);
-            $pdf->t($mx, $y + 8, $via, 8.5, false, 'R', $cw); $pdf->t($mx, $y + 28, $r['id'], 17, true, 'R', $cw);
+            $pdf->t($mx, $y + 8, $via . (!empty($r['revisao']) ? ' · Revisao ' . (int)$r['revisao'] . ' (alterado em ' . date('d/m/Y H:i', strtotime((string)$r['alterado_em'])) . ')' : ''), 8.5, false, 'R', $cw); $pdf->t($mx, $y + 28, $r['id'], 17, true, 'R', $cw);
             $pdf->line($mx, $y + 36, $mx + $cw, $y + 36, 1.4); $y += 50;
         };
         $cab();

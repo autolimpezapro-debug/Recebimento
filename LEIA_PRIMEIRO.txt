@@ -1,3 +1,9 @@
+v3.40.1 — Terceiros: editar romaneio depois de emitido/entregue (com histórico)
+ * Botão "Alterar (fica no histórico)" nos romaneios emitidos e entregues. Exige o MOTIVO da alteração.
+ * Cada alteração gera uma REVISÃO (Revisão 1, 2...) e registra no histórico quem alterou, quando, o motivo e o que mudou
+   (antes -> depois: campos do cabeçalho, itens incluídos/removidos e quantidades). Cancelado não pode ser editado (use Duplicar).
+ * A impressão e o PDF mostram "Revisão N — alterado em ...", para substituir as vias antigas.
+
 v3.40.0 — App do Motorista (PWA) sem login
  * Em Coletas > "App do motorista": gere UM link pessoal e envie ao motorista (botão WhatsApp). Ele abre, instala (Android: ⋮ > Instalar app;
    iPhone: Safari > Compartilhar > Adicionar à Tela de Início) e o app abre direto na rota em andamento. Sem usuário e senha.
