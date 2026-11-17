@@ -330,7 +330,7 @@ function kpi_coletas_fornecedor(int $dias, ?string $de = null, ?string $ate = nu
     // km por dia: rota do dia (Matriz → fornecedores → Matriz). Km real informado vale para a viagem do dia.
     $porDia = [];
     foreach ($F as $k => $f) foreach ($f['dias'] as $d => $_) $porDia[$d][] = $k;
-    $kmF = []; $kmTipo = [];
+    $kmF = []; $kmTipo = []; $diaRes = [];
     foreach ($porDia as $d => $chaves) {
         $ida = [];
         foreach ($chaves as $k) $ida[$k] = ($origem && $F[$k]['geo']) ? 2 * col_distancia_km($origem, $F[$k]['geo']) * KG_FATOR_ESTRADA : null;
@@ -346,6 +346,9 @@ function kpi_coletas_fornecedor(int $dias, ?string $de = null, ?string $ate = nu
             $rota = ($rota + col_distancia_km($atual, $origem)) * KG_FATOR_ESTRADA;
         }
         $total = $real ?? $rota;
+        $nCol = 0; foreach ($chaves as $k) $nCol += count($F[$k]['dias'][$d]);   // v3.43.0: resumo do dia
+        $diaRes[$d] = ['data' => $d, 'coletas' => $nCol, 'fornecedores' => count($chaves), 'km' => $total !== null ? round($total, 1) : null,
+            'km_tipo' => $total === null ? 'sem endereço' : ($real !== null ? 'real' : 'estimado')];
         $soma = array_sum(array_filter($ida, fn($v) => $v !== null));
         foreach ($chaves as $k) {
             if ($total === null || $ida[$k] === null) { if ($real !== null && count($chaves) === 1) { $kmF[$k][$d] = $real; $kmTipo[$k]['real'] = true; } continue; }
@@ -422,5 +425,20 @@ function kpi_coletas_fornecedor(int $dias, ?string $de = null, ?string $ate = nu
             'sem_endereco' => count(array_filter($out, fn($f) => $f['km'] === null)),
             'km_a_menos' => array_sum(array_map(fn($f) => (int)($f['sugestao']['km_a_menos'] ?? 0), $out)),
             'idas_a_menos' => array_sum(array_map(fn($f) => (int)($f['sugestao']['idas_a_menos'] ?? 0), $out))],
-        'fornecedores' => $out];
+        'fornecedores' => $out, 'dias_resumo' => kg_resumo_dias($diaRes)['dias'], 'meses' => kg_resumo_dias($diaRes)['meses']];
+}
+
+/** v3.43.0: coletas, fornecedores e km por dia + totais por mês (km = rota do dia: depósito → fornecedores → depósito). */
+function kg_resumo_dias(array $dia): array {
+    krsort($dia); $m = [];
+    foreach ($dia as $d => $x) {
+        $k = substr($d, 0, 7);
+        $m[$k] = $m[$k] ?? ['mes' => $k, 'dias' => 0, 'coletas' => 0, 'fornecedores_idas' => 0, 'km' => 0.0, 'dias_sem_km' => 0];
+        $m[$k]['dias']++; $m[$k]['coletas'] += $x['coletas']; $m[$k]['fornecedores_idas'] += $x['fornecedores'];
+        if ($x['km'] === null) $m[$k]['dias_sem_km']++; else $m[$k]['km'] += $x['km'];
+    }
+    foreach ($m as &$r) { $r['km'] = round($r['km'], 1); $n = $r['dias'] - $r['dias_sem_km'];
+        $r['km_medio_dia'] = $n > 0 ? round($r['km'] / $n, 1) : null; $r['coletas_dia'] = round($r['coletas'] / max(1, $r['dias']), 1); $r['fornecedores_dia'] = round($r['fornecedores_idas'] / max(1, $r['dias']), 1); }
+    unset($r);
+    return ['dias' => array_values($dia), 'meses' => array_values($m)];
 }
