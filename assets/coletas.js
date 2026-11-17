@@ -489,14 +489,16 @@ function colRenderRotaAtiva() {
   const p = COL.pos, idade = p ? Math.round((Date.now() - new Date(p.em)) / 60000) : null;
   colEl('colRouteMotorista').innerHTML = `<div class="col-progress"><i style="width:${r.total ? Math.round(r.feitas / r.total * 100) : 0}%"></i></div>
     <p class="col-pos ${p && idade <= 10 ? 'ok' : ''}">${p ? `🚚 Última posição do motorista há ${idade < 1 ? 'menos de 1' : idade} min <button class="linkbtn" onclick="colCentrarMotorista()">ver no mapa</button>` : '🚚 O motorista ainda não compartilhou a localização (Modo motorista → "Compartilhar localização").'}</p>`;
+  const nColetadas = r.paradas.filter(x => x.concluida).length, nNao = r.paradas.filter(x => x.nao_coletada).length, nRota = r.paradas.length - nColetadas - nNao;
+  colEl('colRouteMotorista').innerHTML += `<p class="col-pos"><b>${nRota}</b> em rota · <b>${nColetadas}</b> coletada(s) · <b>${nNao}</b> não coletada(s)</p>`;
   colEl('colRouteList').innerHTML = r.paradas.map((x, i) => `<li class="col-stop ${x.concluida ? 'col-stop-ok' : ''} ${x.nao_coletada ? 'col-stop-warn' : ''}" onclick="colAbrirDetalhe('${colEsc(x.id)}')">
       <span class="col-stop-num" style="background:${COL_COR[x.status] || '#5b8def'}">${x.concluida ? '✓' : x.nao_coletada ? '✕' : i + 1}</span>
-      <span class="col-stop-body"><strong>${colEsc(x.fornecedor)}</strong><small>${x.pc ? 'PC ' + colEsc(x.pc) + ' · ' : ''}${x.nao_coletada ? 'Não coletado — ' + colEsc(x.nao_coletada_motivo) : colEsc(x.status_label)}</small></span></li>`).join('')
+      <span class="col-stop-body"><strong>${colEsc(x.fornecedor)}</strong><small>${x.pc ? 'PC ' + colEsc(x.pc) + ' · ' : ''}${x.nao_coletada ? 'Não coletado — ' + colEsc(x.nao_coletada_motivo) : colEsc(x.status_label)}${x.concluida && x.coletado_em ? ' · coletado às ' + new Date(x.coletado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}${x.concluida && x.coletado_geo ? ` · <a href="https://www.google.com/maps?q=${x.coletado_geo.lat},${x.coletado_geo.lng}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 local</a>${x.coletado_geo.longe ? ` <b style="color:#f5b544" title="A localização do celular ficou longe do endereço cadastrado (só informativo; o GPS pode errar ou o endereço pode precisar de ajuste)">⚠ a ${String(x.coletado_geo.dist_fornecedor_km).replace('.', ',')} km do endereço</b>` : ''}` : ''}</small></span></li>`).join('')
     + r.sem_local.map(x => `<li class="col-stop col-stop-warn"><span class="col-stop-num">!</span><span class="col-stop-body"><strong>${colEsc(x.fornecedor)}</strong><small>${colEsc(x.status_label)} · sem localização</small></span></li>`).join('');
   const link = colLinkMaps(r);
   colEl('colRouteAct').innerHTML = `<div class="col-route-btns">${link ? `<a class="button ghost" href="${link}" target="_blank" rel="noopener">🗺 Google Maps</a>` : ''}
     <button class="button ghost" onclick="window.open('https://wa.me/?text='+encodeURIComponent(colTextoWA(COL.rota,'Rota de coleta em andamento')),'_blank')">◉ Reenviar no WhatsApp</button>
-    <a class="button ghost" href="motorista.html" target="_blank" rel="noopener">🚚 Tela do motorista</a>
+    <button class="button ghost" onclick="colMotorista()">📱 App do motorista</button>
     <button class="button ghost small" onclick="colTracarRota()">↗ Ver no mapa</button>
     <button class="button ghost small danger" onclick="colEncerrarRota()">■ Encerrar rota</button></div>`;
   colDesenharRota();
@@ -824,4 +826,42 @@ function colImpPrevia(res, d, fechar) {
       if (typeof colCarregar === 'function') colCarregar();
     } catch (e) { colToast(e.message, true); ok.disabled = false; ok.textContent = 'Criar coletas'; }
   };
+}
+
+
+/* ---- App do motorista (v3.40.0): link pessoal, sem login ---- */
+function colMotModal(titulo, html) {
+  const bg = document.createElement('div'); bg.className = 'rd-ass-bg';
+  bg.innerHTML = `<div class="rd-ass" style="width:min(560px,100%)"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><h2>${titulo}</h2><button type="button" class="icon-btn" data-x>×</button></div><div data-corpo>${html}</div></div>`;
+  document.body.appendChild(bg); bg.querySelector('[data-x]').onclick = () => bg.remove(); return bg;
+}
+async function colMotorista() {
+  const bg = colMotModal('📱 App do motorista', '<p class="muted">Carregando…</p>');
+  const dt = v => v ? colDataHora(v) : '—';
+  const render = (i, link) => {
+    const corpo = bg.querySelector('[data-corpo]');
+    corpo.innerHTML = `<p class="muted">O motorista instala o app uma vez, pelo link abaixo, e depois ele abre direto na rota do dia — sem login. Ao tocar em "Coletei" o app grava horário e localização, e isso alimenta os Indicadores. Não mexe no estoque.</p>
+      ${i.configurado ? `<div class="panel" style="margin:10px 0;padding:10px 12px"><b>${colEsc(i.nome)}</b> — ${i.ativo ? '<span style="color:#34d399">link ativo</span>' : i.revogado ? '<span style="color:#f87171">link revogado</span>' : '<span style="color:#f87171">link vencido</span>'}<br>
+        <small class="muted">Gerado em ${dt(i.criado_em)} por ${colEsc(i.criado_por)} · último acesso: ${dt(i.ultimo_acesso)} · aparelhos: ${i.aparelhos} de ${i.max_aparelhos} · vence em ${dt(i.expira_em)} (renova a cada uso)</small></div>` : '<p><b>Ainda não há link do motorista.</b></p>'}
+      ${link ? `<div class="panel" style="margin:10px 0;padding:10px 12px;border-color:#34d399"><b>Link do motorista</b> <small class="muted">(guarde: por segurança ele só aparece agora)</small>
+        <input readonly id="colMotLink" style="width:100%;margin:8px 0" value="${colEsc(link)}" onclick="this.select()">
+        <div class="col-route-btns"><button class="button primary" id="colMotCopiar">Copiar link</button><button class="button ghost" id="colMotWa">◉ Enviar por WhatsApp</button></div></div>` : ''}
+      <label style="display:block;margin-top:10px">Nome do motorista<input id="colMotNome" maxlength="80" style="width:100%" value="${colEsc(i.nome || '')}" placeholder="Ex.: Leandro"></label>
+      <div class="rd-ass-acoes" style="flex-wrap:wrap"><button class="button primary" id="colMotGerar">${i.configurado ? 'Gerar novo link (o anterior deixa de valer)' : 'Gerar link do motorista'}</button>
+        ${i.configurado && i.aparelhos ? '<button class="button ghost" id="colMotLiberar">Liberar aparelhos (celular novo)</button>' : ''}${i.configurado && i.ativo ? '<button class="button ghost danger" id="colMotRevogar">Revogar link</button>' : ''}</div>
+      <p class="muted" style="font-size:12px">Segurança: quem tem o link vê apenas a rota em andamento e pode registrar coleta. Se o celular for perdido ou o link vazar, revogue ou gere um novo.</p>`;
+    const g = id => corpo.querySelector(id);
+    if (link) {
+      g('#colMotCopiar').onclick = async () => { try { await navigator.clipboard.writeText(link); colToast('Link copiado'); } catch { g('#colMotLink').select(); colToast('Selecione e copie o link', true); } };
+      g('#colMotWa').onclick = () => window.open('https://wa.me/?text=' + encodeURIComponent('Rota Drilling — abra este link no seu celular e instale o app (Chrome: ⋮ > Instalar app; iPhone: Safari > Compartilhar > Adicionar à Tela de Início):\n' + link), '_blank');
+    }
+    g('#colMotGerar').onclick = async () => {
+      const nome = g('#colMotNome').value.trim(); if (nome.length < 2) return colToast('Informe o nome do motorista', true);
+      if (i.configurado && !confirm('Gerar um novo link? O link atual do motorista deixa de funcionar.')) return;
+      try { const r = await colPost('coletas_motorista_gerar', { nome }); render(r, r.link); } catch (e) { colToast(e.message, true); }
+    };
+    const lib = g('#colMotLiberar'); if (lib) lib.onclick = async () => { try { render(await colPost('coletas_motorista_liberar', {}), null); colToast('Aparelhos liberados'); } catch (e) { colToast(e.message, true); } };
+    const rev = g('#colMotRevogar'); if (rev) rev.onclick = async () => { if (!confirm('Revogar o link? O app do motorista para de funcionar até você gerar outro.')) return; try { render(await colPost('coletas_motorista_revogar', {}), null); colToast('Link revogado'); } catch (e) { colToast(e.message, true); } };
+  };
+  try { render(await colApi('coletas_motorista_info'), null); } catch (e) { bg.querySelector('[data-corpo]').innerHTML = `<p>${colEsc(e.message)}</p>`; }
 }

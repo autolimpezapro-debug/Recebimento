@@ -1,3 +1,17 @@
+v3.40.0 — App do Motorista (PWA) sem login
+ * Em Coletas > "App do motorista": gere UM link pessoal e envie ao motorista (botão WhatsApp). Ele abre, instala (Android: ⋮ > Instalar app;
+   iPhone: Safari > Compartilhar > Adicionar à Tela de Início) e o app abre direto na rota em andamento. Sem usuário e senha.
+ * No app: paradas na ordem, Maps/Waze/Ligar, "Espelho do pedido de compra" (pedido, solicitante, destino, finalidade, fornecedor, TODOS os
+   itens com SKU e quantidade, observações e o PDF original), "Coletei" e "Não coletei" (motivo).
+ * Ao tocar em "Coletei"/"Não coletei" o app grava o HORÁRIO e a LOCALIZAÇÃO do celular naquele instante. Sem sinal, o registro fica no
+   celular e sobe sozinho quando a conexão voltar, mantendo o horário real do toque.
+ * Alimenta os Indicadores de coletas (usa o horário real). NÃO mexe no estoque nem nos pedidos.
+ * Administrativo: a lista da rota mostra em rota / coletadas / não coletadas, horário e link do local; aviso "⚠ a X km do endereço" quando o
+   GPS fica longe do endereço cadastrado (só informativo).
+ * Segurança: o link só dá acesso à rota ativa (nada de estoque, valores, outras telas). Vale 90 dias (renova a cada uso), funciona em até 3
+   aparelhos e pode ser revogado ou trocado a qualquer momento. Dados em data/motorista_acesso.json.
+ * Arquivos novos: motorista.html, motorista_api.php, motorista_lib.php, motorista_manifest.php, motorista_sw.js.
+
 v3.39.0 — Terceiros: Romaneio de saída de material do pátio para a obra
  * Novo item do menu "Terceiros". Para material da empresa que está no pátio (fora do estoque, controlado por outra
    pessoa) e vai para a obra SEM nota de remessa. Não movimenta o Estoque e não é documento fiscal.

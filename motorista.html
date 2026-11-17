@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b1424">
 <meta name="robots" content="noindex">
-<title>Motorista · Recebimento Drilling</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Rota Drilling">
+<title>Rota do Motorista · Drilling</title>
 <link rel="icon" href="/favicon.ico?v=3131">
 <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png?v=3131">
 <style>
@@ -55,113 +58,190 @@ main{padding:4px 16px}
 .toast{position:fixed;left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));background:#1b2b45;border:1px solid #2f4870;border-radius:13px;padding:13px;font-size:14px;z-index:30;text-align:center}
 .toast.err{background:#3a141b;border-color:#7a2b37}
 .fim{font-size:12px;color:#7d93b3;text-align:center;margin:14px 0}
+
+.pend{display:inline-block;font-size:10px;font-weight:800;padding:3px 8px;border-radius:99px;margin-top:6px;background:#3d3011;color:#f5c96a}
+.net{margin:8px 16px 0;padding:10px 12px;border-radius:12px;background:#3d3011;color:#f5c96a;font-size:13px}
+.inst{margin:8px 16px 0;padding:10px 12px;border-radius:12px;background:#10243f;border:1px solid #2b4366;font-size:13px;color:#bcd0ea;display:flex;gap:10px;align-items:center}.inst button{margin-left:auto;background:#1b3a63;color:#fff;border:0;border-radius:9px;padding:8px 12px;font-weight:700}
+.btn.esp{grid-column:1/-1;background:#12233b;border-color:#3a5f94;color:#bcd9ff}
+.full{position:fixed;inset:0;z-index:25;background:#0b1424;overflow:auto;padding:0 0 calc(30px + env(safe-area-inset-bottom))}
+.full .bar2{position:sticky;top:0;background:#0b1424ee;backdrop-filter:blur(8px);padding:calc(12px + env(safe-area-inset-top)) 14px 10px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #22344f}
+.full .bar2 b{flex:1;font-size:16px}.full .bar2 button{background:#1b2b45;color:#e6eefa;border:1px solid #2f4870;border-radius:10px;padding:9px 13px;font-weight:700}
+.sec{margin:12px 14px;background:#111e33;border:1px solid #23375a;border-radius:16px;padding:12px 14px}
+.sec h4{margin:0 0 8px;font-size:11px;letter-spacing:.1em;color:#8ea6c6;text-transform:uppercase}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:6px 10px;font-size:14px}.kv span{color:#8ea6c6;font-size:12px;padding-top:2px}.kv div{word-break:break-word}
+.tb{width:100%;border-collapse:collapse;font-size:13px}.tb th{text-align:left;font-size:10px;color:#8ea6c6;text-transform:uppercase;padding:4px 4px}.tb td{padding:7px 4px;border-top:1px solid #1f3150;vertical-align:top}.tb td.q{white-space:nowrap;font-weight:800;color:#8fc0ff;text-align:right}.tb small{color:#7d93b3;display:block}
+.obsx{white-space:pre-wrap;font-size:13px;line-height:1.5;color:#d4e1f4}
+.pdfbtn{display:flex;align-items:center;justify-content:center;gap:8px;margin:12px 14px;min-height:50px;border-radius:13px;background:#1b3a63;color:#fff;text-decoration:none;font-weight:800}
 </style>
 </head>
 <body>
 <div id="app"><div class="vazio"><div>⏳</div>Carregando…</div></div>
 <script>
 'use strict';
-const S = { csrf: '', rota: null, gps: false, watch: null, ultimoEnvio: 0, motivos: {}, user: '' };
+const K = { tok: 'rd_mot_token', dev: 'rd_mot_dev', fila: 'rd_mot_fila', cache: 'rd_mot_cache', gps: 'rd_mot_gps' };
+const ls = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} }, del: k => { try { localStorage.removeItem(k); } catch (e) {} } };
+const S = { tok: '', dev: '', d: null, fila: [], gps: false, watch: null, ultimoEnvio: 0, offline: false, enviando: false, instalar: null };
 const $ = id => document.getElementById(id);
 const h = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-async function api(action, body, query) {
-  const qs = query ? '&' + new URLSearchParams(query) : '';
-  const init = { cache: 'no-store', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } };
-  if (body) { init.method = 'POST'; init.body = JSON.stringify(body); if (S.csrf) init.headers['X-RD-CSRF'] = S.csrf; }
-  const r = await fetch('api.php?action=' + action + qs, init);
-  let d; try { d = await r.json(); } catch { throw new Error('Sem resposta do servidor.'); }
-  if (!r.ok || !d.ok) { const e = new Error(d.error || 'Erro ' + r.status); e.status = r.status; throw e; }
+const qtd = v => { const n = Number(String(v).replace(',', '.')); return isNaN(n) ? h(v) : n.toLocaleString('pt-BR', { maximumFractionDigits: 3 }); };
+const hora = iso => iso ? new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+const dataBr = iso => iso ? new Date(iso).toLocaleDateString('pt-BR') : '';
+const rnd = n => { const a = new Uint8Array(n); (crypto || window.msCrypto).getRandomValues(a); return Array.from(a, b => b.toString(16).padStart(2, '0')).join('').slice(0, n); };
+function toast(m, err) { const t = document.createElement('div'); t.className = 'toast' + (err ? ' err' : ''); t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 3500); }
+
+async function api(a, body) {
+  const init = { cache: 'no-store', headers: { 'X-MOT-TOKEN': S.tok, 'X-MOT-DEV': S.dev, 'Content-Type': 'application/json' } };
+  if (body) { init.method = 'POST'; init.body = JSON.stringify(body); }
+  let r; try { r = await fetch('motorista_api.php?a=' + a, init); } catch (e) { const x = new Error('Sem conexão'); x.rede = true; throw x; }
+  let d; try { d = await r.json(); } catch { const x = new Error('Servidor indisponível'); x.rede = true; throw x; }
+  if (!r.ok || !d.ok) { const e = new Error(d.error || 'Erro ' + r.status); e.status = r.status; e.codigo = d.codigo; throw e; }
   return d;
 }
-function toast(m, err) { const t = document.createElement('div'); t.className = 'toast' + (err ? ' err' : ''); t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 3200); }
 
-async function iniciar() {
-  try {
-    const st = await api('auth_status');
-    S.csrf = st.csrf || ''; S.user = st.nome_completo || (st.user && st.user.username) || '';
-  } catch (e) { /* segue: instalação sem login */ }
-  try { const c = await api('coletas_config'); S.motivos = c.motivos_retorno || {}; } catch (e) { if (e.status === 401 || e.status === 403) return telaLogin(e.message); }
-  await carregar();
-  setInterval(() => { if (!document.hidden) carregar(true); }, 60000);
+/* ---------- inicialização ---------- */
+function iniciar() {
+  const u = new URLSearchParams(location.search).get('t');
+  if (u && /^[a-f0-9]{48}$/.test(u)) ls.set(K.tok, u);
+  S.tok = ls.get(K.tok) || '';
+  S.dev = ls.get(K.dev) || ''; if (!S.dev) { S.dev = rnd(32); ls.set(K.dev, S.dev); }
+  try { S.fila = JSON.parse(ls.get(K.fila) || '[]'); } catch (e) { S.fila = []; }
+  if (!S.tok) return telaMsg('🔗', 'Abra o link do escritório', 'Este app só abre com o link pessoal que o escritório enviou pelo WhatsApp. Toque nele de novo para entrar.');
+  const m = document.createElement('link'); m.rel = 'manifest'; m.href = 'motorista_manifest.php?t=' + S.tok; document.head.appendChild(m);
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/motorista_sw.js', { scope: '/motorista.html' }).catch(() => {});
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); S.instalar = e; if (S.d) render(); });
+  window.addEventListener('online', () => { S.offline = false; enviarFila().then(() => carregar(true)); });
+  window.addEventListener('offline', () => { S.offline = true; if (S.d) render(); });
+  try { S.d = JSON.parse(ls.get(K.cache) || 'null'); } catch (e) { S.d = null; }
+  if (S.d) render();
+  carregar().then(() => { enviarFila(); if (ls.get(K.gps) === '1' && S.d && S.d.rota) alternarGps(true); });
+  setInterval(() => { if (!document.hidden) { enviarFila().then(() => carregar(true)); } }, 45000);
 }
-
-function telaLogin(msg) {
-  $('app').innerHTML = `<div class="login"><div class="brand"><img src="assets/icons/icon-192.png" alt=""><div><b>Modo motorista</b><small>Recebimento Drilling</small></div></div>
-    <form class="card" style="margin-top:18px" onsubmit="entrar(event)"><label>Usuário</label><input id="lu" autocomplete="username" autocapitalize="none" required>
-    <label>Senha</label><input id="lp" type="password" autocomplete="current-password" required>
-    <button class="btn ok" style="width:100%;margin-top:16px">Entrar</button><div class="erro" id="le">${h(msg && !/Autentica/.test(msg) ? msg : '')}</div></form></div>`;
-}
-async function entrar(ev) {
-  ev.preventDefault();
-  try { await api('auth_login', { username: $('lu').value.trim(), password: $('lp').value }); location.reload(); }
-  catch (e) { $('le').textContent = e.message; }
-}
-async function sair() { try { await api('auth_logout', {}); } catch (e) {} location.reload(); }
+function telaMsg(ic, t, p) { $('app').innerHTML = `<div class="vazio"><div>${ic}</div><b>${h(t)}</b>${h(p)}</div>`; }
 
 async function carregar(silencioso) {
-  try { const r = await api('coletas_rota_ativa'); S.rota = r.rota; render(); }
-  catch (e) { if (e.status === 401 || e.status === 403) return telaLogin(e.message); if (!silencioso) toast(e.message, true); }
+  try {
+    const d = await api('rota'); S.d = d; S.offline = false; ls.set(K.cache, JSON.stringify(d)); render();
+  } catch (e) {
+    if (e.rede) { S.offline = true; if (S.d) render(); else telaMsg('📡', 'Sem conexão', 'Conecte-se à internet para carregar a rota pela primeira vez.'); return; }
+    if (e.codigo === 'link') { ls.del(K.cache); return telaMsg('🔒', 'Link inválido ou vencido', 'Peça um novo link ao escritório e abra-o neste celular.'); }
+    if (e.codigo === 'aparelhos') return telaMsg('📵', 'Link em uso em outros aparelhos', e.message);
+    if (!silencioso) toast(e.message, true);
+  }
 }
 
-function mapsLink(p) { return p.tem_coordenadas ? `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}&travelmode=driving` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.endereco_completo + ' ' + (p.fornecedor || ''))}`; }
-function wazeLink(p) { return p.tem_coordenadas ? `https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes` : `https://waze.com/ul?q=${encodeURIComponent(p.endereco_completo)}&navigate=yes`; }
-const qtd = v => { const n = Number(String(v).replace(',', '.')); return isNaN(n) ? h(v) : n.toLocaleString('pt-BR', { maximumFractionDigits: 3 }); };
+/* ---------- fila de envio (funciona sem sinal) ---------- */
+function salvarFila() { ls.set(K.fila, JSON.stringify(S.fila)); }
+async function enviarFila() {
+  if (S.enviando || !S.fila.length) return; S.enviando = true; let enviou = false;
+  try {
+    while (S.fila.length) {
+      const op = S.fila[0];
+      try { await api(op.tipo === 'coletou' ? 'coletou' : 'nao_coletou', op); S.fila.shift(); salvarFila(); enviou = true; }
+      catch (e) {
+        if (e.rede) break;                                   // sem sinal: tenta depois
+        if (e.status === 401 || e.status === 403 && e.codigo) break;
+        S.fila.shift(); salvarFila(); toast(e.message, true);   // recusada pelo servidor (ex.: coleta fora da rota): descarta
+      }
+    }
+  } finally { S.enviando = false; if (enviou) await carregar(true); else render(); }
+}
+const pendente = id => S.fila.some(o => o.id === id);
 
+/* ---------- GPS ---------- */
+function pegarGps() {
+  return new Promise(res => {
+    if (!navigator.geolocation) return res(null);
+    navigator.geolocation.getCurrentPosition(p => res({ lat: p.coords.latitude, lng: p.coords.longitude, precisao: Math.round(p.coords.accuracy || 0) }), () => res(null), { enableHighAccuracy: true, timeout: 12000, maximumAge: 15000 });
+  });
+}
+function alternarGps(silencioso) {
+  if (S.gps) { if (S.watch != null) navigator.geolocation.clearWatch(S.watch); S.gps = false; S.watch = null; ls.del(K.gps); if (!silencioso) render(); return; }
+  if (!navigator.geolocation) return toast('Este celular não oferece localização.', true);
+  S.gps = true; ls.set(K.gps, '1'); render();
+  S.watch = navigator.geolocation.watchPosition(async pos => {
+    if (Date.now() - S.ultimoEnvio < 45000) return; S.ultimoEnvio = Date.now();
+    try { await api('posicao', { lat: pos.coords.latitude, lng: pos.coords.longitude, precisao: Math.round(pos.coords.accuracy || 0) }); } catch (e) {}
+  }, err => { S.gps = false; render(); toast(err.code === 1 ? 'Permita a localização para este app nas configurações do celular.' : 'Não foi possível obter a localização.', true); }, { enableHighAccuracy: true, maximumAge: 30000, timeout: 30000 });
+}
+
+/* ---------- tela ---------- */
+const mapsLink = p => p.tem_coordenadas ? `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}&travelmode=driving` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.endereco_completo || p.fornecedor)}`;
+const wazeLink = p => p.tem_coordenadas ? `https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes` : `https://waze.com/ul?q=${encodeURIComponent(p.endereco_completo || p.fornecedor)}&navigate=yes`;
+const ehIos = /iphone|ipad|ipod/i.test(navigator.userAgent), standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+
+function paradasView() {
+  const r = S.d && S.d.rota; if (!r) return [];
+  return r.paradas.map(p => {
+    const pend = pendente(p.id); const op = S.fila.find(o => o.id === p.id);
+    return { ...p, _pend: pend, concluida: p.concluida || (pend && op.tipo === 'coletou'), nao_coletada: p.nao_coletada || (pend && op.tipo === 'nao') };
+  });
+}
 function render() {
-  const r = S.rota;
-  const topo = `<div class="top"><div class="brand"><img src="assets/icons/icon-192.png" alt=""><div><b>Rota de coleta</b><small>${h(r ? (r.motorista || S.user) + ' · ' + new Date(r.criada_em).toLocaleDateString('pt-BR') : S.user)}</small></div><button class="sair" onclick="sair()">Sair</button></div>
-    ${r ? `<div class="prog"><div class="prog-l"><span><b>${r.feitas} de ${r.total}</b> coletas feitas${r.nao_coletadas ? ' · ' + r.nao_coletadas + ' não coletada(s)' : ''}</span><span>~${String(r.km_estimado).replace('.', ',')} km</span></div><div class="bar"><i style="width:${r.total ? Math.round(r.feitas / r.total * 100) : 0}%"></i></div></div>` : ''}
-    <div class="gps"><span><b>Compartilhar minha localização</b>${S.gps ? 'Ligado — o escritório vê o caminhão no mapa' : 'Desligado'}</span><button class="sw ${S.gps ? 'on' : ''}" aria-label="Compartilhar localização" onclick="alternarGps()"></button></div></div>`;
-  if (!r) { $('app').innerHTML = topo + `<main><div class="vazio"><div>🚚</div><b>Nenhuma rota em andamento</b>Quando o escritório iniciar a rota de coleta, as paradas aparecem aqui.<br><br><button class="btn" style="margin:auto;padding:0 20px" onclick="carregar()">↻ Atualizar</button></div></main>`; return; }
-  const todas = [...r.paradas, ...r.sem_local];
-  const prox = todas.findIndex(p => !p.concluida && !p.nao_coletada);
-  $('app').innerHTML = topo + '<main>' + todas.map((p, i) => `<article class="card ${p.concluida || p.nao_coletada ? 'feito' : ''} ${i === prox ? 'prox' : ''}">
-      <div class="c-top"><span class="num" ${p.nao_coletada ? 'style="background:#f87171"' : ''}>${p.concluida ? '✓' : p.nao_coletada ? '✕' : i + 1}</span><div style="flex:1;min-width:0">
-        <h2>${h(p.fornecedor || 'Fornecedor')}</h2><p>${h(p.endereco_completo || 'Endereço não cadastrado')}</p>
-        ${p.pc ? `<span class="tag">PC ${h(p.pc)}</span> ` : ''}${p.prioridade === 'URGENTE' ? '<span class="tag urg">URGENTE</span> ' : ''}${p.concluida ? `<span class="tag ok">${h(p.status_label)}</span>` : ''}${p.nao_coletada ? `<span class="tag urg">Não coletado: ${h(p.nao_coletada_motivo)}</span>` : ''}</div></div>
-      ${p.itens && p.itens.length ? `<ul class="itens">${p.itens.map(x => `<li><b>${qtd(x.quantidade)} ${h(x.unidade)}</b><span>${h(x.descricao)}</span></li>`).join('')}</ul>` : (p.observacao ? `<ul class="itens"><li><span>${h(p.observacao).replace(/\n/g, '<br>')}</span></li></ul>` : '')}
-      ${p.concluida ? '' : `<div class="acoes">
-        <a class="btn" href="${mapsLink(p)}" target="_blank" rel="noopener">🗺 Maps</a><a class="btn" href="${wazeLink(p)}" target="_blank" rel="noopener">◈ Waze</a>
+  const d = S.d, r = d && d.rota, ps = paradasView(), feitas = ps.filter(p => p.concluida).length, naoC = ps.filter(p => p.nao_coletada).length;
+  const topo = `<div class="top"><div class="brand"><img src="assets/icons/icon-192.png" alt=""><div><b>Rota de coleta</b><small>${h(d ? (d.motorista || '') + (r ? ' · ' + dataBr(r.criada_em) : '') : '')}</small></div><button class="sair" onclick="carregar()">↻ Atualizar</button></div>
+    ${r ? `<div class="prog"><div class="prog-l"><span><b>${feitas} de ${ps.length}</b> coletas feitas${naoC ? ' · ' + naoC + ' não coletada(s)' : ''}</span><span>~${String(r.km_estimado).replace('.', ',')} km</span></div><div class="bar"><i style="width:${ps.length ? Math.round(feitas / ps.length * 100) : 0}%"></i></div></div>
+    <div class="gps"><span><b>Compartilhar minha localização</b>${S.gps ? 'Ligado — o escritório vê o caminhão no mapa' : 'Desligado (a localização exata é gravada em cada coleta)'}</span><button class="sw ${S.gps ? 'on' : ''}" aria-label="Compartilhar localização" onclick="alternarGps()"></button></div>` : ''}</div>`;
+  const avisos = (S.offline ? `<div class="net">📡 Sem sinal. O que você registrar fica salvo no celular e é enviado sozinho quando a conexão voltar.</div>` : '')
+    + (S.fila.length ? `<div class="net">⏳ ${S.fila.length} registro(s) aguardando envio.</div>` : '')
+    + (!standalone && S.instalar ? `<div class="inst"><span>Instale o app para abrir direto na rota.</span><button onclick="instalar()">📲 Instalar</button></div>` : '')
+    + (!standalone && ehIos ? `<div class="inst"><span>No iPhone: toque em <b>Compartilhar</b> → <b>Adicionar à Tela de Início</b>.</span></div>` : '');
+  if (!r) { $('app').innerHTML = topo + avisos + `<main><div class="vazio"><div>🚚</div><b>Nenhuma rota em andamento</b>Quando o escritório iniciar a rota, as paradas aparecem aqui.<br><br><button class="btn" style="margin:auto;padding:0 22px" onclick="carregar()">↻ Atualizar</button></div></main>`; return; }
+  const prox = ps.findIndex(p => !p.concluida && !p.nao_coletada);
+  $('app').innerHTML = topo + avisos + '<main>' + ps.map((p, i) => `<article class="card ${p.concluida || p.nao_coletada ? 'feito' : ''} ${i === prox ? 'prox' : ''}">
+      <div class="c-top"><span class="num" ${p.nao_coletada ? 'style="background:#f87171"' : ''}>${p.concluida ? '✓' : p.nao_coletada ? '✕' : i + 1}</span><div style="flex:1;min-width:0"><h2>${h(p.fornecedor || 'Fornecedor')}</h2><p>${h(p.endereco_completo || 'Endereço não cadastrado')}</p>
+        ${p.pc ? `<span class="tag">PC ${h(p.pc)}</span> ` : ''}${p.prioridade === 'URGENTE' || (p.pedido && p.pedido.urgente) ? '<span class="tag urg">URGENTE</span> ' : ''}${p.concluida && !p._pend ? `<span class="tag ok">Coletado${p.coletado_em ? ' às ' + hora(p.coletado_em) : ''}</span>` : ''}${p.nao_coletada && !p._pend ? `<span class="tag urg">Não coletado${p.nao_coletada_motivo ? ' — ' + h(p.nao_coletada_motivo) : ''}</span>` : ''}${p._pend ? '<span class="pend">⏳ aguardando envio</span>' : ''}</div></div>
+      ${p.pedido && p.pedido.itens.length ? `<ul class="itens">${p.pedido.itens.slice(0, 6).map(x => `<li><b>${qtd(x.quantidade)} ${h(x.unidade)}</b><span>${h(x.descricao)}</span></li>`).join('')}${p.pedido.itens.length > 6 ? `<li><span>… e mais ${p.pedido.itens.length - 6} item(ns) — veja o espelho do pedido</span></li>` : ''}</ul>` : (p.observacao ? `<ul class="itens"><li><span>${h(p.observacao).replace(/\n/g, '<br>')}</span></li></ul>` : '')}
+      <div class="acoes">${p.pedido ? `<button class="btn esp" onclick="espelho('${h(p.id)}')">📄 Espelho do pedido de compra</button>` : ''}
+        ${p.concluida || p.nao_coletada && !p._pend ? '' : `<a class="btn" href="${mapsLink(p)}" target="_blank" rel="noopener">🗺 Maps</a><a class="btn" href="${wazeLink(p)}" target="_blank" rel="noopener">◈ Waze</a>
         ${p.contato ? `<a class="btn" href="tel:${h(String(p.contato).replace(/[^\d+]/g, ''))}">☎ Ligar</a>` : ''}<button class="btn nao" onclick="naoColetou('${h(p.id)}')" ${p.contato ? '' : 'style="grid-column:1/-1"'}>✕ Não coletei</button>
-        <button class="btn ok" onclick="coletou('${h(p.id)}')">✓ Coletei</button></div>`}
-    </article>`).join('') + `<p class="fim">Volta: ${h(r.origem.nome)}</p></main>`;
+        <button class="btn ok" onclick="coletou('${h(p.id)}')">✓ Coletei</button>`}</div></article>`).join('') + `<p class="fim">Volta: ${h(r.origem ? r.origem.nome : 'depósito')}</p></main>`;
+}
+function instalar() { if (S.instalar) { S.instalar.prompt(); S.instalar.userChoice.finally(() => { S.instalar = null; render(); }); } }
+
+/* ---------- espelho do pedido de compra ---------- */
+function espelho(id) {
+  const p = S.d.rota.paradas.find(x => x.id === id); if (!p || !p.pedido) return; const o = p.pedido;
+  const kv = (k, v) => v ? `<span>${k}</span><div>${h(v)}</div>` : '';
+  const b = document.createElement('div'); b.className = 'full';
+  b.innerHTML = `<div class="bar2"><b>PC ${h(o.pc)}</b><button onclick="this.closest('.full').remove()">✕ Fechar</button></div>
+    ${o.urgente ? `<div class="sec" style="border-color:#7a2b37;background:#2a1219"><b style="color:#ff9aa3">URGENTE</b>${o.urgente_motivo ? ' — ' + h(o.urgente_motivo) : ''}</div>` : ''}
+    <div class="sec"><h4>Pedido de compra</h4><div class="kv">${kv('Número', 'PC ' + o.pc)}${kv('Situação', o.situacao)}${kv('Solicitante', o.solicitante)}${kv('Destino / obra', o.destino)}${kv('Finalidade', o.finalidade)}${kv('OS', o.os)}${kv('Equipamento', o.equipamento)}${kv('Importado em', o.importado_em ? dataBr(o.importado_em) : '')}</div></div>
+    <div class="sec"><h4>Fornecedor — onde coletar</h4><div class="kv">${kv('Fornecedor', p.fornecedor)}${kv('CNPJ', p.cnpj)}${kv('Endereço', p.endereco_completo)}${kv('Contato', p.contato)}${kv('Agendada', p.agendada_data ? dataBr(p.agendada_data + 'T12:00:00') + (p.agendada_hora ? ' às ' + p.agendada_hora : '') : '')}${kv('Observação', p.observacao)}</div></div>
+    <div class="sec"><h4>Itens do pedido (${o.itens.length})</h4>${o.itens.length ? `<table class="tb"><thead><tr><th>Material</th><th style="text-align:right">Qtd.</th></tr></thead><tbody>${o.itens.map(x => `<tr><td>${h(x.descricao)}<small>${x.sku ? 'SKU ' + h(x.sku) : ''}</small></td><td class="q">${qtd(x.quantidade)} ${h(x.unidade)}</td></tr>`).join('')}</tbody></table>` : `<div class="obsx">${h(o.material) || 'Itens não detalhados no sistema.'}</div>`}</div>
+    ${o.observacoes ? `<div class="sec"><h4>Observações do pedido</h4><div class="obsx">${h(o.observacoes)}</div></div>` : ''}${o.obs ? `<div class="sec"><h4>Observações internas</h4><div class="obsx">${h(o.obs)}</div></div>` : ''}
+    ${o.tem_pdf ? `<a class="pdfbtn" target="_blank" rel="noopener" href="motorista_api.php?a=pdf&pc=${encodeURIComponent(o.pc)}&t=${encodeURIComponent(S.tok)}&d=${encodeURIComponent(S.dev)}">📎 Abrir o PDF original do pedido</a>` : ''}`;
+  document.body.appendChild(b);
 }
 
+/* ---------- ações ---------- */
 function sheet(html) { const b = document.createElement('div'); b.className = 'sheet-bg'; b.innerHTML = `<div class="sheet">${html}</div>`; b.onclick = e => { if (e.target === b) b.remove(); }; document.body.appendChild(b); return b; }
+function enfileirar(op) { S.fila.push(op); salvarFila(); render(); enviarFila(); }
 function coletou(id) {
-  const p = [...S.rota.paradas, ...S.rota.sem_local].find(x => x.id === id);
-  const b = sheet(`<h3>Confirmar coleta</h3><p>${h(p.fornecedor)}${p.pc ? ' · PC ' + h(p.pc) : ''}</p>
+  const p = S.d.rota.paradas.find(x => x.id === id);
+  const b = sheet(`<h3>Confirmar coleta</h3><p>${h(p.fornecedor)}${p.pc ? ' · PC ' + h(p.pc) : ''}<br>O horário e a sua localização serão gravados agora.</p>
     <label>Km rodado até aqui (opcional)</label><input id="skm" inputmode="decimal" placeholder="Ex.: 18,5">
     <div class="acoes"><button class="btn" onclick="this.closest('.sheet-bg').remove()">Voltar</button><button class="btn ok" style="grid-column:auto" id="sok">✓ Coletado</button></div>`);
   b.querySelector('#sok').onclick = async () => {
-    try { await api('coletas_status', { id, status: 'COLETADO', detalhe: 'Coletado pelo motorista', km_real: b.querySelector('#skm').value.trim() || null }); b.remove(); toast('Coleta registrada ✓'); carregar(); }
-    catch (e) { toast(e.message, true); }
+    const bt = b.querySelector('#sok'); bt.disabled = true; bt.textContent = 'Obtendo localização…';
+    const g = await pegarGps(), em = new Date().toISOString(), km = b.querySelector('#skm').value.trim() || null; b.remove();
+    if (!g) toast('Sem localização (permita o GPS). Coleta registrada só com o horário.', true);
+    enfileirar({ op: rnd(24), tipo: 'coletou', id, km_real: km, em_cliente: em, ...(g || {}) }); toast('Coleta registrada ✓');
   };
 }
 function naoColetou(id) {
-  const p = [...S.rota.paradas, ...S.rota.sem_local].find(x => x.id === id); let motivo = '';
-  const b = sheet(`<h3>Não foi possível coletar</h3><p>${h(p.fornecedor)}</p><div class="motivos">${Object.entries(S.motivos).map(([k, v]) => `<button type="button" data-m="${h(k)}">${h(v)}</button>`).join('')}</div>
+  const p = S.d.rota.paradas.find(x => x.id === id); let motivo = '';
+  const b = sheet(`<h3>Não foi possível coletar</h3><p>${h(p.fornecedor)}</p><div class="motivos">${Object.entries(S.d.motivos || {}).map(([k, v]) => `<button type="button" data-m="${h(k)}">${h(v)}</button>`).join('')}</div>
     <label>Observação</label><textarea id="sobs" rows="2" placeholder="O que aconteceu?"></textarea>
     <div class="acoes"><button class="btn" onclick="this.closest('.sheet-bg').remove()">Voltar</button><button class="btn nao" id="sok">Registrar</button></div>`);
   b.querySelectorAll('[data-m]').forEach(x => x.onclick = () => { motivo = x.dataset.m; b.querySelectorAll('[data-m]').forEach(y => y.classList.toggle('on', y === x)); });
   b.querySelector('#sok').onclick = async () => {
     if (!motivo) return toast('Escolha o motivo', true);
-    try { await api('coletas_retorno', { id, motivo, observacao: b.querySelector('#sobs').value }); b.remove(); toast('Ocorrência registrada. O escritório vai reagendar.'); carregar(); }
-    catch (e) { toast(e.message, true); }
+    const bt = b.querySelector('#sok'); bt.disabled = true; bt.textContent = 'Obtendo localização…';
+    const g = await pegarGps(), em = new Date().toISOString(), obs = b.querySelector('#sobs').value; b.remove();
+    enfileirar({ op: rnd(24), tipo: 'nao', id, motivo, observacao: obs, em_cliente: em, ...(g || {}) }); toast('Ocorrência registrada. O escritório vai reagendar.');
   };
 }
-
-function alternarGps() {
-  if (S.gps) { if (S.watch != null) navigator.geolocation.clearWatch(S.watch); S.gps = false; S.watch = null; try { localStorage.removeItem('rd_mot_gps'); } catch (e) {} render(); return; }
-  if (!navigator.geolocation) return toast('Este celular não oferece localização.', true);
-  S.gps = true; try { localStorage.setItem('rd_mot_gps', '1'); } catch (e) {} render();
-  S.watch = navigator.geolocation.watchPosition(async pos => {
-    if (Date.now() - S.ultimoEnvio < 45000) return;
-    S.ultimoEnvio = Date.now();
-    try { await api('coletas_posicao', { lat: pos.coords.latitude, lng: pos.coords.longitude, precisao: Math.round(pos.coords.accuracy || 0) }); } catch (e) { /* tenta no próximo ponto */ }
-  }, err => { S.gps = false; render(); toast(err.code === 1 ? 'Permita a localização para este site nas configurações do celular.' : 'Não foi possível obter a localização.', true); }, { enableHighAccuracy: true, maximumAge: 30000, timeout: 30000 });
-}
-iniciar().then(() => { try { if (localStorage.getItem('rd_mot_gps') === '1' && S.rota) alternarGps(); } catch (e) {} });
+iniciar();
 </script>
 </body>
 </html>

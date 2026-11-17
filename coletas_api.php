@@ -61,6 +61,9 @@ if ($colMethod === 'GET') {
     switch ($colAction) {
         case 'coletas_listar':
             respond(['ok' => true] + col_listar($_GET));
+        case 'coletas_motorista_info':   // v3.40.0: situação do link do app do motorista
+            require_once __DIR__ . '/motorista_lib.php';
+            respond(['ok' => true] + mot_info());
         case 'coletas_dashboard':
             respond(['ok' => true] + col_dashboard());
         case 'coletas_rota':
@@ -167,6 +170,16 @@ switch ($colAction) {
 
     case 'coletas_rota_encerrar':
         respond(['ok' => true] + col_rota_encerrar($colUser));
+
+    case 'coletas_motorista_gerar':   // v3.40.0: gera o link pessoal (o anterior deixa de valer)
+        require_once __DIR__ . '/motorista_lib.php';
+        $tk = mot_gerar((string)($colBody['nome'] ?? ''), $colUser);
+        $esq = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        respond(['ok' => true, 'link' => $esq . '://' . ($_SERVER['HTTP_HOST'] ?? '') . '/motorista.html?t=' . $tk] + mot_info());
+    case 'coletas_motorista_revogar':
+        require_once __DIR__ . '/motorista_lib.php'; mot_revogar($colUser); respond(['ok' => true] + mot_info());
+    case 'coletas_motorista_liberar':
+        require_once __DIR__ . '/motorista_lib.php'; mot_liberar_aparelhos($colUser); respond(['ok' => true] + mot_info());
 
     case 'coletas_posicao':
         respond(['ok' => true] + col_posicao($colBody, $colUser));

@@ -400,11 +400,26 @@ function col_salvar(array $input, $usuario) {
     });
 }
 
-function col_mudar_status($id, $status, $usuario, $detalhe = '', $km = null) {
+/** v3.40.0: horário informado pelo aparelho do motorista (vale a hora real do toque, mesmo se enviado depois, sem sinal). Aceita até 48 h atrás. */
+function col_tempo_cliente($v): string {
+    $t = is_string($v) ? strtotime($v) : false;
+    return ($t !== false && $t >= time() - 48 * 3600 && $t <= time() + 120) ? date('c', $t) : col_now();
+}
+/** v3.40.0: registro de GPS no momento da coleta/retorno; compara com o endereço cadastrado (só informa, nunca bloqueia). */
+function col_geo_registro(array $c, $g): ?array {
+    if (!is_array($g) || !isset($g['lat'], $g['lng']) || !is_numeric($g['lat']) || !is_numeric($g['lng'])) return null;
+    $lat = (float)$g['lat']; $lng = (float)$g['lng'];
+    if ($lat < -34 || $lat > 6 || $lng < -75 || $lng > -28) return null;
+    $r = ['lat' => round($lat, 6), 'lng' => round($lng, 6), 'precisao' => max(0, min(99999, (int)($g['precisao'] ?? 0)))];
+    $d = col_distancia_km($c, ['lat' => $lat, 'lng' => $lng]);
+    if ($d !== null) { $r['dist_fornecedor_km'] = round($d, 2); $r['longe'] = $d > 1.0; }
+    return $r;
+}
+function col_mudar_status($id, $status, $usuario, $detalhe = '', $km = null, $geo = null, $quando = null) {
     $id = col_sanitize_id($id);
     $status = strtoupper((string)$status);
     if (!isset(COL_STATUS[$status])) respond(['ok' => false, 'error' => 'Status inválido'], 422);
-    return col_with_lock(function () use ($id, $status, $usuario, $detalhe, $km) {
+    return col_with_lock(function () use ($id, $status, $usuario, $detalhe, $km, $geo, $quando) {
         $db = col_read();
         if (!isset($db['coletas'][$id])) respond(['ok' => false, 'error' => 'Coleta não encontrada'], 404);
         $c = $db['coletas'][$id];
@@ -417,7 +432,12 @@ function col_mudar_status($id, $status, $usuario, $detalhe = '', $km = null) {
                 if ($antes === $status) { $c['atualizado_em'] = col_now(); $db['coletas'][$id] = $c; col_write($db); return ['coleta' => col_view($c), 'alterado' => true]; } }
         }
         if ($antes === $status) return ['coleta' => col_view($c), 'alterado' => false];
-        $now = col_now();
+        $now = $quando ?: col_now();
+        $gr = in_array($status, ['COLETADO', 'TRANSPORTE', 'CHEGOU'], true) ? col_geo_registro($c, $geo) : null;
+        if ($gr) {
+            $gr['em'] = $now; $c['coletado_geo'] = $gr;
+            $detalhe = trim($detalhe . ' · GPS ±' . $gr['precisao'] . ' m' . (isset($gr['dist_fornecedor_km']) ? ' · a ' . str_replace('.', ',', (string)$gr['dist_fornecedor_km']) . ' km do endereço cadastrado' : ''));
+        }
         $c['status'] = $status;
         $c['atualizado_em'] = $now;
         $c['atualizado_por'] = $usuario;
@@ -449,13 +469,13 @@ function col_registrar_retorno($id, array $input, $usuario) {
         $db = col_read();
         if (!isset($db['coletas'][$id])) respond(['ok' => false, 'error' => 'Coleta não encontrada'], 404);
         $c = $db['coletas'][$id];
-        $now = col_now();
+        $now = col_tempo_cliente($input['em_cliente'] ?? null);
         $registro = [
             'em' => $now, 'por' => $usuario, 'motivo' => $motivo,
             'motivo_label' => COL_RETORNO_MOTIVOS[$motivo], 'observacao' => $obs,
             'reagendada_para' => $reagendar,
             'status_anterior' => $c['status'] ?? 'AGUARDANDO',
-        ];
+        ] + (($gr = col_geo_registro($c, $input)) ? ['geo' => $gr] : []);
         $c['retornos'][] = $registro;
         $c['historico'][] = ['em' => $now, 'por' => $usuario, 'acao' => 'retorno', 'detalhe' => COL_RETORNO_MOTIVOS[$motivo] . ($obs ? ' — ' . $obs : '')];
         // Volta para a fila; se reagendou, vai para a nova data.
