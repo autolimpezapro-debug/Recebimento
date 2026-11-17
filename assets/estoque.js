@@ -538,7 +538,7 @@ function estSaidaLinha(preset) {
   div.className = 'est-line-row' + (p ? ' est-line-preset' : '');
   if (p) {
     div.dataset.codigo = p.codigo || ''; div.dataset.pc = p.pc || ''; div.dataset.linhaPc = p.linha_pc || '';
-    div.dataset.autoFoto = p.foto || ''; div.dataset.max = p.pendente != null ? p.pendente : '';
+    div.dataset.autoFoto = p.foto || ''; div.dataset.fotoEscolhida = ''; div.dataset.max = p.pendente != null ? p.pendente : '';
   }
   div.innerHTML = `<div class="est-s-descbox"><input list="estSaidaDatalist" placeholder="Material (digite para buscar)" class="est-s-desc" maxlength="600"${p ? ' readonly' : ''}>${p && p.rotulo ? `<small class="est-sub">${estHtml(p.rotulo)}</small>` : ''}</div>
     <input placeholder="Qtd" class="est-s-qtd" type="number" min="0.001" step="any"${p && p.pendente != null ? ` max="${Number(p.pendente)}"` : ''}>
@@ -552,6 +552,18 @@ function estSaidaLinha(preset) {
       const lab = div.querySelector('.est-foto-btn'), im = lab.querySelector('img');
       im.src = p.foto; im.hidden = false; lab.querySelector('span').hidden = true; lab.classList.add('on', 'auto');
       lab.title = 'Foto automática (' + (p.foto_origem === 'cadastro' ? 'cadastro' : 'recebimento') + ') — clique para trocar por outra';
+      // v3.44.0: o PC pode ter até 3 fotos do recebimento — escolha qual vai com a saída
+      if (p.fotos && p.fotos.length > 1) {
+        const st = document.createElement('div'); st.className = 'est-fotos-opc';
+        st.innerHTML = '<small>Fotos do recebimento:</small>' + p.fotos.map((f, k) => `<button type="button" class="est-foto-opc${k === 0 ? ' on' : ''}" data-f="${estHtml(f)}" title="Foto ${k + 1} do recebimento"><img src="${estHtml(f)}" alt="" loading="lazy"></button>`).join('');
+        st.onclick = e => {
+          const b = e.target.closest('.est-foto-opc'); if (!b) return;
+          st.querySelectorAll('.est-foto-opc').forEach(x => x.classList.toggle('on', x === b));
+          div.dataset.fotoEscolhida = b.dataset.f; div.dataset.autoFoto = b.dataset.f;
+          if (!lab.dataset.foto) im.src = b.dataset.f;
+        };
+        div.appendChild(st);
+      }
     }
   }
   estEl('estSaidaLinhas').appendChild(div);
@@ -644,7 +656,7 @@ function estPcAdicionar(i, silencioso) {
   if (dup) { if (!silencioso) estToast('Este material do PC já está na lista.', true); return false; }
   estSaidaLimparVazias();
   estSaidaLinha({ codigo: l.codigo, descricao: l.descricao, unidade: l.unidade, quantidade: l.qtd_sugerida, pc: ped.pc, linha_pc: l.linha_id,
-    foto: l.foto, foto_origem: l.foto_origem, pendente: l.pendente, rotulo: `PC ${ped.pc}${l.sku ? ' · SKU ' + l.sku : ''} · pendente ${estNum(l.pendente)} ${l.unidade}` });
+    foto: l.foto, foto_origem: l.foto_origem, fotos: l.fotos || [], pendente: l.pendente, rotulo: `PC ${ped.pc}${l.sku ? ' · SKU ' + l.sku : ''} · pendente ${estNum(l.pendente)} ${l.unidade}` });
   estSaidaDestinoSugerir(ped);
   if (!silencioso) estToast('Adicionado: ' + l.descricao);
   return true;
@@ -720,6 +732,7 @@ async function estSalvarSaida(ev) {
     pc: row.dataset.pc ? Number(row.dataset.pc) : undefined,
     linha_pc: row.dataset.linhaPc || undefined,
     foto_auto: !((row.querySelector('.est-foto-btn') || {}).dataset?.foto) && !!row.dataset.autoFoto || undefined,
+    foto_escolhida: row.dataset.fotoEscolhida || undefined,
   })).filter(l => l.descricao.trim() && Number(l.quantidade) > 0);
   if (!linhas.length) return estToast('Inclua ao menos um material com quantidade', true);
   const dest = estSaidaDestino();

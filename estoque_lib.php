@@ -735,7 +735,7 @@ function est_save_requisicao(array &$db, array $input, $usuario, $efetivar = fal
     $extras = [];
     foreach (array_values((array)($input['linhas'] ?? [])) as $i => $l) if (is_array($l)) $extras[$i] = [
         'pc' => max(0, (int)($l['pc'] ?? 0)), 'linha_pc' => preg_replace('/[^A-Za-z0-9_-]/', '', strtolower((string)($l['linha_pc'] ?? ''))),
-        'foto_auto' => !empty($l['foto_auto'])];
+        'foto_auto' => !empty($l['foto_auto']), 'foto_escolhida' => (string)($l['foto_escolhida'] ?? '')];
     $now = est_now();
     $id = est_sanitize_code($input['id'] ?? '');
     // Somente rascunho explícito reutiliza o documento; toda saída efetivada é um novo documento.
@@ -794,7 +794,11 @@ function est_save_requisicao(array &$db, array $input, $usuario, $efetivar = fal
         $cod = est_match_item($db, $ln['descricao'], $linhas[$i]['codigo'] ?? '');
         if ($cod === null) continue;
         $fa = est_foto_auto($db, $cod, (int)($linhas[$i]['pc'] ?? 0));
-        $arq = $fa['rel'] !== '' ? est_foto_copiar($fa['rel'], $id, $i + 1) : '';
+        $rel = $fa['rel'];
+        // v3.44.0: o operador pode ter escolhido outra das fotos do recebimento — só vale se for uma das fotos deste PC/item
+        $esc = est_foto_rel_ok((string)($extras[$i]['foto_escolhida'] ?? ''));
+        if ($esc !== '' && (in_array($esc, $fa['fotos'], true) || $esc === est_foto_do_item($db['itens'][$cod] ?? []))) $rel = $esc;
+        $arq = $rel !== '' ? est_foto_copiar($rel, $id, $i + 1) : '';
         if ($arq !== '') { $linhas[$i]['foto'] = $arq; $linhas[$i]['foto_origem'] = $fa['origem']; }
     }
     $req['linhas'] = $linhas;
@@ -2322,21 +2326,22 @@ function est_foto_do_item(array $it): string {
  * do último PC que deu entrada neste item). Retorna ['rel'=>'', 'origem'=>'cadastro|recebimento', 'pc'=>n].
  */
 function est_foto_auto(array $db, string $codigo, int $pc = 0): array {
-    $vazio = ['rel' => '', 'origem' => '', 'pc' => 0];
+    $vazio = ['rel' => '', 'origem' => '', 'pc' => 0, 'fotos' => []];
     $it = $db['itens'][$codigo] ?? null;
     if (!$it) return $vazio;
-    $r = est_foto_do_item($it);
-    if ($r !== '') return ['rel' => $r, 'origem' => 'cadastro', 'pc' => 0];
+    $cad = est_foto_do_item($it);
     $idx = est_pedidos_idx();
-    if ($pc > 0) {
+    if ($pc > 0) {   // v3.44.0: saída por PC — a foto do RECEBIMENTO deste PC vem primeiro; a de cadastro só se o PC não tiver foto
         $f = $idx[$pc]['fotos'] ?? [];
-        return $f ? ['rel' => $f[0], 'origem' => 'recebimento', 'pc' => $pc] : $vazio;
+        if ($f) return ['rel' => $f[0], 'origem' => 'recebimento', 'pc' => $pc, 'fotos' => $f];
+        return $cad !== '' ? ['rel' => $cad, 'origem' => 'cadastro', 'pc' => 0, 'fotos' => []] : $vazio;
     }
+    if ($cad !== '') return ['rel' => $cad, 'origem' => 'cadastro', 'pc' => 0, 'fotos' => []];
     $n = 0;
     foreach (array_reverse($db['movimentos'] ?? []) as $m) {
         if (($m['tipo'] ?? '') !== 'ENTRADA_RECEBIMENTO' || ($m['codigo'] ?? '') !== $codigo || (int)($m['pc'] ?? 0) <= 0) continue;
         $f = $idx[(int)$m['pc']]['fotos'] ?? [];
-        if ($f) return ['rel' => $f[0], 'origem' => 'recebimento', 'pc' => (int)$m['pc']];
+        if ($f) return ['rel' => $f[0], 'origem' => 'recebimento', 'pc' => (int)$m['pc'], 'fotos' => $f];
         if (++$n >= 6) break;
     }
     return $vazio;
@@ -2391,7 +2396,7 @@ function est_pc_saida_info(array $db, int $pc): array {
         $out['linhas'][] = ['linha_id' => $lid, 'codigo' => $code, 'sku' => est_sap_code($lid) ?: (est_sap_code($code) ?: (str_starts_with($code, 'EST-') ? '' : $code)),
             'descricao' => (string)$it['descricao'], 'unidade' => (string)($it['unidade'] ?? 'UN'), 'recebida' => $rec, 'retirada' => $retirada, 'pendente' => $pend,
             'saldo' => round((float)$it['saldo'], 4), 'disponivel' => $disp, 'qtd_sugerida' => round(min($pend, max(0, $disp)), 4),
-            'foto' => $fa['rel'], 'foto_origem' => $fa['origem'], 'status' => $st, 'localizacao' => (string)($it['localizacao'] ?? '')];
+            'foto' => $fa['rel'], 'foto_origem' => $fa['origem'], 'fotos' => $fa['fotos'], 'status' => $st, 'localizacao' => (string)($it['localizacao'] ?? '')];
     }
     if (!$out['linhas']) { $out['status'] = 'sem_linhas'; $out['mensagem'] = 'O PC ' . $pc . ' ainda não teve nenhum material recebido e conferido no estoque.'; return $out; }
     $out['status'] = 'ok'; $out['mensagem'] = '';

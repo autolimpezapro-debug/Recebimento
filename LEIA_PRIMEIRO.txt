@@ -1,3 +1,9 @@
+v3.44.0 — Saída por PC: foto do recebimento
+ * Ao dar saída por número de PC (ex.: 5015), a foto do RECEBIMENTO daquele PC vem primeiro; a foto de cadastro do item só é usada
+   se o PC não tiver foto de produto. Saída sem PC continua como antes (cadastro primeiro).
+ * Se o PC tem mais de uma foto de recebimento (até 3), aparecem miniaturas na linha da saída para escolher qual vai com o comprovante.
+ * A foto escolhida só é aceita se for do próprio PC/item (validado no servidor). Tirar outra foto na hora continua valendo mais que a sugerida.
+
 v3.43.0 — Indicadores de gestão: coletas por dia e km por mês
  * Em Indicadores de gestão > "Coletas por fornecedor", nova tabela "Km por mês": dias com coleta, coletas, coletas/dia,
    fornecedores/dia, km no mês e km/dia. Abaixo, o "dia a dia" (coletas, fornecedores e km de cada dia).
