@@ -728,7 +728,33 @@ function col_importar_pedido($pc) {
 /* ------------------------------------------------------------------ */
 
 /** Ordena as coletas escolhidas (vizinho mais próximo a partir do depósito) ou mantém a ordem dada. */
-function col_ordenar_paradas(array $db, array $ids, bool $otimizar = true) {
+/**
+ * v3.49.0 — refinamento 2-opt: troca trechos do caminho enquanto isso encurta o percurso (ida e volta ao depósito).
+ * Paradas URGENTE/ALTA nunca entram num trecho invertido: a ordem de prioridade escolhida pelo vizinho mais próximo é mantida.
+ */
+function col_2opt(array $seq, array $origem): array {
+    $n = count($seq); if ($n < 3) return $seq;
+    $d = fn($a, $b) => col_distancia_km($a, $b) ?? 0.0;
+    $livre = fn($c) => !in_array((string)($c['prioridade'] ?? ''), ['ALTA', 'URGENTE'], true);
+    for ($volta = 0; $volta < 60; $volta++) {
+        $melhorou = false;
+        for ($i = 0; $i < $n - 1; $i++) {
+            for ($j = $i + 1; $j < $n; $j++) {
+                $ok = true; for ($k = $i; $k <= $j; $k++) if (!$livre($seq[$k])) { $ok = false; break; }
+                if (!$ok) continue;
+                $a = $i > 0 ? $seq[$i - 1] : $origem; $b = $seq[$i]; $c = $seq[$j]; $e = $j < $n - 1 ? $seq[$j + 1] : $origem;
+                if ($d($a, $b) + $d($c, $e) > $d($a, $c) + $d($b, $e) + 0.0001) {
+                    array_splice($seq, $i, $j - $i + 1, array_reverse(array_slice($seq, $i, $j - $i + 1)));
+                    $melhorou = true;
+                }
+            }
+        }
+        if (!$melhorou) break;
+    }
+    return $seq;
+}
+
+function col_ordenar_paradas(array $db, array $ids, bool $otimizar = true, bool $refinar = true) {
     $origem = $db['config']['origem'] ?? COL_ORIGEM_PADRAO;
     $sel = [];
     foreach ($ids as $id) { $id = col_sanitize_id($id); if (isset($db['coletas'][$id]) && !isset($sel[$id])) $sel[$id] = $db['coletas'][$id]; }
@@ -741,7 +767,7 @@ function col_ordenar_paradas(array $db, array $ids, bool $otimizar = true) {
             foreach ($rest as $i => $c) { $d = col_distancia_km($at, $c) ?? INF; $b = ($c['prioridade'] ?? '') === 'URGENTE' ? -30 : (($c['prioridade'] ?? '') === 'ALTA' ? -10 : 0); if ($d + $b < $md) { $md = $d + $b; $m = $i; } }
             $ord[] = $rest[$m]; $at = $rest[$m]; array_splice($rest, $m, 1);
         }
-        $com = $ord;
+        $com = $refinar ? col_2opt($ord, $origem) : $ord;
     }
     $km = 0.0; $at = $origem; $out = [];
     foreach ($com as $c) { $d = col_distancia_km($at, $c) ?? 0; $km += $d; $v = col_view($c); $v['distancia_anterior_km'] = round($d * 1.3, 1); $v['ordem'] = count($out) + 1; $out[] = $v; $at = $c; }
@@ -825,6 +851,48 @@ function col_rota_encerrar(string $usuario) {
     });
 }
 
+/**
+ * v3.49.0 — Reotimiza só o que falta: a partir da posição atual do motorista, reordena as paradas ainda pendentes
+ * (vizinho mais próximo + 2-opt, respeitando URGENTE/ALTA). As já feitas ou não coletadas ficam onde estão.
+ */
+function col_rota_reotimizar(float $lat, float $lng, string $usuario) {
+    if ($lat < -90 || $lat > 90 || $lng < -180 || $lng > 180 || ($lat == 0.0 && $lng == 0.0)) respond(['ok' => false, 'error' => 'Posição inválida.'], 422);
+    return col_with_lock(function () use ($lat, $lng, $usuario) {
+        $db = col_read();
+        $r = $db['rota_ativa'] ?? null;
+        if (!$r || empty($r['paradas'])) respond(['ok' => false, 'error' => 'Não há rota em andamento.'], 409);
+        $origem = $db['config']['origem'] ?? COL_ORIGEM_PADRAO;
+        $fixas = []; $pend = []; $semLoc = [];
+        foreach ($r['paradas'] as $id) {
+            $c = $db['coletas'][$id] ?? null; if (!$c) continue;
+            $feita = in_array($c['status'] ?? '', ['COLETADO', 'TRANSPORTE', 'CHEGOU'], true);
+            $ult = !empty($c['retornos']) ? end($c['retornos']) : null;
+            $nao = !$feita && $ult && strcmp((string)($ult['em'] ?? ''), (string)$r['criada_em']) >= 0;
+            if ($feita || $nao) { $fixas[] = $id; continue; }
+            if (isset($c['lat'], $c['lng']) && $c['lat'] !== null) $pend[] = $c; else $semLoc[] = $id;
+        }
+        if (count($pend) < 2) return ['reordenada' => false, 'motivo' => 'Só há ' . count($pend) . ' parada pendente com localização.'] + col_rota_ativa_view($db);
+        // vizinho mais próximo a partir de onde o motorista está
+        $at = ['lat' => $lat, 'lng' => $lng]; $ord = []; $rest = $pend;
+        while ($rest) {
+            $m = 0; $md = INF;
+            foreach ($rest as $i => $c) {
+                $dd = col_distancia_km($at, $c) ?? INF; $pr = (string)($c['prioridade'] ?? '');
+                $b = $pr === 'URGENTE' ? -30 : ($pr === 'ALTA' ? -10 : 0);
+                if ($dd + $b < $md) { $md = $dd + $b; $m = $i; }
+            }
+            $ord[] = $rest[$m]; $at = $rest[$m]; array_splice($rest, $m, 1);
+        }
+        $ord = col_2opt($ord, $origem);
+        $novo = array_merge($fixas, array_column($ord, 'id'), $semLoc);
+        $mudou = $novo !== array_values($r['paradas']);
+        $db['rota_ativa']['paradas'] = $novo;
+        $db['rota_ativa']['reotimizada_em'] = col_now(); $db['rota_ativa']['reotimizada_por'] = $usuario;
+        col_write($db);
+        return ['reordenada' => $mudou, 'motivo' => $mudou ? '' : 'A ordem atual já é a melhor a partir de onde você está.'] + col_rota_ativa_view($db);
+    });
+}
+
 /** Posição do motorista (só a última fica guardada). */
 function col_posicao(array $b, string $usuario) {
     $lat = (float)($b['lat'] ?? 0); $lng = (float)($b['lng'] ?? 0);
@@ -896,7 +964,7 @@ function col_km_media(array $q) {
     ksort($dias);
     $lista = [];
     foreach ($dias as $dia => $ids) {
-        $o = col_ordenar_paradas($db, $ids, true);
+        $o = col_ordenar_paradas($db, $ids, true, false);   // indicadores: mesmo método de antes (sem 2-opt)
         $lista[] = ['data' => $dia, 'paradas' => count($o['paradas']), 'km' => $o['km_estimado'], 'min' => $o['min_estimado'],
             'fornecedores' => array_values(array_unique(array_map(fn($p) => (string)($p['fornecedor'] ?? ''), $o['paradas'])))];
     }

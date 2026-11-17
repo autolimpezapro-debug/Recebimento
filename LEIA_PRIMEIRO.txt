@@ -1,3 +1,13 @@
+v3.49.0 — ROTA DO MOTORISTA MAIS ESPERTA
+  O app do motorista (link pessoal, sem login) já mostrava as paradas, o espelho do pedido de compra, o PDF original e o
+  "Coletei" com horário e GPS. Agora também:
+  - Roteirização melhor: além do vizinho mais próximo, o sistema refina a ordem (2-opt) para encurtar o percurso (testes: ~10%
+    menos km). Pedidos URGENTE/ALTA continuam na frente. Vale para a rota montada no escritório.
+  - Botão "Abrir a rota completa no Maps": navegação com todas as paradas pendentes na ordem e volta ao depósito (até 9 paradas por vez).
+  - Botão "Refazer a ordem a partir de onde estou": reordena só o que falta, a partir do GPS do motorista (feitas ficam no topo).
+  - Cada parada mostra "Pedido de compra completo (todos os itens)" e, quando existe, o botão "PDF original do pedido".
+  Os indicadores de km (média/mês) continuam calculados do mesmo jeito de antes.
+
 v3.48.1 — REVISÃO GERAL (correções)
   - Push: o envio não segura mais a trava da fila durante a rede (salvar um recebimento nunca espera outro envio);
     fila é podada mesmo sem nada a enviar; dois processos não enviam o mesmo aviso ao mesmo aparelho.

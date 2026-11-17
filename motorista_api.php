@@ -43,6 +43,10 @@ switch ($acao) {
     case 'posicao':
         $r = col_posicao($b, $quem);
         respond(['ok' => true]);
+    case 'reotimizar':
+        if ($metodo !== 'POST') respond(['ok' => false, 'error' => 'Método não permitido'], 405);
+        $r = col_rota_reotimizar((float)($b['lat'] ?? 0), (float)($b['lng'] ?? 0), $quem);
+        respond(['ok' => true, 'reordenada' => $r['reordenada'], 'motivo' => $r['motivo']]);
     case 'pdf':
         $pc = (int)($_GET['pc'] ?? 0); $achou = false;
         foreach (mot_rota()['rota']['paradas'] ?? [] as $p) if ((int)$p['pc'] === $pc && $pc > 0) $achou = true;

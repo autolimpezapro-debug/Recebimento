@@ -63,6 +63,8 @@ main{padding:4px 16px}
 .net{margin:8px 16px 0;padding:10px 12px;border-radius:12px;background:#3d3011;color:#f5c96a;font-size:13px}
 .inst{margin:8px 16px 0;padding:10px 12px;border-radius:12px;background:#10243f;border:1px solid #2b4366;font-size:13px;color:#bcd0ea;display:flex;gap:10px;align-items:center}.inst button{margin-left:auto;background:#1b3a63;color:#fff;border:0;border-radius:9px;padding:8px 12px;font-weight:700}
 .btn.esp{grid-column:1/-1;background:#12233b;border-color:#3a5f94;color:#bcd9ff}
+.rotaacoes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 14px 0}.rotaacoes .btn{min-height:46px;font-size:13px}.rotaacoes .btn.larga{grid-column:1/-1}
+.btn.esp2{background:#12233b;border-color:#3a5f94;color:#bcd9ff}
 .full{position:fixed;inset:0;z-index:25;background:#0b1424;overflow:auto;padding:0 0 calc(30px + env(safe-area-inset-bottom))}
 .full .bar2{position:sticky;top:0;background:#0b1424ee;backdrop-filter:blur(8px);padding:calc(12px + env(safe-area-inset-top)) 14px 10px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #22344f}
 .full .bar2 b{flex:1;font-size:16px}.full .bar2 button{background:#1b2b45;color:#e6eefa;border:1px solid #2f4870;border-radius:10px;padding:9px 13px;font-weight:700}
@@ -187,14 +189,41 @@ function render() {
     + (!standalone && ehIos ? `<div class="inst"><span>No iPhone: toque em <b>Compartilhar</b> → <b>Adicionar à Tela de Início</b>.</span></div>` : '');
   if (!r) { $('app').innerHTML = topo + avisos + `<main><div class="vazio"><div>🚚</div><b>Nenhuma rota em andamento</b>Quando o escritório iniciar a rota, as paradas aparecem aqui.<br><br><button class="btn" style="margin:auto;padding:0 22px" onclick="carregar()">↻ Atualizar</button></div></main>`; return; }
   const prox = ps.findIndex(p => !p.concluida && !p.nao_coletada);
-  $('app').innerHTML = topo + avisos + '<main>' + ps.map((p, i) => `<article class="card ${p.concluida || p.nao_coletada ? 'feito' : ''} ${i === prox ? 'prox' : ''}">
+  const pendentes = ps.filter(p => !p.concluida && !p.nao_coletada);
+  const acoesRota = pendentes.length ? `<div class="rotaacoes"><a class="btn esp2 larga" href="${rotaCompletaLink(pendentes, r.origem)}" target="_blank" rel="noopener">🧭 Abrir a rota completa no Maps (${Math.min(pendentes.length, 9)} parada${pendentes.length > 1 ? 's' : ''} + volta)</a>
+    <button class="btn esp2 larga" onclick="reotimizar()" ${S.offline ? 'disabled' : ''}>🔀 Refazer a ordem a partir de onde estou</button></div>` : '';
+  $('app').innerHTML = topo + avisos + acoesRota + '<main>' + ps.map((p, i) => `<article class="card ${p.concluida || p.nao_coletada ? 'feito' : ''} ${i === prox ? 'prox' : ''}">
       <div class="c-top"><span class="num" ${p.nao_coletada ? 'style="background:#f87171"' : ''}>${p.concluida ? '✓' : p.nao_coletada ? '✕' : i + 1}</span><div style="flex:1;min-width:0"><h2>${h(p.fornecedor || 'Fornecedor')}</h2><p>${h(p.endereco_completo || 'Endereço não cadastrado')}</p>
         ${p.pc ? `<span class="tag">PC ${h(p.pc)}</span> ` : ''}${p.prioridade === 'URGENTE' || (p.pedido && p.pedido.urgente) ? '<span class="tag urg">URGENTE</span> ' : ''}${p.concluida && !p._pend ? `<span class="tag ok">Coletado${p.coletado_em ? ' às ' + hora(p.coletado_em) : ''}</span>` : ''}${p.nao_coletada && !p._pend ? `<span class="tag urg">Não coletado${p.nao_coletada_motivo ? ' — ' + h(p.nao_coletada_motivo) : ''}</span>` : ''}${p._pend ? '<span class="pend">⏳ aguardando envio</span>' : ''}</div></div>
       ${p.pedido && p.pedido.itens.length ? `<ul class="itens">${p.pedido.itens.slice(0, 6).map(x => `<li><b>${qtd(x.quantidade)} ${h(x.unidade)}</b><span>${h(x.descricao)}</span></li>`).join('')}${p.pedido.itens.length > 6 ? `<li><span>… e mais ${p.pedido.itens.length - 6} item(ns) — veja o espelho do pedido</span></li>` : ''}</ul>` : (p.observacao ? `<ul class="itens"><li><span>${h(p.observacao).replace(/\n/g, '<br>')}</span></li></ul>` : '')}
-      <div class="acoes">${p.pedido ? `<button class="btn esp" onclick="espelho('${h(p.id)}')">📄 Espelho do pedido de compra</button>` : ''}
+      <div class="acoes">${p.pedido ? `<button class="btn esp" onclick="espelho('${h(p.id)}')">📄 Pedido de compra completo (todos os itens)</button>` : ''}${p.pedido && p.pedido.tem_pdf ? `<a class="btn esp" target="_blank" rel="noopener" href="motorista_api.php?a=pdf&pc=${encodeURIComponent(p.pedido.pc)}&t=${encodeURIComponent(S.tok)}&d=${encodeURIComponent(S.dev)}">📎 PDF original do pedido</a>` : ''}
         ${p.concluida || p.nao_coletada && !p._pend ? '' : `<a class="btn" href="${mapsLink(p)}" target="_blank" rel="noopener">🗺 Maps</a><a class="btn" href="${wazeLink(p)}" target="_blank" rel="noopener">◈ Waze</a>
         ${p.contato ? `<a class="btn" href="tel:${h(String(p.contato).replace(/[^\d+]/g, ''))}">☎ Ligar</a>` : ''}<button class="btn nao" onclick="naoColetou('${h(p.id)}')" ${p.contato ? '' : 'style="grid-column:1/-1"'}>✕ Não coletei</button>
         <button class="btn ok" onclick="coletou('${h(p.id)}')">✓ Coletei</button>`}</div></article>`).join('') + `<p class="fim">Volta: ${h(r.origem ? r.origem.nome : 'depósito')}</p></main>`;
+}
+/* Rota completa: o Google Maps aceita até 9 paradas intermediárias; vai na ordem da rota e termina no depósito. */
+function rotaCompletaLink(pend, origem) {
+  const pt = p => p.tem_coordenadas ? p.lat + ',' + p.lng : encodeURIComponent(p.endereco_completo || p.fornecedor);
+  const lote = pend.slice(0, 9);
+  const dest = origem && origem.lat != null ? origem.lat + ',' + origem.lng : pt(lote[lote.length - 1]);
+  return 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=' + dest + '&waypoints=' + lote.map(pt).join('%7C');
+}
+function posicaoAtual() {
+  return new Promise((ok, falha) => {
+    if (!navigator.geolocation) return falha(new Error('Este aparelho não informa a localização.'));
+    navigator.geolocation.getCurrentPosition(p => ok(p.coords), e => falha(new Error(e.code === 1 ? 'Permita a localização para este app nas configurações do celular.' : 'Não foi possível obter a localização.')), { enableHighAccuracy: true, timeout: 20000, maximumAge: 20000 });
+  });
+}
+async function reotimizar() {
+  if (S.offline) return toast('Sem sinal: tente de novo quando a conexão voltar.', true);
+  if (!confirm('Refazer a ordem das paradas que faltam, a partir de onde você está agora?')) return;
+  try {
+    toast('Buscando sua localização…');
+    const c = await posicaoAtual();
+    const r = await api('reotimizar', { lat: c.latitude, lng: c.longitude });
+    await carregar();
+    toast(r.reordenada ? 'Ordem atualizada: siga a nova sequência.' : (r.motivo || 'A ordem já era a melhor.'));
+  } catch (e) { toast(e.message || 'Não foi possível refazer a rota.', true); }
 }
 function instalar() { if (S.instalar) { S.instalar.prompt(); S.instalar.userChoice.finally(() => { S.instalar = null; render(); }); } }
 

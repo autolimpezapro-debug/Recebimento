@@ -21,7 +21,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: no-referrer');
 
-const INST_VERSAO = '3.48.1';
+const INST_VERSAO = '3.49.0';
 const INST_ROOT = __DIR__;
 const INST_DATA = __DIR__ . '/data';
 
@@ -130,7 +130,7 @@ function inst_rodar(): array {
         $passo('Pasta ' . $d . '/ ' . (is_dir($full) ? 'pronta' : 'FALHOU'), is_dir($full));
     }
     $ht = INST_DATA . '/.htaccess';
-    // v3.48.1: repara o .htaccess da v3.37.0–3.45.0, que negava TUDO em data/ e quebrava as fotos dos produtos
+    // v3.49.0: repara o .htaccess da v3.37.0–3.45.0, que negava TUDO em data/ e quebrava as fotos dos produtos
     $htAtual = is_file($ht) ? (string)@file_get_contents($ht) : '';
     if (!is_file($ht) || (stripos($htAtual, 'FilesMatch') === false && stripos($htAtual, 'Require all denied') !== false)) {
         @file_put_contents($ht, "Options -Indexes\n<FilesMatch \"(?i)\\.(json|php|xml|zip|key|lock|tmp|bak|log|pem)$\">\nRequire all denied\n</FilesMatch>\n<FilesMatch \"^\\.\">\nRequire all denied\n</FilesMatch>\n", LOCK_EX);
