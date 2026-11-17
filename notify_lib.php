@@ -200,7 +200,7 @@ function notif_publish(array $data) {
     $titulo = mb_substr(trim((string)($data['titulo'] ?? NOTIF_TIPOS[$tipo])), 0, 160);
     $texto  = mb_substr(trim((string)($data['texto'] ?? '')), 0, 600);
     if ($titulo === '') $titulo = NOTIF_TIPOS[$tipo];
-    return notif_try_lock(function () use ($tipo, $titulo, $texto, $data) {
+    $notifCriada = notif_try_lock(function () use ($tipo, $titulo, $texto, $data) {
         $db = notif_read();
         $id = (int)$db['last_id'] + 1;
         $now = date('c');
@@ -234,6 +234,30 @@ function notif_publish(array $data) {
         notif_write($db);
         return $notif;
     });
+    // v3.47.0: além do sino (inalterado), toda notificação sai também por Web Push para os aparelhos inscritos,
+    // mesmo sem sessão aberta. Recebimento/parcial já têm o seu push na finalização (push_queue_received).
+    if (is_array($notifCriada) && ($data['push'] ?? true) !== false && !in_array($tipo, ['recebimento', 'parcial'], true)) {
+        notif_push_enviar($notifCriada);
+    }
+    return $notifCriada;
+}
+
+/** Enfileira e dispara o Web Push de uma notificação. Falha aqui nunca derruba quem publicou. */
+function notif_push_enviar(array $notif) {
+    try {
+        require_once __DIR__ . '/push_lib.php';
+        push_queue_notificacao($notif);
+        if (empty($GLOBALS['RD_SKIP_PUSH_INLINE'])) {
+            register_shutdown_function(function () {
+                if (function_exists('rd_liberar_cliente')) { try { rd_liberar_cliente(); } catch (Throwable $e) {} }
+                try { push_process_queue(20, 8); } catch (Throwable $e) { error_log('Web Push: ' . $e->getMessage()); }
+            });
+        }
+        return true;
+    } catch (Throwable $e) {
+        error_log('Notificação: falha ao enfileirar Web Push: ' . $e->getMessage());
+        return false;
+    }
 }
 
 /* ------------------------------------------------------------------ */

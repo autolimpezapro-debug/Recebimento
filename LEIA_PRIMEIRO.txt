@@ -1,3 +1,12 @@
+v3.47.0 — WEB PUSH PARA TODAS AS NOTIFICAÇÕES
+  Antes, o push (aviso no celular/PC com o sistema fechado) só saía na finalização de conferência. Estoque abaixo do
+  mínimo, alertas de locação, agenda e avisos do sistema só chegavam ao sino, e só para quem estava com a tela aberta.
+  Agora TODA notificação também sai por Web Push para todos os aparelhos inscritos, logados ou não (a inscrição é do
+  aparelho: basta ter clicado "Ativar Web Push" uma vez). O sino/notificação interna continua igual.
+  Tocar no aviso abre o sistema (ou o PC, quando houver). Pendências de envio são reenviadas pelo batimento das telas
+  abertas e pelo cron push_worker.php, se existir. Aparelhos que desinstalaram são removidos sozinhos.
+  Quem ainda não ativou o push precisa ativar uma vez (Notificações > Ativar Web Push).
+
 v3.46.0 — CORREÇÃO DE QUANTIDADE PELO ADMINISTRADOR
   Quando o conferente lança a quantidade errada no recebimento, o administrador abre o PC e usa
   "Corrigir quantidade recebida (administrador)": escolhe a entrega, ajusta as quantidades e informa o motivo.

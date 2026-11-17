@@ -132,6 +132,24 @@ function push_jwt(string $endpoint,array $conf): string {
     if (!$private || !openssl_sign($unsigned,$der,$private,OPENSSL_ALGO_SHA256)) throw new RuntimeException('Falha na assinatura VAPID');
     return $unsigned.'.'.push_b64(push_der_to_raw($der));
 }
+/**
+ * v3.47.0 — Enfileira Web Push para QUALQUER notificação do sistema (estoque, alertas, locações, agenda, avisos).
+ * O envio vai para todos os dispositivos inscritos, estejam logados ou não: a inscrição é do aparelho.
+ */
+function push_queue_notificacao(array $n): void {
+    push_locked(function() use ($n){
+        $subs=push_jsonread(PUSH_SUBS);
+        if (!$subs) return;
+        $url=(string)($n['url']??'');
+        if ($url==='' || $url[0]!=='/' || (isset($url[1]) && $url[1]==='/')) $url='/';
+        $list=push_jsonread(PUSH_QUEUE);
+        $list[]=['id'=>bin2hex(random_bytes(12)),'created'=>time(),'pc'=>(int)($n['pc']??0),'arrival'=>'',
+            'title'=>mb_substr((string)($n['titulo']??'Recebimento Drilling'),0,120),
+            'body'=>mb_substr((string)($n['texto']??''),0,300),'url'=>$url,'tag'=>'notif-'.(int)($n['id']??0),
+            'targets'=>array_keys($subs),'sent'=>[],'failed'=>[]];
+        push_jsonwrite(PUSH_QUEUE,array_slice($list,-400));
+    });
+}
 function push_send(array $sub,array $conf,array $payload): int {
     $url=$sub['endpoint'];
     if(!push_endpoint_allowed($url)) return 410;
@@ -165,7 +183,9 @@ function push_process_queue(int $max=20,int $seconds=5): array {
                 if(isset($job['sent'][$id]) || (int)($job['failed'][$id]??0)>=3) continue;
                 if($total>=$max || microtime(true)-$start>=$seconds) break 2;
                 try {
-                    $result=push_send($sub,$conf,[
+                    $result=isset($job['title']) ? push_send($sub,$conf,[
+                        'title'=>$job['title'],'body'=>$job['body']??'','pc'=>$job['pc']?:null,'url'=>$job['url']??'/','tag'=>$job['tag']??('notif-'.$job['id'])
+                    ]) : push_send($sub,$conf,[
                         'title'=>'Recebimento Drilling • PC '.$job['pc'],
                         'body'=>($job['arrival']==='PARCIAL'?'Pedido chegou: conferência parcial finalizada. Confira os insumos pendentes.':'Pedido chegou e foi conferido integralmente. Toque para abrir o recebimento.'),
                         'pc'=>$job['pc'], 'url'=>'/?pc='.$job['pc'], 'tag'=>'recebimento-'.$job['id']]);
