@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0a1221">
+<title>Importados · Drilling do Brasil</title>
+<link rel="icon" href="/favicon.ico?v=3131">
+<link rel="stylesheet" href="assets/app.css?v=3.45.0">
+<link rel="stylesheet" href="assets/estoque.css?v=3.45.0">
+<link rel="stylesheet" href="assets/importados.css?v=3.45.0">
+<link rel="stylesheet" href="assets/premium.css?v=3.45.0">
+<style>
+body{min-height:100vh}
+.pub-wrap{max-width:1280px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 18px 40px}
+.pub-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.pub-top .brand{display:flex;align-items:center;gap:10px}.pub-top .brand img{width:38px;height:38px;border-radius:10px}
+.pub-top b{font-size:16px}.pub-top small{display:block;color:var(--muted);font-size:11.5px}
+.pub-ro{font-size:11.5px;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:5px 11px}
+.pub-erro{margin:60px auto;max-width:460px;text-align:center}
+.pub-erro h1{font-size:22px}
+.pub-busca input{width:100%;max-width:420px;min-height:38px;padding:8px 12px}
+</style>
+</head>
+<body>
+<div class="pub-wrap" id="pubApp">
+  <div class="pub-top">
+    <div class="brand"><img src="assets/icons/icon-192.png" alt=""><div><b>Importados · Materiais críticos</b><small>Drilling do Brasil · saldo, consumo, cobertura e histórico</small></div></div>
+    <span class="pub-ro" id="pubInfo">Somente leitura</span>
+  </div>
+  <div class="pub-busca"><input type="search" id="pubBusca" placeholder="Buscar produto ou código" oninput="IMP.busca=this.value;impRender()"></div>
+  <div class="imp-kpis" id="impKpis"></div>
+  <div class="imp-filtros"><button class="est-tab active" data-imp-f="todos" onclick="impFiltro('todos')">Todos</button><button class="est-tab" data-imp-f="alerta" onclick="impFiltro('alerta')">Precisam de ação</button><button class="est-tab" data-imp-f="COMPRAR" onclick="impFiltro('COMPRAR')">Comprar</button><button class="est-tab" data-imp-f="FABRICAR" onclick="impFiltro('FABRICAR')">Fabricar</button><button class="est-tab" data-imp-f="SEM ESTOQUE" onclick="impFiltro('SEM ESTOQUE')">Sem estoque</button><button class="est-tab" data-imp-f="OK" onclick="impFiltro('OK')">OK</button></div>
+  <div class="imp-grid" id="impGrid"><div class="empty">Carregando…</div></div>
+  <div class="modal-bg" id="impModal" onclick="if(event.target===this)impFechar()"><div class="modal imp-modal"><div class="modal-head"><h2 id="impFichaTitulo">Item</h2><button class="icon-btn" onclick="impFechar()">×</button></div><div class="modal-body" id="impFichaBody"></div></div></div>
+</div>
+<script src="assets/importados_publico.js?v=3.45.0"></script>
+</body>
+</html>

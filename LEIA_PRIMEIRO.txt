@@ -1,3 +1,13 @@
+v3.45.0 — Importados: link público somente leitura
+ * Importados > "🔗 Link público": gera um link secreto (importados_publico.html?k=...) que abre o módulo Importados completo
+   (saldo, consumo, cobertura, fotos, ficha e histórico de movimentações), SEM login e SOMENTE LEITURA.
+ * Quem tem o link não acessa nenhuma outra parte do sistema e não consegue alterar dados (endpoint próprio, só GET).
+   Custo/valores e nomes de usuários do sistema não são enviados.
+ * Gerenciamento no mesmo botão: copiar, enviar por WhatsApp, ver acessos (data e IP parcial), GERAR NOVO (o anterior deixa de
+   funcionar na hora) e DESATIVAR. Exige permissão de edição do estoque.
+ * Proteções: código aleatório de 192 bits, não indexável por buscadores, bloqueio de 15 min após 20 tentativas erradas por IP.
+ * Arquivos novos: importados_publico.html, importados_publico_api.php, importados_publico_lib.php, assets/importados_publico.js.
+
 v3.44.0 — Saída por PC: foto do recebimento
  * Ao dar saída por número de PC (ex.: 5015), a foto do RECEBIMENTO daquele PC vem primeiro; a foto de cadastro do item só é usada
    se o PC não tiver foto de produto. Saída sem PC continua como antes (cadastro primeiro).

@@ -417,7 +417,7 @@ function rd_rota(string $action): ?array {
             'estoque_funcionarios_importar' => ['estoque', 'editar'], 'estoque_importados' => ['estoque', 'listar'], 'estoque_importado_item' => ['estoque', 'detalhe'],
             'estoque_importados_previa' => ['estoque', 'criar'], 'estoque_importados_carga' => ['estoque', 'aprovar'],
             'estoque_importado_mov' => ['estoque', 'criar'], 'estoque_importado_config' => ['estoque', 'editar'],
-            'estoque_importado_foto' => ['estoque', 'editar'], 'estoque_importado_mov_editar' => ['estoque', 'editar'],
+            'estoque_importado_foto' => ['estoque', 'editar'], 'estoque_importados_link' => ['estoque', 'editar'], 'estoque_importados_link_gerar' => ['estoque', 'editar'], 'estoque_importados_link_revogar' => ['estoque', 'editar'], 'estoque_importado_mov_editar' => ['estoque', 'editar'],
             // etiquetas
             'etiquetas_config' => ['etiquetas', 'ver'], 'etiquetas_buscar' => ['etiquetas', 'listar'],
             'etiquetas_sku' => ['etiquetas', 'listar'], 'etiquetas_fila' => ['etiquetas', 'ver'],

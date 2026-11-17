@@ -308,3 +308,43 @@ async function impExcluirMov(id) {
   try { const r = await impPost('estoque_importado_mov_editar', { id, acao: 'excluir', motivo }); IMP.atual = r.item; impFicha(); importadosInit(); impToast('Movimentação excluída. Saldo recalculado: ' + impN(r.item.saldo)); }
   catch (e) { impToast(e.message, true); }
 }
+
+/* v3.45.0 — link público somente leitura do módulo Importados */
+async function impLink() {
+  let r; try { r = await impApi('estoque_importados_link'); } catch (e) { return impToast(e.message, true); }
+  impLinkMostrar(r.link);
+}
+function impLinkUrl(l) { return new URL('importados_publico.html', location.href).href.replace(/[?#].*$/, '') + '?k=' + l.token; }
+function impLinkMostrar(l) {
+  document.querySelectorAll('.imp-link-bg').forEach(e => e.remove());
+  const bg = document.createElement('div'); bg.className = 'rd-ass-bg imp-link-bg';
+  const url = l.ativo ? impLinkUrl(l) : '';
+  const rec = (l.recentes || []).map(a => `<li>${new Date(a.em).toLocaleString('pt-BR')} · ${impH(a.ip)} <small class="muted">${impH(a.agente)}</small></li>`).join('');
+  bg.innerHTML = `<div class="rd-ass" style="width:min(640px,100%);max-height:90vh;overflow:auto"><div style="display:flex;justify-content:space-between;align-items:center"><h2>Link público — Importados</h2><button type="button" class="icon-btn" data-x>×</button></div>
+    <p class="muted">Quem tiver o link vê o módulo Importados completo (saldo, consumo, cobertura e histórico), <b>sem login e somente leitura</b>. Custos e nomes de usuários do sistema não aparecem.</p>
+    ${l.ativo ? `<label style="display:block;margin:10px 0 4px"><small class="muted">Link ativo — criado em ${new Date(l.criado_em).toLocaleString('pt-BR')} por ${impH(l.criado_por)}</small>
+      <input id="impLinkUrl" readonly value="${impH(url)}" onclick="this.select()" style="width:100%;min-height:38px;padding:8px 10px"></label>
+      <div class="rd-ass-acoes" style="justify-content:flex-start;gap:8px;flex-wrap:wrap"><button type="button" class="button primary" data-copiar>📋 Copiar link</button>
+        <a class="button ghost" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent('Importados — visualização (somente leitura): ' + url)}">💬 Enviar por WhatsApp</a>
+        <a class="button ghost" target="_blank" rel="noopener" href="${impH(url)}">Abrir</a></div>
+      <p class="muted" style="margin-top:12px">${l.acessos} acesso(s)${l.ultimo_acesso ? ' · último em ' + new Date(l.ultimo_acesso).toLocaleString('pt-BR') : ''}.</p>
+      ${rec ? `<details><summary>Últimos acessos</summary><ul style="margin:6px 0 0 18px">${rec}</ul></details>` : ''}
+      <div class="rd-ass-acoes" style="margin-top:14px"><button type="button" class="button ghost" data-novo title="O link atual deixa de funcionar">↻ Gerar novo link</button><button type="button" class="button ghost" data-revogar style="color:#f17e89">⛔ Desativar link</button></div>`
+    : `<p class="muted">Nenhum link ativo no momento.</p><div class="rd-ass-acoes"><button type="button" class="button primary" data-novo>🔗 Gerar link público</button></div>`}
+  </div>`;
+  document.body.appendChild(bg);
+  bg.onclick = e => { if (e.target === bg) bg.remove(); };
+  bg.querySelector('[data-x]').onclick = () => bg.remove();
+  const cp = bg.querySelector('[data-copiar]');
+  if (cp) cp.onclick = async () => { const i = bg.querySelector('#impLinkUrl'); try { await navigator.clipboard.writeText(i.value); } catch { i.select(); document.execCommand('copy'); } impToast('Link copiado.'); };
+  const nv = bg.querySelector('[data-novo]');
+  if (nv) nv.onclick = async () => {
+    if (l.ativo && !confirm('Gerar um novo link? O link atual deixará de funcionar para quem já o recebeu.')) return;
+    try { impLinkMostrar((await impPost('estoque_importados_link_gerar', {})).link); } catch (e) { impToast(e.message, true); }
+  };
+  const rv = bg.querySelector('[data-revogar]');
+  if (rv) rv.onclick = async () => {
+    if (!confirm('Desativar o link? Quem o recebeu perde o acesso imediatamente.')) return;
+    try { impLinkMostrar((await impPost('estoque_importados_link_revogar', {})).link); impToast('Link desativado.'); } catch (e) { impToast(e.message, true); }
+  };
+}

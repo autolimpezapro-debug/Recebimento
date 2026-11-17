@@ -220,6 +220,9 @@ function est_handle() {
                 respond(['ok' => true, 'retiradas' => est_funcionario_retiradas(est_read(), (string)($_GET['id'] ?? ''))]);
             case 'estoque_importados':
                 respond(['ok' => true] + est_importados_view(est_read()));
+            case 'estoque_importados_link':   // v3.45.0
+                require_once __DIR__ . '/importados_publico_lib.php';
+                respond(['ok' => true, 'link' => impp_info()]);
             case 'estoque_importado_item':
                 $v = est_importados_view(est_read(), (string)($_GET['codigo'] ?? ''));
                 if (!$v) est_fail('Item importado não encontrado', 404);
@@ -266,6 +269,13 @@ function est_handle() {
     // Trava de CSRF/origem quando a autenticação operacional está disponível.
     if (function_exists('rd_origin_valid') && !empty($_SERVER['HTTP_ORIGIN']) && !rd_origin_valid()) {
         respond(['ok' => false, 'error' => 'Origem não autorizada'], 403);
+    }
+
+    if ($action === 'estoque_importados_link_gerar' || $action === 'estoque_importados_link_revogar') {   // v3.45.0 — não mexe no estoque
+        require_once __DIR__ . '/importados_publico_lib.php';
+        try { if ($action === 'estoque_importados_link_gerar') impp_gerar($user); else impp_revogar(); }
+        catch (Throwable $e) { respond(['ok' => false, 'error' => $e->getMessage()], 500); }
+        respond(['ok' => true, 'link' => impp_info()]);
     }
 
     $body = est_json_body();
