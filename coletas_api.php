@@ -80,6 +80,7 @@ if ($colMethod === 'GET') {
         case 'coletas_rota_escolhida':   // v3.23.0: rota só com as coletas marcadas
             $db = col_read();
             respond(['ok' => true] + col_ordenar_paradas($db, array_filter(explode(',', (string)($_GET['ids'] ?? ''))), ($_GET['otimizar'] ?? '1') !== '0'));
+        case 'coletas_km_media': respond(['ok' => true] + col_km_media($_GET));
         case 'coletas_rotas_resumo':
             respond(['ok' => true] + col_rotas_resumo($_GET));
         case 'coletas_rota_ativa':

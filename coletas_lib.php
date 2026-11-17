@@ -864,3 +864,51 @@ function col_rotas_resumo(array $q) {
     $t['km'] = round($t['km'], 1);
     return ['de' => $de, 'ate' => $ate, 'totais' => $t, 'rotas' => $lista];
 }
+
+/**
+ * v3.42.0 — Média de km rodados por dia de coleta.
+ * Cada dia = uma saída do depósito: percorre as coletas do dia (ordem do vizinho mais próximo, mesma da rota sugerida) e volta ao depósito.
+ * Descarta coletas fora do estado e (por padrão) as não coletadas. Km = linha reta × 1,3 (fator de estrada dos Indicadores).
+ * Dia = data agendada da coleta; sem ela, a data em que foi coletada; sem ela, a de criação.
+ */
+function col_km_media(array $q) {
+    $db = col_read();
+    $uf = strtoupper(trim((string)($q['estado'] ?? 'MG'))) ?: 'MG';
+    $incNao = !empty($q['incluir_nao_coletadas']) && $q['incluir_nao_coletadas'] !== '0';
+    $de = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($q['de'] ?? '')) ? $q['de'] : '';
+    $ate = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($q['ate'] ?? '')) ? $q['ate'] : '';
+    $ex = ['fora_do_estado' => 0, 'nao_coletadas' => 0, 'sem_coordenada' => 0, 'sem_data' => 0, 'canceladas' => 0, 'fora_do_periodo' => 0];
+    $semUf = 0; $dias = [];
+    foreach ($db['coletas'] as $id => $c) {
+        $st = (string)($c['status'] ?? '');
+        if ($st === 'CANCELADA') { $ex['canceladas']++; continue; }
+        $cu = strtoupper(trim((string)($c['uf'] ?? '')));
+        if ($cu !== '' && $cu !== $uf) { $ex['fora_do_estado']++; continue; }
+        if ($cu === '') $semUf++;
+        $coletada = !empty($c['coletado_em']) || in_array($st, ['COLETADO', 'TRANSPORTE', 'CHEGOU'], true);
+        if (!$coletada && !$incNao) { $ex['nao_coletadas']++; continue; }
+        $dia = (string)($c['agendada_data'] ?? '') ?: substr((string)($c['coletado_em'] ?? ''), 0, 10) ?: substr((string)($c['criado_em'] ?? ''), 0, 10);
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dia)) { $ex['sem_data']++; continue; }
+        if (($de && $dia < $de) || ($ate && $dia > $ate)) { $ex['fora_do_periodo']++; continue; }
+        if (!isset($c['lat'], $c['lng']) || $c['lat'] === null) { $ex['sem_coordenada']++; continue; }
+        $dias[$dia][] = $id;
+    }
+    ksort($dias);
+    $lista = [];
+    foreach ($dias as $dia => $ids) {
+        $o = col_ordenar_paradas($db, $ids, true);
+        $lista[] = ['data' => $dia, 'paradas' => count($o['paradas']), 'km' => $o['km_estimado'], 'min' => $o['min_estimado'],
+            'fornecedores' => array_values(array_unique(array_map(fn($p) => (string)($p['fornecedor'] ?? ''), $o['paradas'])))];
+    }
+    $med = function (array $v) { if (!$v) return null; sort($v); $n = count($v); return round($n % 2 ? $v[intdiv($n, 2)] : ($v[$n / 2 - 1] + $v[$n / 2]) / 2, 1); };
+    $res = function (array $l) use ($med) {
+        $n = count($l); if (!$n) return ['dias' => 0, 'media_km' => null, 'mediana_km' => null, 'min_km' => null, 'max_km' => null, 'media_paradas' => null, 'km_por_parada' => null, 'total_km' => 0];
+        $km = array_column($l, 'km'); $pa = array_sum(array_column($l, 'paradas'));
+        return ['dias' => $n, 'media_km' => round(array_sum($km) / $n, 1), 'mediana_km' => $med($km), 'min_km' => min($km), 'max_km' => max($km),
+            'media_paradas' => round($pa / $n, 1), 'km_por_parada' => $pa ? round(array_sum($km) / $pa, 1) : null, 'total_km' => round(array_sum($km), 1)];
+    };
+    $faixa = array_values(array_filter($lista, fn($x) => $x['paradas'] >= 6 && $x['paradas'] <= 8));
+    return ['estado' => $uf, 'incluir_nao_coletadas' => $incNao, 'de' => $de, 'ate' => $ate, 'excluidas' => $ex, 'sem_uf_incluidas' => $semUf,
+        'geral' => $res($lista), 'faixa_6_8' => $res($faixa), 'dias' => array_reverse($lista), 'fator_estrada' => 1.3,
+        'origem' => ($db['config']['origem'] ?? COL_ORIGEM_PADRAO)['nome'] ?? 'Depósito'];
+}

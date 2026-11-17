@@ -1,3 +1,9 @@
+v3.42.0 — Coletas: média de km rodados por dia
+ * Rotas > botão "Média de km/dia": para cada dia de coleta, simula a saída do depósito, as coletas do dia (ordem do vizinho
+   mais próximo) e a volta ao depósito. Mostra média, mediana, mín./máx., paradas/dia, km por parada e a média só dos dias
+   com 6 a 8 coletas. Descarta fora do estado (MG) e não coletadas (botão para incluí-las). Km = linha reta x 1,3 (estrada).
+ * Dia = data agendada da coleta (se não houver, a data coletada ou de criação). Coleta sem coordenada fica de fora e é contada.
+
 v3.41.0 — Locações: avisos de devolução + Controle de devoluções
  * Quando a locação tem PREVISÃO DE DEVOLUÇÃO, o sistema avisa por várias vias: sino + push, e-mail resumido, faixa na tela
    de Locações (vencidas e próximas 3 dias), selos coloridos, link de WhatsApp e calendário (.ics, com lembretes 7/3/1 dia).

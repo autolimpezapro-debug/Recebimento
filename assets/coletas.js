@@ -865,3 +865,23 @@ async function colMotorista() {
   };
   try { render(await colApi('coletas_motorista_info'), null); } catch (e) { bg.querySelector('[data-corpo]').innerHTML = `<p>${colEsc(e.message)}</p>`; }
 }
+
+
+/* v3.42.0 — Média de km por dia (saída do depósito, coletas do dia, volta ao depósito) */
+async function colKmMedia(nao) {
+  let r; try { r = await colApi('coletas_km_media', { query: nao ? { incluir_nao_coletadas: 1 } : {} }); } catch (e) { return colToast(e.message, true); }
+  document.querySelectorAll('.col-kmmedia-bg').forEach(e => e.remove());
+  const k = v => v == null ? '—' : colNum(v) + ' km', g = r.geral, f = r.faixa_6_8, x = r.excluidas;
+  const bg = document.createElement('div'); bg.className = 'rd-ass-bg col-kmmedia-bg';
+  bg.innerHTML = `<div class="rd-ass" style="width:min(820px,100%);max-height:90vh;overflow:auto"><div style="display:flex;justify-content:space-between;align-items:center"><h2>Média de km por dia</h2><button type="button" class="icon-btn" data-x>×</button></div>
+    <p class="muted">Depósito → coletas do dia → depósito · só ${colEsc(r.estado)}${r.incluir_nao_coletadas ? ' · incluindo não coletadas' : ' · só coletadas'} · km = linha reta × ${r.fator_estrada} (estrada)</p>
+    <div class="col-hist-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0">
+      ${[['Média por dia', k(g.media_km)], ['Mediana', k(g.mediana_km)], ['Dias analisados', g.dias], ['Paradas/dia', g.media_paradas ?? '—'], ['Km por parada', k(g.km_por_parada)], ['Mín. / máx.', g.dias ? colNum(g.min_km) + ' / ' + colNum(g.max_km) : '—'],
+         ['Dias com 6 a 8 coletas', f.dias], ['Média nesses dias', k(f.media_km)]].map(([l, v]) => `<div><strong>${v}</strong><span>${l}</span></div>`).join('')}</div>
+    <p class="muted">Descartadas: ${x.fora_do_estado} fora do estado · ${x.nao_coletadas} não coletadas · ${x.sem_coordenada} sem coordenada · ${x.sem_data} sem data${r.sem_uf_incluidas ? ` · (${r.sem_uf_incluidas} sem UF foram mantidas)` : ''}</p>
+    <div class="table-wrap"><table class="est-table"><thead><tr><th>Dia</th><th>Paradas</th><th>Km</th><th>Tempo est.</th></tr></thead><tbody>${r.dias.map(d => `<tr><td>${colEsc(d.data.split('-').reverse().join('/'))}</td><td>${d.paradas}</td><td>${colNum(d.km)} km</td><td>${colHm(d.min)}</td></tr>`).join('') || '<tr><td colspan="4" class="empty">Sem coletas que atendam às regras.</td></tr>'}</tbody></table></div>
+    <div class="rd-ass-acoes"><button type="button" class="button ghost" data-nao>${r.incluir_nao_coletadas ? 'Só coletadas' : 'Incluir não coletadas'}</button><button type="button" class="button primary" data-x2>Fechar</button></div></div>`;
+  document.body.appendChild(bg);
+  bg.querySelectorAll('[data-x],[data-x2]').forEach(b => b.onclick = () => bg.remove());
+  bg.querySelector('[data-nao]').onclick = () => colKmMedia(!r.incluir_nao_coletadas);
+}
