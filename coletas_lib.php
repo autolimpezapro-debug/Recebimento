@@ -190,6 +190,7 @@ function col_ca_bundle() {
 }
 
 function col_http_get($url, $timeout = 10) {
+    if (!empty($GLOBALS['COL_HTTP_STUB']) && is_callable($GLOBALS['COL_HTTP_STUB'])) return ($GLOBALS['COL_HTTP_STUB'])($url);   // só testes
     $ua = 'RecebimentoDrilling-Coletas/1.0 (+https://recebimento.autolimpezapro.com.br)';
     if (function_exists('curl_init')) {
         $ch = curl_init($url);
@@ -227,43 +228,134 @@ function col_classificar_http($code) {
     return null;
 }
 
-/** Geocodifica um endereço. Retorna lat/lng ou erro classificado. */
-function col_geocode(array $c, $provedor = 'photon') {
-    $q = col_addr_query($c);
-    if (mb_strlen($q) < 8) return ['ok' => false, 'status' => 'endereco_incompleto', 'mensagem' => 'Endereço insuficiente para localizar.'];
+/* v3.50.0: validação do resultado do geocodificador (cidade/UF/CEP) ----------------- */
+
+function col_norm_txt($s): string {
+    $s = mb_strtolower(trim((string)$s), 'UTF-8');
+    $s = strtr($s, ['á'=>'a','à'=>'a','â'=>'a','ã'=>'a','ä'=>'a','é'=>'e','è'=>'e','ê'=>'e','ë'=>'e','í'=>'i','ì'=>'i','î'=>'i','ï'=>'i','ó'=>'o','ò'=>'o','ô'=>'o','õ'=>'o','ö'=>'o','ú'=>'u','ù'=>'u','û'=>'u','ü'=>'u','ç'=>'c','ñ'=>'n']);
+    return trim(preg_replace('/[^a-z0-9]+/', ' ', $s));
+}
+
+const COL_UFS = ['AC'=>'acre','AL'=>'alagoas','AP'=>'amapa','AM'=>'amazonas','BA'=>'bahia','CE'=>'ceara','DF'=>'distrito federal','ES'=>'espirito santo','GO'=>'goias','MA'=>'maranhao','MT'=>'mato grosso','MS'=>'mato grosso do sul','MG'=>'minas gerais','PA'=>'para','PB'=>'paraiba','PR'=>'parana','PE'=>'pernambuco','PI'=>'piaui','RJ'=>'rio de janeiro','RN'=>'rio grande do norte','RS'=>'rio grande do sul','RO'=>'rondonia','RR'=>'roraima','SC'=>'santa catarina','SP'=>'sao paulo','SE'=>'sergipe','TO'=>'tocantins'];
+
+function col_uf_de($txt): string {
+    $t = col_norm_txt($txt);
+    if ($t === '') return '';
+    if (strlen($t) === 2 && isset(COL_UFS[strtoupper($t)])) return strtoupper($t);
+    $f = array_search($t, COL_UFS, true);
+    return $f === false ? '' : (string)$f;
+}
+
+/** Normaliza a resposta do provedor numa lista comum de candidatos. */
+function col_geo_candidatos($j, string $provedor): array {
+    $out = [];
+    if ($provedor === 'nominatim') {
+        foreach ((array)$j as $r) {
+            if (!is_array($r) || !isset($r['lat'], $r['lon'])) continue;
+            $a = (array)($r['address'] ?? []);
+            $cid = (string)($a['city'] ?? $a['town'] ?? $a['village'] ?? $a['municipality'] ?? $a['city_district'] ?? '');
+            $uf = col_uf_de((string)($a['ISO3166-2-lvl4'] ?? '') !== '' ? substr((string)$a['ISO3166-2-lvl4'], 3) : (string)($a['state'] ?? ''));
+            $out[] = ['lat' => (float)$r['lat'], 'lng' => (float)$r['lon'], 'precisao' => ($r['type'] ?? '') === 'house' ? 'casa' : 'rua',
+                'cidade' => $cid, 'locais' => array_filter([$cid, (string)($a['county'] ?? ''), (string)($a['suburb'] ?? '')]), 'uf' => $uf,
+                'cep' => preg_replace('/\D/', '', (string)($a['postcode'] ?? '')), 'rua' => (string)($a['road'] ?? ''), 'rotulo' => (string)($r['display_name'] ?? '')];
+        }
+    } else {
+        foreach ((array)($j['features'] ?? []) as $f) {
+            $pr = (array)($f['properties'] ?? []);
+            if (!isset($f['geometry']['coordinates'][1])) continue;
+            $tipo = (string)($pr['type'] ?? '');
+            $cid = (string)($pr['city'] ?? ($tipo === 'city' ? ($pr['name'] ?? '') : ($pr['county'] ?? '')));
+            $out[] = ['lat' => (float)$f['geometry']['coordinates'][1], 'lng' => (float)$f['geometry']['coordinates'][0],
+                'precisao' => $tipo === 'house' ? 'casa' : ($tipo === 'street' ? 'rua' : 'aprox'),
+                'cidade' => $cid, 'locais' => array_filter([$cid, (string)($pr['county'] ?? ''), (string)($pr['district'] ?? ''), (string)($pr['locality'] ?? '')]),
+                'uf' => col_uf_de((string)($pr['state'] ?? '')), 'cep' => preg_replace('/\D/', '', (string)($pr['postcode'] ?? '')),
+                'rua' => (string)($pr['street'] ?? ($tipo === 'street' ? ($pr['name'] ?? '') : '')),
+                'rotulo' => trim(implode(', ', array_filter([(string)($pr['name'] ?? ''), $cid, (string)($pr['state'] ?? '')])))];
+        }
+    }
+    return $out;
+}
+
+/** Compara um candidato com o endereço cadastrado. Cidade/UF divergentes = rejeitado. */
+function col_geo_pontuar(array $c, array $k): array {
+    $score = 0; $rej = null; $valid = false;
+    $cidEsp = col_norm_txt($c['cidade'] ?? '');
+    $ufEsp = strtoupper(trim((string)($c['uf'] ?? '')));
+    if ($k['uf'] !== '' && $ufEsp !== '') {
+        $valid = true;
+        if ($k['uf'] !== $ufEsp) $rej = 'UF ' . $k['uf'] . ' ≠ ' . $ufEsp; else $score += 20;
+    }
+    if ($cidEsp !== '' && !$rej) {
+        $achou = false; $tem = false;
+        foreach ($k['locais'] as $l) {
+            $n = col_norm_txt($l); if ($n === '') continue; $tem = true;
+            if ($n === $cidEsp || str_contains($n, $cidEsp) || str_contains($cidEsp, $n)) { $achou = true; break; }
+        }
+        if ($tem) { $valid = true; if ($achou) $score += 40; else $rej = 'cidade ' . ($k['cidade'] ?: '?') . ' ≠ ' . ($c['cidade'] ?? ''); }
+    }
+    $cepEsp = preg_replace('/\D/', '', (string)($c['cep'] ?? ''));
+    if (strlen($cepEsp) === 8 && strlen($k['cep']) >= 5) {
+        if (substr($cepEsp, 0, 8) === substr($k['cep'], 0, 8)) $score += 30;
+        elseif (substr($cepEsp, 0, 5) === substr($k['cep'], 0, 5)) $score += 15;
+        elseif (substr($cepEsp, 0, 2) !== substr($k['cep'], 0, 2)) $score -= 25;
+    }
+    $ruaEsp = trim(preg_replace('/^(rua|r|avenida|av|rodovia|rod|estrada|est|alameda|travessa|praca)\s+/', '', col_norm_txt($c['endereco'] ?? '')));
+    $ruaK = trim(preg_replace('/^(rua|r|avenida|av|rodovia|rod|estrada|est|alameda|travessa|praca)\s+/', '', col_norm_txt($k['rua'])));
+    if ($ruaEsp !== '' && $ruaK !== '') { similar_text($ruaEsp, $ruaK, $pct); if ($pct >= 70) $score += 15; }
+    if ($k['precisao'] === 'casa') $score += 5;
+    return ['score' => $score, 'rejeitado' => $rej, 'validado' => $valid];
+}
+
+/** Uma consulta a um provedor. Retorna ['ok'=>true,'cands'=>[...]] ou erro classificado. */
+function col_geo_consulta(string $q, string $provedor): array {
     $url = $provedor === 'nominatim'
-        ? 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=br&q=' . urlencode($q)
-        : 'https://photon.komoot.io/api/?limit=1&q=' . urlencode($q);
+        ? 'https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&countrycodes=br&q=' . urlencode($q)
+        : 'https://photon.komoot.io/api/?limit=6&q=' . urlencode($q);
     $res = col_http_get($url, 10);
     if (!$res['ok']) return $res;
     $cls = col_classificar_http((int)($res['http'] ?? 200));
     if ($cls !== null) return ['ok' => false] + $cls;
     $j = json_decode((string)$res['corpo'], true);
     if (!is_array($j)) return ['ok' => false, 'status' => 'temporario', 'mensagem' => 'Resposta inválida do provedor.'];
+    return ['ok' => true, 'cands' => col_geo_candidatos($j, $provedor)];
+}
 
-    $lat = $lng = null; $precisao = 'aprox';
-    if ($provedor === 'nominatim') {
-        if (!empty($j[0]['lat']) && !empty($j[0]['lon'])) {
-            $lat = (float)$j[0]['lat'];
-            $lng = (float)$j[0]['lon'];
-            $precisao = ($j[0]['type'] ?? '') === 'house' ? 'casa' : 'rua';
+/**
+ * Geocodifica um endereço. v3.50.0: pede vários candidatos, descarta os de outra cidade/UF,
+ * escolhe o de maior pontuação e tenta o outro provedor (e a consulta sem bairro) se nada servir.
+ */
+function col_geocode(array $c, $provedor = 'photon') {
+    $q = col_addr_query($c);
+    if (mb_strlen($q) < 8) return ['ok' => false, 'status' => 'endereco_incompleto', 'mensagem' => 'Endereço insuficiente para localizar.'];
+    $outro = $provedor === 'nominatim' ? 'photon' : 'nominatim';
+    $tent = [[$q, $provedor], [$q, $outro]];
+    if (trim((string)($c['bairro'] ?? '')) !== '') { $q2 = col_addr_query(['bairro' => ''] + $c); if ($q2 !== $q) $tent[] = [$q2, $provedor]; }
+
+    $erro = null; $divergentes = []; $melhor = null;
+    foreach ($tent as [$qq, $prov]) {
+        $r = col_geo_consulta($qq, $prov);
+        if (!$r['ok']) { $erro = $erro ?? $r; continue; }
+        foreach ($r['cands'] as $k) {
+            if ($k['lat'] < -35 || $k['lat'] > 6 || $k['lng'] < -75 || $k['lng'] > -30) continue;
+            $p = col_geo_pontuar($c, $k);
+            if ($p['rejeitado']) { $divergentes[] = $k['rotulo'] . ' (' . $p['rejeitado'] . ')'; continue; }
+            $k += $p + ['origem' => $prov, 'consulta' => $qq];
+            if ($melhor === null || $k['score'] > $melhor['score']) $melhor = $k;
         }
-    } else {
-        $f = $j['features'][0] ?? null;
-        if ($f && isset($f['geometry']['coordinates'])) {
-            $lng = (float)$f['geometry']['coordinates'][0];
-            $lat = (float)$f['geometry']['coordinates'][1];
-            $tipo = (string)($f['properties']['type'] ?? '');
-            $precisao = in_array($tipo, ['house', 'street'], true) ? ($tipo === 'house' ? 'casa' : 'rua') : 'aprox';
-        }
+        if ($melhor && $melhor['validado'] && $melhor['score'] >= 40) break;   // bom o bastante: não gasta o outro provedor
     }
-    if ($lat === null || $lng === null) {
-        return ['ok' => false, 'status' => 'nao_encontrado', 'mensagem' => 'Endereço não localizado. Confira número, bairro e cidade.'];
+    if ($melhor) {
+        $conf = !$melhor['validado'] ? 'baixa' : ($melhor['score'] >= 60 ? 'alta' : ($melhor['score'] >= 35 ? 'media' : 'baixa'));
+        return ['ok' => true, 'lat' => round($melhor['lat'], 7), 'lng' => round($melhor['lng'], 7), 'precisao' => $melhor['precisao'],
+            'origem' => $melhor['origem'], 'consulta' => $melhor['consulta'], 'confianca' => $conf, 'validado' => $melhor['validado'],
+            'achado' => $melhor['rotulo']];
     }
-    if ($lat < -35 || $lat > 6 || $lng < -75 || $lng > -30) {
-        return ['ok' => false, 'status' => 'fora_do_brasil', 'mensagem' => 'O resultado ficou fora do Brasil; revise o endereço.'];
+    if ($divergentes) {
+        return ['ok' => false, 'status' => 'divergente', 'achado' => $divergentes[0],
+            'mensagem' => 'O mapa só encontrou esse endereço em outra cidade/UF: ' . $divergentes[0] . '. Confira cidade, UF e CEP (use “Conferir com Gemini”).'];
     }
-    return ['ok' => true, 'lat' => round($lat, 7), 'lng' => round($lng, 7), 'precisao' => $precisao, 'origem' => $provedor, 'consulta' => $q];
+    if ($erro) return $erro;
+    return ['ok' => false, 'status' => 'nao_encontrado', 'mensagem' => 'Endereço não localizado. Confira número, bairro e cidade.'];
 }
 
 /**
@@ -273,7 +365,7 @@ function col_geocode(array $c, $provedor = 'photon') {
 function col_geocodificar(array &$db, array &$c, $forcar = false, $provedor = 'photon') {
     $hash = col_addr_hash($c);
     $c['endereco_hash'] = $hash;
-    if (!$forcar && isset($db['geocache'][$hash])) {
+    if (!$forcar && isset($db['geocache'][$hash]) && (int)($db['geocache'][$hash]['v'] ?? 1) >= 2) {
         $hit = $db['geocache'][$hash];
         $c['lat'] = $hit['lat']; $c['lng'] = $hit['lng'];
         $c['geo_precisao'] = $hit['precisao'] ?? 'aprox';
@@ -293,12 +385,17 @@ function col_geocodificar(array &$db, array &$c, $forcar = false, $provedor = 'p
         $c['geo_mensagem'] = '';
         $c['geo_precisao'] = $r['precisao'];
         $c['geo_origem'] = $r['origem'];
-        $db['geocache'][$hash] = ['lat' => $r['lat'], 'lng' => $r['lng'], 'precisao' => $r['precisao'], 'origem' => $r['origem'], 'em' => col_now()];
+        $c['geo_confianca'] = $r['confianca'] ?? '';
+        $c['geo_achado'] = mb_substr((string)($r['achado'] ?? ''), 0, 200);
+        $c['geo_confirmado'] = false;
+        if (($r['confianca'] ?? '') === 'baixa') $c['geo_mensagem'] = 'Localização de baixa confiança: confira no mapa ou use “Conferir com Gemini”.';
+        if (($r['confianca'] ?? '') !== 'baixa') $db['geocache'][$hash] = ['lat' => $r['lat'], 'lng' => $r['lng'], 'precisao' => $r['precisao'], 'origem' => $r['origem'], 'em' => col_now(), 'v' => 2];
         if (count($db['geocache']) > 3000) $db['geocache'] = array_slice($db['geocache'], -3000, null, true);
         return ['ok' => true, 'cache' => false];
     }
     $c['geo_status'] = $r['status'];
     $c['geo_mensagem'] = $r['mensagem'] ?? 'Falha ao localizar o endereço.';
+    if ($r['status'] === 'divergente' && empty($c['geo_confirmado'])) { $c['lat'] = null; $c['lng'] = null; $c['geo_achado'] = mb_substr((string)($r['achado'] ?? ''), 0, 200); }
     return ['ok' => false] + $r;
 }
 

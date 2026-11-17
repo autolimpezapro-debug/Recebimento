@@ -174,3 +174,10 @@ button.col-pill{cursor:pointer}
 .col-hist-kpis div{background:#0f1b2e;border:1px solid #22344f;border-radius:12px;padding:10px 12px}
 .col-hist-kpis strong{display:block;font-size:19px;letter-spacing:-.03em}.col-hist-kpis span{font-size:10px;color:#9ab0ce;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
 @media(max-width:1200px){.col-hist-kpis{grid-template-columns:repeat(4,1fr)}}@media(max-width:560px){.col-hist-kpis{grid-template-columns:repeat(2,1fr)}}
+
+/* v3.50.0 — conferência por Gemini */
+.col-ia-box { margin: 8px 0; padding: 10px 12px; border: 1px solid var(--rd-border, #d9dee7); border-radius: 10px; background: var(--rd-surface-2, rgba(91,141,239,.07)); font-size: 13px; line-height: 1.4; }
+.col-ia-box p { margin: 4px 0; }
+.col-ia-alerta { color: #b45309; }
+.col-ia-lista { margin: 4px 0 8px 18px; padding: 0; }
+.col-ia-lista li { margin: 2px 0; }

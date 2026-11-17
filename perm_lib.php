@@ -431,7 +431,7 @@ function rd_rota(string $action): ?array {
             'coletas_rota' => ['coletas', 'listar'], 'coletas_mapa' => ['coletas', 'listar'],
             'coletas_agenda' => ['coletas', 'listar'], 'coletas_detalhe' => ['coletas', 'detalhe'],
             'coletas_config' => ['coletas', 'ver'], 'coletas_salvar' => ['coletas', 'criar'],
-            'coletas_status' => ['coletas', 'status'], 'coletas_geocodar' => ['coletas', 'editar'],
+            'coletas_status' => ['coletas', 'status'], 'coletas_geocodar' => ['coletas', 'editar'], 'coletas_ia_endereco' => ['coletas', 'editar'], 'coletas_ia_rota' => ['coletas', 'editar'],
             'coletas_retorno' => ['coletas', 'status'], 'coletas_excluir' => ['coletas', 'excluir'],
             'coletas_importar' => ['coletas', 'criar'], 'coletas_importar_previa' => ['coletas', 'criar'], 'coletas_importar_previa_partes' => ['coletas', 'criar'], 'coletas_localizar_fornecedores' => ['coletas', 'editar'], 'coletas_importar_confirmar' => ['coletas', 'criar'], 'coletas_config_save' => ['coletas', 'admin'],
             'coletas_rota_escolhida' => ['coletas', 'listar'], 'coletas_km_media' => ['coletas', 'listar'], 'coletas_rota_ativa' => ['coletas', 'listar'], 'coletas_rota_iniciar' => ['coletas', 'editar'], 'coletas_rota_encerrar' => ['coletas', 'editar'], 'coletas_posicao' => ['coletas', 'status'], 'coletas_motorista_info' => ['coletas', 'listar'], 'coletas_motorista_gerar' => ['coletas', 'editar'], 'coletas_motorista_revogar' => ['coletas', 'editar'], 'coletas_motorista_liberar' => ['coletas', 'editar'], 'coletas_rota_por_pcs' => ['coletas', 'criar'], 'coletas_rotas_resumo' => ['coletas', 'listar'],

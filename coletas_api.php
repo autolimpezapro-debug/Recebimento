@@ -166,6 +166,16 @@ switch ($colAction) {
     case 'coletas_retorno':
         respond(['ok' => true] + col_registrar_retorno($colBody['id'] ?? '', $colBody, $colUser));
 
+    case 'coletas_ia_endereco':   // v3.50.0: confere/corrige o endereço (CEP/CNPJ + Gemini). Só sugere.
+        @set_time_limit(60);
+        require_once __DIR__ . '/coletas_ia_lib.php';
+        respond(['ok' => true] + col_ia_endereco((array)$colBody));
+
+    case 'coletas_ia_rota':       // v3.50.0: revisão da rota (Gemini + regras). Só sugere.
+        @set_time_limit(90);
+        require_once __DIR__ . '/coletas_ia_lib.php';
+        respond(['ok' => true] + col_ia_rota(array_slice((array)($colBody['ids'] ?? []), 0, 40)));
+
     case 'coletas_rota_iniciar':
         respond(['ok' => true] + col_rota_iniciar((array)($colBody['ids'] ?? []), (string)($colBody['motorista'] ?? ''), $colUser, !empty($colBody['otimizar']), (array)($colBody['rua'] ?? [])));
 

@@ -18,6 +18,7 @@ const COL = {
   picker: null,
   pickerMapa: null,
   pickerLatLng: null,
+  pontoManual: false,   // v3.50.0: só vira ponto "manual" se a pessoa clicou no mapa
   carregado: false,
 };
 
@@ -379,7 +380,8 @@ function colRenderMontagem(r) {
       <button class="button ghost" onclick="colEnviarWA()">◉ Enviar no WhatsApp</button>
       <button class="button ghost small" onclick="colTracarRota()">↗ Ver no mapa</button>
       ${COL.ordem ? '<button class="button ghost small" onclick="COL.ordem=null;colCarregarRota()">✦ Otimizar ordem</button>' : ''}
-      <button class="button ghost small" onclick="colLimparSel()">Limpar</button></div>`;
+      <button class="button ghost small" onclick="colIaRota()">🤖 Conferir rota com Gemini</button>
+      <button class="button ghost small" onclick="colLimparSel()">Limpar</button></div><div id="colIaRotaBox" class="col-ia-box" hidden></div>`;
   colDesenharRota();
   colCalcRua(r);
 }
@@ -464,6 +466,7 @@ function colEnviarWA() {
 }
 
 async function colIniciarRota() {
+  if (COL.rota?.sem_local?.some(p => p.geo_status === 'divergente') && !confirm('Há parada(s) com endereço que o mapa NÃO confirmou (cidade/UF divergente). Elas ficarão fora da ordem otimizada. Iniciar mesmo assim? (Dica: use “Conferir rota com Gemini”.)')) return;
   const ids = COL.ordem || [...COL.sel], motorista = colEl('colMotorista')?.value || '';
   try { localStorage.setItem('rd_col_motorista', motorista); } catch (e) {}
   try {
@@ -522,7 +525,7 @@ function colLimparForm() {
     .forEach(id => { const el = colEl(id); if (el) el.value = ''; });
   colEl('colPrioridade').value = 'NORMAL'; if (colEl('colMotivoAtraso')) colEl('colMotivoAtraso').value = '';
   colEl('colGeoStatus').textContent = 'Ainda não localizada';
-  COL.pickerLatLng = null;
+  COL.pickerLatLng = null; COL.pontoManual = false;
 }
 
 function colNovaColeta() {
@@ -567,7 +570,7 @@ async function colSalvar(ev) {
     motivo_atraso: colEl('colMotivoAtraso').value,
     observacao: colEl('colObs').value,
   };
-  if (COL.pickerLatLng) { body.lat = COL.pickerLatLng.lat; body.lng = COL.pickerLatLng.lng; }
+  if (COL.pickerLatLng && COL.pontoManual) { body.lat = COL.pickerLatLng.lat; body.lng = COL.pickerLatLng.lng; }
   try {
     const r = await colPost('coletas_salvar', body);
     colEl('colModal').classList.remove('on');
@@ -589,9 +592,10 @@ async function colGeocodarAtual() {
   if (!body.endereco) return colToast('Preencha o endereço antes de localizar.', true);
   colEl('colGeoStatus').textContent = 'Consultando o serviço de localização…';
   try {
-    // Salva primeiro (para ter um id) e depois geocodifica.
-    if (!COL.coletaAtual?.id) {
+    // v3.50.0: salva SEMPRE o que está no formulário antes de localizar (antes, ao editar um endereço já salvo, o mapa usava o endereço antigo).
+    {
       const r = await colPost('coletas_salvar', {
+        id: COL.coletaAtual?.id || '',
         pc: Number(colEl('colPc').value) || 0, fornecedor: colEl('colFornecedor').value,
         cnpj: colEl('colCnpj').value, contato: colEl('colContato').value,
         endereco: body.endereco, numero: body.numero, complemento: colEl('colComplemento').value,
@@ -605,7 +609,8 @@ async function colGeocodarAtual() {
     if (g.resultado.ok) {
       colEl('colGeoStatus').textContent = `Localizada (${g.coleta.geo_precisao}) · ${g.coleta.lat.toFixed(5)}, ${g.coleta.lng.toFixed(5)}`;
       COL.pickerLatLng = { lat: g.coleta.lat, lng: g.coleta.lng };
-      colToast('Endereço localizado no mapa.');
+      colToast(g.coleta.geo_confianca === 'baixa' ? 'Localizado com baixa confiança — confira no mapa.' : 'Endereço localizado no mapa.', g.coleta.geo_confianca === 'baixa');
+      if (g.coleta.geo_mensagem) colEl('colGeoStatus').textContent += ' · ' + g.coleta.geo_mensagem;
     } else {
       colEl('colGeoStatus').textContent = g.resultado.mensagem || 'Não localizado';
       colToast(g.resultado.mensagem || 'Não foi possível localizar', true);
@@ -749,7 +754,7 @@ function colAbrirMapaPicker() {
     const t = COL_TILES[COL.tiles] || COL_TILES.voyager;
     L.tileLayer(t.url, { attribution: t.attr, maxZoom: 19 }).addTo(COL.pickerMapa);
     COL.pickerMapa.on('click', ev => {
-      COL.pickerLatLng = { lat: ev.latlng.lat, lng: ev.latlng.lng };
+      COL.pickerLatLng = { lat: ev.latlng.lat, lng: ev.latlng.lng }; COL.pontoManual = true;
       if (COL.pickerMarcador) COL.pickerMapa.removeLayer(COL.pickerMarcador);
       COL.pickerMarcador = L.marker(ev.latlng).addTo(COL.pickerMapa);
     });
@@ -884,4 +889,62 @@ async function colKmMedia(nao) {
   document.body.appendChild(bg);
   bg.querySelectorAll('[data-x],[data-x2]').forEach(b => b.onclick = () => bg.remove());
   bg.querySelector('[data-nao]').onclick = () => colKmMedia(!r.incluir_nao_coletadas);
+}
+
+
+/* ---------- v3.50.0: Gemini ajuda no endereço e na rota (só sugere; a pessoa decide) ---------- */
+function colIaCampos() {
+  return { endereco: colEl('colEndereco').value, numero: colEl('colNumero').value, complemento: colEl('colComplemento').value,
+    bairro: colEl('colBairro').value, cidade: colEl('colCidade').value, uf: colEl('colUf').value, cep: colEl('colCep').value };
+}
+async function colIaEndereco() {
+  const box = colEl('colIaBox'); box.hidden = false; box.innerHTML = '<small>Conferindo o endereço (CEP, CNPJ e Gemini)…</small>';
+  try {
+    const r = await colPost('coletas_ia_endereco', { ...colIaCampos(), cnpj: colEl('colCnpj').value, fornecedor: colEl('colFornecedor').value });
+    COL.iaEnd = r.sugestao;
+    const nomes = { endereco: 'Endereço', numero: 'Número', complemento: 'Complemento', bairro: 'Bairro', cidade: 'Cidade', uf: 'UF', cep: 'CEP' };
+    let h = (r.alertas || []).map(a => `<p class="col-ia-alerta">⚠ ${colEsc(a)}</p>`).join('');
+    if (r.evidencias?.cep) h += `<small>CEP oficial (${colEsc(r.evidencias.cep.fonte)}): ${colEsc(r.evidencias.cep.logradouro)} · ${colEsc(r.evidencias.cep.bairro)} · ${colEsc(r.evidencias.cep.cidade)}/${colEsc(r.evidencias.cep.uf)}</small><br>`;
+    if (r.evidencias?.cnpj) h += `<small>Cadastro do CNPJ: ${colEsc(r.evidencias.cnpj.endereco)}, ${colEsc(r.evidencias.cnpj.numero)} · ${colEsc(r.evidencias.cnpj.bairro)} · ${colEsc(r.evidencias.cnpj.cidade)}/${colEsc(r.evidencias.cnpj.uf)}</small><br>`;
+    if (r.sugestao) {
+      h += `<p><strong>Sugestão${r.ia ? ' do Gemini' : ' pelo CEP oficial'}${r.confianca ? ' (confiança ' + colEsc(r.confianca) + ')' : ''}:</strong></p><ul class="col-ia-lista">`
+        + Object.entries(r.mudancas).map(([k, m]) => `<li><b>${nomes[k] || k}:</b> <s>${colEsc(m.de) || '—'}</s> → <b>${colEsc(m.para) || '—'}</b></li>`).join('') + '</ul>';
+      if (r.observacao) h += `<small>${colEsc(r.observacao)}</small><br>`;
+      h += '<div class="col-geo-actions"><button type="button" class="button primary small" onclick="colIaAplicarEndereco()">Aplicar e localizar</button><button type="button" class="button ghost small" onclick="colEl(\'colIaBox\').hidden=true">Ignorar</button></div>';
+    } else {
+      h += `<p>${r.ia ? 'O Gemini não encontrou nada para corrigir.' : (r.ia_disponivel ? 'Nada a corrigir pelas evidências.' : 'Gemini desligado: conferido só pelo CEP/CNPJ, sem divergências.')}${r.ia_erro ? ' <small>(' + colEsc(r.ia_erro) + ')</small>' : ''}</p><div class="col-geo-actions"><button type="button" class="button ghost small" onclick="colEl(\'colIaBox\').hidden=true">Fechar</button></div>`;
+    }
+    box.innerHTML = h;
+  } catch (e) { box.innerHTML = `<small>${colEsc(e.message)}</small>`; }
+}
+async function colIaAplicarEndereco() {
+  const s = COL.iaEnd; if (!s) return;
+  for (const [k, id] of [['endereco', 'colEndereco'], ['numero', 'colNumero'], ['complemento', 'colComplemento'], ['bairro', 'colBairro'], ['cidade', 'colCidade'], ['uf', 'colUf'], ['cep', 'colCep']]) colEl(id).value = s[k] || '';
+  COL.pontoManual = false;
+  colEl('colIaBox').hidden = true;
+  await colGeocodarAtual();
+}
+async function colIaRota() {
+  const box = colEl('colIaRotaBox'); if (!box || !COL.rota) return;
+  box.hidden = false; box.innerHTML = '<small>Gemini revisando a rota…</small>';
+  const todos = [...COL.rota.paradas, ...COL.rota.sem_local];
+  const nome = id => { const p = todos.find(x => x.id === id); return p ? (p.fornecedor || p.id) : id; };
+  try {
+    const r = await colPost('coletas_ia_rota', { ids: todos.map(p => p.id) });
+    let h = '';
+    if (r.resumo) h += `<p>${colEsc(r.resumo)}</p>`;
+    const av = [...(r.alertas || []).map(a => a.texto), ...(r.problemas_ia || []).map(p => nome(p.id) + ': ' + p.descricao)];
+    if (av.length) h += '<ul class="col-ia-lista">' + av.map(t => `<li>⚠ ${colEsc(t)}</li>`).join('') + '</ul>';
+    if (r.ordem_sugerida) {
+      const eco = r.economia_km;
+      h += `<p><strong>Ordem sugerida:</strong> ~${colNum(r.km_sugerido)} km (atual ~${colNum(r.km_atual)} km${eco > 0 ? ' · economiza ' + colNum(eco) + ' km' : eco < 0 ? ' · <b>' + colNum(-eco) + ' km a mais</b>' : ''}).</p><ol class="col-ia-lista">${r.ordem_sugerida.map(id => `<li>${colEsc(nome(id))}</li>`).join('')}</ol>`
+        + '<div class="col-geo-actions"><button class="button primary small" id="colIaAplicaRota">Aplicar esta ordem</button></div>';
+      COL.iaOrdem = r.ordem_sugerida.concat(r.ordem_atual.filter(i => !r.ordem_sugerida.includes(i)), COL.rota.sem_local.map(p => p.id));
+    } else if (r.ia) h += '<p>✔ O Gemini manteve a ordem atual.</p>';
+    if (!r.ia) h += `<p><small>${r.ia_disponivel ? 'O Gemini não respondeu' + (r.ia_erro ? ': ' + colEsc(r.ia_erro) : '') + '. Mostrando só as regras locais.' : 'Gemini desligado: só as regras locais foram aplicadas.'}</small></p>`;
+    if (!av.length && !r.ordem_sugerida && r.ia) h += '<p>Nenhum problema encontrado.</p>';
+    box.innerHTML = h;
+    const b = colEl('colIaAplicaRota');
+    if (b) b.onclick = () => { COL.ordem = COL.iaOrdem; colCarregarRota(); colToast('Ordem sugerida aplicada. Revise e inicie a rota.'); };
+  } catch (e) { box.innerHTML = `<small>${colEsc(e.message)}</small>`; }
 }

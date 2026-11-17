@@ -1,3 +1,11 @@
+v3.50.0 — Gemini ajuda no endereço e na rota das Coletas (+ correção da rota "totalmente diferente")
+- CAUSA: o mapa usava o 1º resultado do geocodificador sem checar cidade/UF/CEP; e "Localizar" em coleta já salva usava o endereço ANTIGO; e salvar a coleta transformava o ponto automático em "manual confirmado".
+- Agora: pede vários candidatos, descarta os de outra cidade/UF, pontua por cidade/UF/CEP/rua, tenta o outro provedor e marca confiança (alta/média/baixa) ou "divergente" (fica fora da rota até corrigir).
+- Botão "Conferir com Gemini" no cadastro da coleta: usa CEP oficial (ViaCEP/BrasilAPI), CNPJ e coletas anteriores; sugere o endereço corrigido; só aplica se você clicar.
+- Botão "Conferir rota com Gemini": aponta coordenadas incompatíveis com a cidade e sugere ordem melhor (validada e medida em km); só aplica se você clicar.
+- Sem chave do Gemini, a conferência por CEP/CNPJ e as regras de rota continuam funcionando.
+- Coletas já salvas antes continuam com as coordenadas antigas: abra as suspeitas e clique "Localizar endereço".
+
 v3.49.0 — ROTA DO MOTORISTA MAIS ESPERTA
   O app do motorista (link pessoal, sem login) já mostrava as paradas, o espelho do pedido de compra, o PDF original e o
   "Coletei" com horário e GPS. Agora também:
