@@ -47,7 +47,7 @@ define('MAX_PRODUCT_PHOTOS', 3);
 define('MAX_UPLOAD_BYTES', 4 * 1024 * 1024);
 define('EVENTS_FILE', DATA_DIR . '/events.json');
 define('XML_DIR', DATA_DIR . '/xml');
-define('APP_VERSION', '3.45.1');
+define('APP_VERSION', '3.46.0');
 
 if (!is_dir(DATA_DIR)) mkdir(DATA_DIR, 0755, true);
 if (!is_dir(PHOTOS_DIR)) mkdir(PHOTOS_DIR, 0755, true);
@@ -58,7 +58,7 @@ if (is_file(DATA_DIR . '/.maintenance')) {
     exit;
 }
 
-// v3.45.1: a versão 3.37.0–3.45.1 trazia um data/.htaccess que negava tudo (inclusive as fotos). Repara sozinho.
+// v3.46.0: a versão 3.37.0–3.46.0 trazia um data/.htaccess que negava tudo (inclusive as fotos). Repara sozinho.
 if (is_file(DATA_DIR . '/.htaccess') && ($h0 = (string)@file_get_contents(DATA_DIR . '/.htaccess')) && stripos($h0, 'FilesMatch') === false && stripos($h0, 'Require all denied') !== false) {
     @file_put_contents(DATA_DIR . '/.htaccess', "# Arquivos privados; fotos públicas por link\n<FilesMatch \"(?i)\\.(json|php|xml|zip|key|lock|tmp|bak|log|pem)$\">\nRequire all denied\n</FilesMatch>\n<FilesMatch \"^\\.\">\nRequire all denied\n</FilesMatch>\nOptions -Indexes\n", LOCK_EX);
 }
@@ -470,7 +470,7 @@ if (strncmp((string)$action, 'estoque_', 8) === 0 && ($_SERVER['REQUEST_METHOD']
         try { require_once __DIR__ . '/alertas_lib.php'; alt_verificar('movimento'); } catch (Throwable $e) { error_log('Alertas: ' . $e->getMessage()); }
     });
 }
-// v3.45.1: checagem de Origem (anti-CSRF) para TODA gravação, inclusive as rotas dos módulos
+// v3.46.0: checagem de Origem (anti-CSRF) para TODA gravação, inclusive as rotas dos módulos
 // (estoque, locações, protocolos, obras...), que são atendidas antes do bloco de POST abaixo.
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !empty($_SERVER['HTTP_ORIGIN'])) {
     $rdH0 = (string)($_SERVER['HTTP_HOST'] ?? ''); $rdO0 = (string)$_SERVER['HTTP_ORIGIN'];
@@ -550,7 +550,7 @@ if (strncmp((string)$action, 'locacoes_', 9) === 0) {
 if (strncmp((string)$action, 'protocolos_', 11) === 0) {
     require __DIR__.'/protocolos_api.php';
 }
-// Romaneio de Terceiros (v3.45.1).
+// Romaneio de Terceiros (v3.46.0).
 if (strncmp((string)$action, 'romaneios_', 10) === 0) {
     require __DIR__.'/romaneios_api.php';
 }
@@ -663,7 +663,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_SERVER['HTTP_ORIGIN'])) {
 // O arquivo JSON é compartilhado entre operadores. Serializar gravações evita
 // perda de atualização quando duas requisições PHP chegam ao mesmo tempo.
 if ($_SERVER['REQUEST_METHOD'] === 'POST'
-    && in_array($action, ['save', 'upload_photo', 'upload_xml', 'remove_photo', 'start_receipt', 'finish_receipt', 'correct_partial', 'pc_create', 'pc_devolucao', 'pc_destino', 'pc_avisar'], true)) {
+    && in_array($action, ['save', 'upload_photo', 'upload_xml', 'remove_photo', 'start_receipt', 'finish_receipt', 'correct_partial', 'admin_corrigir_recebimento', 'pc_create', 'pc_devolucao', 'pc_destino', 'pc_avisar'], true)) {
     $lockFile = @fopen(DATA_DIR . '/.write.lock', 'c');
     if (!$lockFile || !flock($lockFile, LOCK_EX)) {
         respond(['ok' => false, 'error' => 'Não foi possível bloquear os dados para gravação'], 503);
@@ -910,6 +910,89 @@ if ($action === 'correct_partial' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     append_event($pc,'retificacao','Conferência parcial retificada por '.mb_safe_trim($responsavel,65).
       ' · '.($calculated==='SIM'?'Recebido integralmente':'Parcialmente entregue'));
     respond(['ok'=>true,'item'=>normalize_item($item),'revision'=>$revision+1]);
+}
+
+// v3.46.0 — Correção de quantidade pelo ADMINISTRADOR em qualquer entrega (parcial ou integral).
+// Recalcula os acumulados das entregas seguintes, o status e os saldos; guarda o antes/depois no histórico.
+if ($action === 'admin_corrigir_recebimento' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $input=json_decode(file_get_contents('php://input'),true);
+    if(!is_array($input)) respond(['ok'=>false,'error'=>'Corpo JSON inválido'],400);
+    $pc=(int)($input['pc']??0);
+    $motivo=trim((string)($input['motivo']??''));
+    $eIdx=isset($input['entrega_indice'])&&is_numeric($input['entrega_indice'])?(int)$input['entrega_indice']:-1;
+    if($pc<=0)respond(['ok'=>false,'error'=>'PC inválido'],422);
+    if(mb_strlen($motivo)<8||mb_strlen($motivo)>1000)respond(['ok'=>false,'error'=>'Informe o motivo da correção (8 a 1000 caracteres)'],422);
+    if(!isset($input['insumos'])||!is_array($input['insumos']))respond(['ok'=>false,'error'=>'Quantidades por insumo obrigatórias'],422);
+    $items=read_items();$idx=find_index($items,$pc);
+    if($idx<0)respond(['ok'=>false,'error'=>'PC não localizado'],404);
+    $item=&$items[$idx];
+    $deliveries=array_values($item['entregas']??[]);$count=count($deliveries);
+    if(!$count||!$item['insumos'])respond(['ok'=>false,'error'=>'Este pedido ainda não tem entrega finalizada para corrigir'],409);
+    if($eIdx<0||$eIdx>=$count)respond(['ok'=>false,'error'=>'Entrega não localizada'],422);
+    $historico=$item['historico_retificacoes']??[];
+    if(!isset($input['expected_revision'])||!is_numeric($input['expected_revision'])||(int)$input['expected_revision']!==count($historico))
+       respond(['ok'=>false,'error'=>'Este pedido foi alterado em outro navegador. Atualize antes de corrigir.'],409);
+    if(!isset($input['expected_receipt_count'])||(int)$input['expected_receipt_count']!==$count)
+       respond(['ok'=>false,'error'=>'O histórico de entregas mudou. Atualize antes de corrigir.'],409);
+    $given=[];
+    foreach($input['insumos'] as $line){
+        if(!is_array($line))respond(['ok'=>false,'error'=>'Insumo inválido'],422);
+        $id=(string)($line['id']??'');$raw=$line['quantidade_nesta_entrega']??null;
+        if(!preg_match('/^[A-Za-z0-9_-]{1,70}$/',$id)||isset($given[$id])||!is_numeric($raw)||!is_finite((float)$raw)||(float)$raw<0)
+          respond(['ok'=>false,'error'=>'Quantidades inválidas ou itens duplicados'],422);
+        $given[$id]=round((float)$raw,4);
+    }
+    if(count($given)!==count($item['insumos']))respond(['ok'=>false,'error'=>'Envie exatamente os insumos existentes no pedido'],422);
+    $orderedBy=[];foreach($item['insumos'] as $ln)$orderedBy[(string)$ln['id']]=(float)$ln['quantidade_pedida'];
+    foreach($given as $id=>$q)if(!isset($orderedBy[$id]))respond(['ok'=>false,'error'=>'Insumo não pertence ao pedido: '.$id],422);
+    // Quantidade de cada insumo em cada entrega (a partir dos acumulados gravados).
+    $perDelivery=[];$prevCum=[];
+    foreach($deliveries as $n=>$d){
+        $cur=[];foreach(($d['insumos']??[]) as $x)$cur[(string)$x['id']]=(float)($x['quantidade_recebida']??0);
+        foreach($orderedBy as $id=>$_){$perDelivery[$n][$id]=round(max(0,($cur[$id]??($prevCum[$id]??0))-($prevCum[$id]??0)),4);}
+        foreach($orderedBy as $id=>$_)$prevCum[$id]=$cur[$id]??($prevCum[$id]??0);
+    }
+    $antesQtd=$perDelivery[$eIdx];
+    foreach($given as $id=>$q)$perDelivery[$eIdx][$id]=$q;
+    // Recalcula acumulados e valida o limite de cada insumo em todas as entregas.
+    $cum=array_fill_keys(array_keys($orderedBy),0.0);$newDeliveries=[];
+    foreach($deliveries as $n=>$d){
+        $details=[];$positive=false;
+        foreach($item['insumos'] as $ln){
+            $id=(string)$ln['id'];$q=$perDelivery[$n][$id];$cum[$id]=round($cum[$id]+$q,4);
+            if($cum[$id]>$orderedBy[$id]+.00001)
+                respond(['ok'=>false,'error'=>'Quantidade acima do pedido em "'.$ln['descricao'].'": acumulado '.rtrim(rtrim(number_format($cum[$id],4,',',''),'0'),',').' de '.rtrim(rtrim(number_format($orderedBy[$id],4,',',''),'0'),',').'.'],422);
+            if($q>0)$positive=true;
+            $details[]=['id'=>$id,'descricao'=>$ln['descricao'],'unidade'=>$ln['unidade'],'quantidade_pedida'=>$orderedBy[$id],
+                'quantidade_recebida'=>$cum[$id],'quantidade_nesta_entrega'=>$q,'quantidade_pendente'=>max(0,round($orderedBy[$id]-$cum[$id],4))];
+        }
+        if(!$positive)respond(['ok'=>false,'error'=>'A entrega '.($n+1).' ficaria sem nenhum insumo recebido. Mantenha ao menos um item com quantidade.'],422);
+        $nd=$d;$nd['insumos']=$details;
+        $lines=[];foreach($details as $x)$lines[]=['quantidade_pedida'=>$x['quantidade_pedida'],'quantidade_recebida'=>$x['quantidade_recebida'],'quantidade_pendente'=>$x['quantidade_pendente']];
+        $nd['status']=line_completion($lines)?:($d['status']??'PARCIAL');
+        $newDeliveries[]=$nd;
+    }
+    $newLines=[];
+    foreach($item['insumos'] as $ln){$id=(string)$ln['id'];$nl=$ln;$nl['quantidade_recebida']=$cum[$id];$nl['quantidade_pendente']=max(0,round($orderedBy[$id]-$cum[$id],4));$newLines[]=$nl;}
+    $calculated=line_completion($newLines);
+    if($calculated==='')respond(['ok'=>false,'error'=>'Não foi possível calcular o status com estas quantidades'],422);
+    $ident=function_exists('rd_identity')?rd_identity():null;
+    $quem=$ident['username']??'administrador';
+    $oldSnapshot=['chegou'=>$item['chegou'],'situacao'=>$item['situacao']??'','insumos'=>$item['insumos'],'entrega'=>$deliveries[$eIdx]];
+    $newDeliveries[$eIdx]['retificado_em']=date('c');
+    $newDeliveries[$eIdx]['quantidade_retificacoes']=(int)($deliveries[$eIdx]['quantidade_retificacoes']??0)+1;
+    $item['entregas']=$newDeliveries;$item['insumos']=$newLines;$item['chegou']=$calculated;
+    $item['historico_retificacoes'][]=[
+        'numero'=>count($historico)+1,'tipo'=>'admin','entrega_indice'=>$eIdx,'pc'=>$pc,'feito_em'=>date('c'),
+        'responsavel_declarado'=>$quem,'motivo'=>$motivo,'antes'=>$oldSnapshot,
+        'depois'=>['chegou'=>$calculated,'insumos'=>$newLines,'entrega'=>$newDeliveries[$eIdx]],
+        'quantidades_antes'=>$antesQtd,'quantidades_depois'=>$perDelivery[$eIdx]
+    ];
+    mark_action($item,'Correção de quantidade pelo administrador');
+    write_items($items);
+    append_event($pc,'retificacao','Quantidade da entrega '.($eIdx+1).' corrigida pelo administrador '.mb_safe_trim($quem,65).
+      ' · '.($calculated==='SIM'?'Recebido integralmente':'Parcialmente entregue'));
+    respond(['ok'=>true,'item'=>normalize_item($item),'revision'=>count($historico)+1]);
 }
 
 if ($action === 'obras_lista') {   // v3.28.0: obras + setores para o destino do pedido

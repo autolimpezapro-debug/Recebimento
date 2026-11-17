@@ -1,3 +1,10 @@
+v3.46.0 — CORREÇÃO DE QUANTIDADE PELO ADMINISTRADOR
+  Quando o conferente lança a quantidade errada no recebimento, o administrador abre o PC e usa
+  "Corrigir quantidade recebida (administrador)": escolhe a entrega, ajusta as quantidades e informa o motivo.
+  Status (parcial/integral) e saldo pendente são recalculados; entregas seguintes são ajustadas; o valor
+  anterior e quem corrigiu ficam no "Histórico de retificações". Só perfis com Administração > admin.
+  Limite: a quantidade acumulada não pode passar do pedido. Não altera o módulo Estoque (use o estorno de lá).
+
 v3.45.1 — CORREÇÃO: fotos quebradas (data/.htaccess)
  * Causa: a partir da v3.37.0 o pacote levava um data/.htaccess que negava TODO acesso à pasta data/, inclusive às fotos dos
    produtos e da NF (data/photos). Ao extrair o ZIP por cima, as imagens passaram a aparecer quebradas.

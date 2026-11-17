@@ -25,10 +25,10 @@ if (preg_match('/APP_VERSION\s*=\s*[\x27\x22](\d+\.\d+\.\d+)/', $content['app'],
 if (preg_match('/recebimento-drilling-shell-v(\d+\.\d+\.\d+)/', $content['sw'], $match)) {
     $sw = $match[1];
 }
-$ok = $index === '3.45.1' && $app === '3.45.1' && $sw === '3.45.1';
+$ok = $index === '3.46.0' && $app === '3.46.0' && $sw === '3.46.0';
 echo json_encode([
     'sistema' => 'Recebimento Drilling',
-    'versao_do_pacote' => '3.45.1',
+    'versao_do_pacote' => '3.46.0',
     'index_html' => $index,
     'app_js' => $app,
     'service_worker' => $sw,

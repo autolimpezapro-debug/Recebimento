@@ -371,7 +371,7 @@ function rd_rota(string $action): ?array {
             // núcleo de pedidos
             'list' => ['pedidos', 'listar'], 'obras_lista' => ['pedidos', 'listar'], 'stats' => ['dashboard', 'ver'], 'events' => ['notificacoes', 'listar'],
             'save' => ['pedidos', 'editar'], 'pc_devolucao' => ['pedidos', 'editar'], 'pc_destino' => ['pedidos', 'editar'], 'pc_avisar' => ['pedidos', 'editar'], 'pc_avisar_info' => ['pedidos', 'detalhe'], 'avisar_pendencias' => ['pedidos', 'listar'], 'pc_create' => ['pedidos', 'criar'], 'start_receipt' => ['pedidos', 'iniciar'], 'finish_receipt' => ['pedidos', 'finalizar'],
-            'correct_partial' => ['pedidos', 'aprovar'], 'reset' => ['administracao', 'admin'],
+            'correct_partial' => ['pedidos', 'aprovar'], 'admin_corrigir_recebimento' => ['administracao', 'admin'], 'reset' => ['administracao', 'admin'],
             'upload_photo' => ['pedidos', 'anexar'], 'upload_xml' => ['pedidos', 'anexar'], 'nf_ler_danfe' => ['pedidos', 'anexar'], 'remove_photo' => ['pedidos', 'anexar'],
             // importação
             'whatsapp_import_preview' => ['importacao', 'criar'], 'upload_parte' => ['importacao', 'criar'], 'upload_info' => ['importacao', 'ver'], 'upload_parte_coletas' => ['coletas', 'criar'], 'whatsapp_import_confirm' => ['importacao', 'criar'],

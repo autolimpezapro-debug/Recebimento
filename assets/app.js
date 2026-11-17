@@ -1,7 +1,7 @@
 /* Recebimento Drilling v3.0.0 — conferência por insumo + módulo de estoque */
 'use strict';
 const API='api.php';
-const APP_VERSION='3.45.1';
+const APP_VERSION='3.46.0';
 const notificationClientId='receb_'+Math.random().toString(36).slice(2)+Date.now().toString(36);
 const STATUS=['SIM','PARCIAL','NÃO','EM TRÂNSITO','N/A'];
 const STATUS_NAMES={'SIM':'Recebido','PARCIAL':'Parcial','NÃO':'Não chegou','EM TRÂNSITO':'Em trânsito','N/A':'N/A','':'Sem status'};
@@ -58,7 +58,7 @@ function populateObra(){const sel=$('obraFilter');if(!sel)return;const old=sel.v
  const totObra=obras.reduce((t,k)=>t+cont[k],0);
  sel.innerHTML='<option value="">Todas as obras / setores</option>'+(totObra?`<option value="OBRA:*">Todas as obras (${totObra})</option>`:'')+(obras.length?'<optgroup label="Obras">'+obras.map(k=>`<option value="${html(k)}">${html(k.slice(5)||'Obra (não identificada)')} (${cont[k]})</option>`).join('')+'</optgroup>':'')+(setores.length?'<optgroup label="Setores">'+setores.map(k=>`<option value="${k}">${RD_SETOR_NOMES[k]} (${cont[k]})</option>`).join('')+'</optgroup>':'')+(cont.__sem?`<option value="__sem">Sem destino identificado (${cont.__sem})</option>`:'');
  sel.value=[...sel.options].some(o=>o.value===old)?old:'';}
-/* v3.45.1 — filtro por insumo / SKU: o PC entra se ALGUMA linha dele tiver todas as palavras digitadas (descrição ou SKU, sem acento). */
+/* v3.46.0 — filtro por insumo / SKU: o PC entra se ALGUMA linha dele tiver todas as palavras digitadas (descrição ou SKU, sem acento). */
 const insumoHits=new Map();
 const nSemAcento=t=>String(t==null?'':t).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 function insumoTermos(){const el=$('insumoQ');return el?nSemAcento(el.value).split(/\s+/).filter(Boolean):[]}
@@ -177,7 +177,8 @@ function itemGrid(i){
  ${!locked&&!i.insumos.length?`<div class="import-order-box"><label for="orderLinesText">Cole os itens do pedido (uma linha por item)</label><textarea id="orderLinesText" rows="4" placeholder="14) METALON 40 X 40 X 2\n5) CANTONEIRA 1 POLEGADA\n11) CHAPA EXPANDIDA"></textarea><button type="button" class="button ghost small" onclick="importOrderText(${i.pc})">✓ Identificar itens e quantidades</button><small>Use o formato “14) DESCRIÇÃO”. Os dados serão mostrados para revisão antes de salvar.</small></div>`:''}
  ${!locked&&i.recebimento_estado!=='finalizado'?`<div class="item-add"><input id="newItemDesc" maxlength="600" placeholder="Descrição do insumo" aria-label="Descrição do novo insumo"><input id="newItemQty" type="number" inputmode="decimal" min="0.001" step="any" placeholder="Qtd pedida" aria-label="Quantidade pedida"><button class="button ghost small" onclick="addItem(${i.pc})">+ Incluir insumo</button></div>`:''}
  ${history?`<details class="history-receipts"><summary>Histórico de entregas (${i.entregas.length})</summary>${history}</details>`:''}
- ${i.historico_retificacoes?.length?`<details class="history-receipts"><summary>Histórico de retificações (${i.historico_retificacoes.length})</summary>${i.historico_retificacoes.map(c=>`<div class="delivery-record"><strong>Retificação ${html(c.numero)} · ${fmtDatetime(c.feito_em)}</strong><div>Conferente: ${html(c.responsavel_declarado)}</div><div>Motivo: ${html(c.motivo)}</div><div>${html(c.antes?.chegou==='SIM'?'Recebido':'Parcial')} → ${html(c.depois?.chegou==='SIM'?'Recebido':'Parcial')}</div></div>`).join('')}</details>`:''}
+ ${i.historico_retificacoes?.length?`<details class="history-receipts"><summary>Histórico de retificações (${i.historico_retificacoes.length})</summary>${i.historico_retificacoes.map(c=>`<div class="delivery-record"><strong>${c.tipo==='admin'?'Correção do administrador':'Retificação'} ${html(c.numero)} · ${fmtDatetime(c.feito_em)}</strong><div>${c.tipo==='admin'?'Administrador':'Conferente'}: ${html(c.responsavel_declarado)}</div>${c.tipo==='admin'?`<div>Entrega ${Number(c.entrega_indice)+1}: ${(c.depois?.entrega?.insumos||[]).filter(x=>Number(c.quantidades_antes?.[x.id]??0)!==Number(c.quantidades_depois?.[x.id]??0)).map(x=>`${html(x.descricao)}: ${number(c.quantidades_antes?.[x.id]??0)} → <strong>${number(c.quantidades_depois?.[x.id]??0)}</strong> ${html(x.unidade)}`).join(' · ')||'sem mudança de quantidade'}</div>`:''}<div>Motivo: ${html(c.motivo)}</div><div>${html(c.antes?.chegou==='SIM'?'Recebido':'Parcial')} → ${html(c.depois?.chegou==='SIM'?'Recebido':'Parcial')}</div></div>`).join('')}</details>`:''}
+ ${locked&&i.entregas?.length?`<div class="correction-entry admin-fix"><button type="button" class="button ghost small" onclick="openAdminFix(${i.pc})">🛠 Corrigir quantidade recebida (administrador)</button><p class="inline-hint">Para quando o conferente lançou a quantidade errada. Exige perfil de administrador e motivo; o valor anterior fica no histórico.</p><div id="adminFixSection"></div></div>`:''}
  ${locked&&(i.chegou==='PARCIAL'||i.historico_retificacoes?.some(c=>c.entrega_indice===i.entregas.length-1))?`<div class="correction-entry"><button type="button" class="button ghost small" onclick="openCorrection(${i.pc})">✎ Retificar última entrega parcial</button><p class="inline-hint">A retificação exige justificativa e responsável. Para registrar materiais que chegaram depois, use “Receber saldo pendente”.</p><div id="correctionSection"></div></div>`:''}
  </div>`;
 }
@@ -227,6 +228,33 @@ async function submitCorrection(ev,pc){
   const idx=items.findIndex(x=>x.pc===pc);if(idx>=0)items[idx]=normalized(res.item);
   renderAll();toast('Retificação registrada com histórico e confirmação preservada.');
  }catch(e){toast('Não foi possível retificar: '+e.message,true);btn.disabled=false;}
+}
+
+function openAdminFix(pc){
+ const i=items.find(x=>x.pc===pc),el=$('adminFixSection');if(!i||!el||!i.entregas?.length)return;
+ const opts=i.entregas.map((e,n)=>`<option value="${n}" ${n===i.entregas.length-1?'selected':''}>Entrega ${n+1} · ${fmtDatetime(e.confirmado_em)}</option>`).join('');
+ el.innerHTML=`<form id="adminFixForm" class="correction-form" onsubmit="submitAdminFix(event,${pc})"><h4>Correção do administrador · PC ${pc}</h4><div class="form-line"><label>Entrega a corrigir</label><select id="adminFixEntrega" onchange="adminFixCarregar(${pc})">${opts}</select></div><div class="correction-lines" id="adminFixLinhas"></div><div class="form-line full"><label>Motivo da correção (obrigatório)</label><textarea id="adminFixMotivo" required minlength="8" maxlength="1000" rows="3" placeholder="Ex.: conferente digitou 100, o correto é 10"></textarea></div><p class="inline-hint">O status (parcial/integral) e o saldo pendente são recalculados automaticamente. Entregas seguintes são ajustadas. A quantidade não pode ultrapassar o pedido.</p><div class="photo-actions"><button class="button primary small" type="submit">Salvar correção</button><button class="button ghost small" type="button" onclick="$('adminFixSection').innerHTML=''">Cancelar</button></div></form>`;
+ adminFixCarregar(pc);el.scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+function adminFixCarregar(pc){
+ const i=items.find(x=>x.pc===pc),box=$('adminFixLinhas');if(!i||!box)return;
+ const n=Number($('adminFixEntrega').value),atual=i.entregas[n],ant=i.entregas[n-1];
+ const antes=new Map((ant?.insumos||[]).map(x=>[x.id,Number(x.quantidade_recebida)||0]));
+ const qtd=new Map((atual?.insumos||[]).map(x=>[x.id,Number(x.quantidade_nesta_entrega)||0]));
+ box.innerHTML=i.insumos.map(x=>`<div class="correction-line"><label>${html(x.descricao)} <small>Pedido: ${number(x.quantidade_pedida)} ${html(x.unidade)} · Entregas anteriores: ${number(antes.get(x.id)||0)}</small></label><input data-admin-id="${html(x.id)}" type="number" inputmode="decimal" min="0" step="any" value="${qtd.get(x.id)??0}" aria-label="Quantidade correta de ${html(x.descricao)}"></div>`).join('');
+}
+async function submitAdminFix(ev,pc){
+ ev.preventDefault();const f=$('adminFixForm');if(!f)return;
+ const i=items.find(x=>x.pc===pc);if(!i)return;
+ const lines=[...f.querySelectorAll('[data-admin-id]')].map(x=>({id:x.dataset.adminId,quantidade_nesta_entrega:x.value}));
+ const n=Number($('adminFixEntrega').value),motivo=$('adminFixMotivo').value.trim();
+ if(!confirm(`Salvar a correção da entrega ${n+1} do PC ${pc}? Os valores anteriores ficarão no histórico.`))return;
+ const btn=f.querySelector('button[type=submit]');btn.disabled=true;
+ try{
+  const res=await api('admin_corrigir_recebimento',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pc,entrega_indice:n,motivo,insumos:lines,expected_revision:(i.historico_retificacoes||[]).length,expected_receipt_count:i.entregas.length})});
+  const idx=items.findIndex(x=>x.pc===pc);if(idx>=0)items[idx]=normalized(res.item);
+  renderAll();toast('Correção registrada. Status e saldo recalculados.');
+ }catch(e){toast('Não foi possível corrigir: '+e.message,true);btn.disabled=false;}
 }
 function updateItem(pc,n,key,value){
  const i=items.find(x=>x.pc===pc);if(!i||(i.recebimento_estado==='finalizado'&&!canReceiveBalance(i)))return;
