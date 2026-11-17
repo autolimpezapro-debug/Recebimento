@@ -1,2 +1,8 @@
-Require all denied
+# Dados privados (json, php, xml, zip, chaves, logs); as FOTOS dos produtos continuam públicas por link.
 Options -Indexes
+<FilesMatch "(?i)\.(json|php|xml|zip|key|lock|tmp|bak|log|pem)$">
+Require all denied
+</FilesMatch>
+<FilesMatch "^\.">
+Require all denied
+</FilesMatch>

@@ -47,7 +47,7 @@ define('MAX_PRODUCT_PHOTOS', 3);
 define('MAX_UPLOAD_BYTES', 4 * 1024 * 1024);
 define('EVENTS_FILE', DATA_DIR . '/events.json');
 define('XML_DIR', DATA_DIR . '/xml');
-define('APP_VERSION', '3.45.0');
+define('APP_VERSION', '3.45.1');
 
 if (!is_dir(DATA_DIR)) mkdir(DATA_DIR, 0755, true);
 if (!is_dir(PHOTOS_DIR)) mkdir(PHOTOS_DIR, 0755, true);
@@ -58,6 +58,10 @@ if (is_file(DATA_DIR . '/.maintenance')) {
     exit;
 }
 
+// v3.45.1: a versão 3.37.0–3.45.1 trazia um data/.htaccess que negava tudo (inclusive as fotos). Repara sozinho.
+if (is_file(DATA_DIR . '/.htaccess') && ($h0 = (string)@file_get_contents(DATA_DIR . '/.htaccess')) && stripos($h0, 'FilesMatch') === false && stripos($h0, 'Require all denied') !== false) {
+    @file_put_contents(DATA_DIR . '/.htaccess', "# Arquivos privados; fotos públicas por link\n<FilesMatch \"(?i)\\.(json|php|xml|zip|key|lock|tmp|bak|log|pem)$\">\nRequire all denied\n</FilesMatch>\n<FilesMatch \"^\\.\">\nRequire all denied\n</FilesMatch>\nOptions -Indexes\n", LOCK_EX);
+}
 if (!file_exists(DATA_DIR . '/.htaccess')) {
     file_put_contents(DATA_DIR . '/.htaccess', "# Arquivos JSON privados; fotos públicas por link\n<FilesMatch \"\\.(json|php)$\">\nRequire all denied\n</FilesMatch>\nOptions -Indexes\n");
 }
@@ -466,7 +470,7 @@ if (strncmp((string)$action, 'estoque_', 8) === 0 && ($_SERVER['REQUEST_METHOD']
         try { require_once __DIR__ . '/alertas_lib.php'; alt_verificar('movimento'); } catch (Throwable $e) { error_log('Alertas: ' . $e->getMessage()); }
     });
 }
-// v3.45.0: checagem de Origem (anti-CSRF) para TODA gravação, inclusive as rotas dos módulos
+// v3.45.1: checagem de Origem (anti-CSRF) para TODA gravação, inclusive as rotas dos módulos
 // (estoque, locações, protocolos, obras...), que são atendidas antes do bloco de POST abaixo.
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !empty($_SERVER['HTTP_ORIGIN'])) {
     $rdH0 = (string)($_SERVER['HTTP_HOST'] ?? ''); $rdO0 = (string)$_SERVER['HTTP_ORIGIN'];
@@ -546,7 +550,7 @@ if (strncmp((string)$action, 'locacoes_', 9) === 0) {
 if (strncmp((string)$action, 'protocolos_', 11) === 0) {
     require __DIR__.'/protocolos_api.php';
 }
-// Romaneio de Terceiros (v3.45.0).
+// Romaneio de Terceiros (v3.45.1).
 if (strncmp((string)$action, 'romaneios_', 10) === 0) {
     require __DIR__.'/romaneios_api.php';
 }

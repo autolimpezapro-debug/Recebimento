@@ -1,4 +1,4 @@
-/* Recebimento Drilling — Importados, visão pública SOMENTE LEITURA (v3.45.0). Sem login: o código do link vai em ?k=. */
+/* Recebimento Drilling — Importados, visão pública SOMENTE LEITURA (v3.45.1). Sem login: o código do link vai em ?k=. */
 'use strict';
 const IMP = { itens: [], meses: [], filtro: 'todos', busca: '', atual: null };
 const K = new URLSearchParams(location.search).get('k') || '';

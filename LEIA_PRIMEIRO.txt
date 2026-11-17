@@ -1,3 +1,10 @@
+v3.45.1 — CORREÇÃO: fotos quebradas (data/.htaccess)
+ * Causa: a partir da v3.37.0 o pacote levava um data/.htaccess que negava TODO acesso à pasta data/, inclusive às fotos dos
+   produtos e da NF (data/photos). Ao extrair o ZIP por cima, as imagens passaram a aparecer quebradas.
+ * Agora o data/.htaccess bloqueia só arquivos sensíveis (json, php, xml, zip, chaves, logs, tmp, bak) e as fotos voltam a abrir.
+ * Reparo automático: instalar.php e api.php detectam o arquivo antigo (nega tudo) e o substituem sozinhos.
+ * Se as fotos ainda aparecerem quebradas depois de extrair: Ctrl+F5 e confira se data/.htaccess tem as linhas <FilesMatch ...>.
+
 v3.45.0 — Importados: link público somente leitura
  * Importados > "🔗 Link público": gera um link secreto (importados_publico.html?k=...) que abre o módulo Importados completo
    (saldo, consumo, cobertura, fotos, ficha e histórico de movimentações), SEM login e SOMENTE LEITURA.
