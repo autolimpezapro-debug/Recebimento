@@ -333,6 +333,23 @@ function loc_salvar(array &$d, array $in, $user) {
     return loc_view($l);
 }
 
+/** v3.41.0: prorroga a previsão de devolução, guardando motivo e histórico. */
+function loc_prorrogar(array &$d, array $in, $user) {
+    $l = &loc_get($d, loc_str($in['id'] ?? '', 20));
+    if ($l['status'] !== 'ATIVA') loc_fail('Só locações ativas podem ser prorrogadas.');
+    $nova = loc_data($in['nova_data'] ?? '', true, 'nova previsão de devolução');
+    $motivo = loc_str($in['motivo'] ?? '', 300);
+    if ($motivo === '') loc_fail('Informe o motivo da prorrogação.');
+    if (!empty($l['inicio']) && $nova < $l['inicio']) loc_fail('A nova previsão é anterior ao início da locação.');
+    $de = $l['previsao_devolucao'] ?? '';
+    if ($nova === $de) loc_fail('A nova data é igual à previsão atual.');
+    $l['previsao_devolucao'] = $nova;
+    $l['prorrogacoes'][] = ['de' => $de, 'para' => $nova, 'motivo' => $motivo, 'usuario' => $user, 'em' => date('c')];
+    $l['edicoes'][] = ['em' => date('c'), 'usuario' => $user, 'campos' => ['previsao_devolucao']];
+    $l['atualizado_em'] = date('c');
+    return loc_view($l);
+}
+
 function loc_transferir(array &$d, array $in, $user) {
     $l = &loc_get($d, loc_str($in['id'] ?? '', 20));
     if ($l['status'] !== 'ATIVA') loc_fail('Só é possível transferir uma locação ativa.');

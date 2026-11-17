@@ -1,3 +1,13 @@
+v3.41.0 — Locações: avisos de devolução + Controle de devoluções
+ * Quando a locação tem PREVISÃO DE DEVOLUÇÃO, o sistema avisa por várias vias: sino + push, e-mail resumido, faixa na tela
+   de Locações (vencidas e próximas 3 dias), selos coloridos, link de WhatsApp e calendário (.ics, com lembretes 7/3/1 dia).
+ * Marcos configuráveis (padrão 7, 3, 1 dia e no dia). Vencida: repete a cada 24 h (configurável) até devolver ou prorrogar.
+ * Nova aba "Controle de devoluções": filtros (vencidas, hoje, 7 dias, 30 dias, sem previsão), Prorrogar (nova data + motivo
+   obrigatório, fica no histórico), Devolver, WhatsApp e "Configurar avisos" (marcos, e-mails, "Enviar aviso agora").
+ * O e-mail usa o SMTP de Estoque > Alertas. Sem e-mail próprio, usa os e-mails dos alertas de estoque.
+ * Dispara pelas telas abertas (a cada 30 min) e pelo cron alertas_worker.php, se existir.
+ * Contato MATEUS (comercial@drilling.com.br, apelido COMERCIAL) adicionado aos contatos de aviso de recebimento.
+
 v3.40.1 — Terceiros: editar romaneio depois de emitido/entregue (com histórico)
  * Botão "Alterar (fica no histórico)" nos romaneios emitidos e entregues. Exige o MOTIVO da alteração.
  * Cada alteração gera uma REVISÃO (Revisão 1, 2...) e registra no histórico quem alterou, quando, o motivo e o que mudou

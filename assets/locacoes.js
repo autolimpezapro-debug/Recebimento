@@ -48,9 +48,12 @@ function locRender() {
     <div class="imp-kpi"><span>Acumulado (ativas)</span><strong>${locR(k.custo_ativas)}</strong><small>desde a retirada</small></div>
     <div class="imp-kpi"><span>Total histórico</span><strong>${locR(k.custo_total)}</strong><small>todas as locações</small></div>`;
   const venc = LOC.p.locacoes.filter(l => l.vencida);
-  locEl('locAlertas').innerHTML = venc.length ? `<div class="loc-alerta">⚠ ${venc.length} equipamento(s) passaram da previsão de devolução e continuam gerando custo: ${venc.slice(0, 5).map(l => `<b>${locH(l.equipamento)}</b> (${locH(l.local_atual)}, ${l.dias_vencida} dia(s))`).join(', ')}${venc.length > 5 ? '…' : ''}</div>` : '';
+  const prox = LOC.p.locacoes.filter(l => l.status === 'ATIVA' && !l.vencida && l.vence_em !== null && l.vence_em <= 3);
+  locEl('locAlertas').innerHTML = (venc.length ? `<div class="loc-alerta">⚠ ${venc.length} equipamento(s) passaram da previsão de devolução e continuam gerando custo: ${venc.slice(0, 5).map(l => `<b>${locH(l.equipamento)}</b> (${locH(l.local_atual)}, ${l.dias_vencida} dia(s))`).join(', ')}${venc.length > 5 ? '…' : ''} <button class="button ghost small" onclick="locAba('devolucoes')">Abrir controle</button></div>` : '')
+    + (prox.length ? `<div class="loc-alerta" style="background:#fffaeb;border-color:#fedf89;color:#93370d">⏰ Devolução nos próximos 3 dias: ${prox.slice(0, 5).map(l => `<b>${locH(l.equipamento)}</b> (${l.vence_em === 0 ? 'HOJE' : l.vence_em === 1 ? 'amanhã' : 'em ' + l.vence_em + ' dias'})`).join(', ')}${prox.length > 5 ? '…' : ''} <button class="button small" style="background:#fff;color:#93370d;border:1px solid #93370d" onclick="locAba('devolucoes')">Abrir controle</button></div>` : '');
   if (LOC.aba === 'ativas') return locRenderLista(true);
   if (LOC.aba === 'historico') return locRenderLista(false);
+  if (LOC.aba === 'devolucoes') return locRenderDevolucoes();
   if (LOC.aba === 'custos') return locRenderCustos();
   return locRenderFornecedores();
 }
@@ -278,4 +281,89 @@ async function locDocRemover(id, i) {
   if (!confirm('Remover este documento da locação? (o arquivo continua guardado no servidor por segurança)')) return;
   try { await locPost('locacoes_doc_remover', { id, i }); document.querySelector('.rd-ass-bg')?.remove(); await locacoesInit(); locFicha(id); locToast('Documento removido.'); }
   catch (e) { locToast(e.message, true); }
+}
+
+
+/* ===== v3.41.0 — Controle de devoluções (previsão de devolução) ===== */
+LOC.devFiltro = 'todas';
+function locDevSituacao(x) {
+  if (x.vencida) return `<span class="est-badge bad">vencida há ${x.dias_vencida} d</span>`;
+  if (x.vence_em === 0) return '<span class="est-badge bad">vence HOJE</span>';
+  if (x.vence_em === 1) return '<span class="est-badge warn">vence amanhã</span>';
+  if (x.vence_em !== null && x.vence_em <= 7) return `<span class="est-badge warn">em ${x.vence_em} dias</span>`;
+  if (x.vence_em !== null) return `<span class="est-badge ok">em ${x.vence_em} dias</span>`;
+  return '<span class="est-badge">sem previsão</span>';
+}
+function locDevLista() {
+  const f = LOC.devFiltro;
+  const a = LOC.p.locacoes.filter(x => x.status === 'ATIVA');
+  const dias = x => x.vencida ? -x.dias_vencida : (x.vence_em === null ? 99999 : x.vence_em);
+  const ok = { todas: () => true, vencidas: x => x.vencida, hoje: x => x.vence_em === 0, d7: x => x.vence_em !== null && x.vence_em <= 7, d30: x => x.vence_em !== null && x.vence_em <= 30, sem: x => !x.previsao_devolucao }[f] || (() => true);
+  return a.filter(ok).sort((p, q) => dias(p) - dias(q));
+}
+function locDevFiltro(f) { LOC.devFiltro = f; locRenderDevolucoes(); }
+function locRenderDevolucoes() {
+  const a = LOC.p.locacoes.filter(x => x.status === 'ATIVA');
+  const n = { todas: a.length, vencidas: a.filter(x => x.vencida).length, hoje: a.filter(x => x.vence_em === 0).length, d7: a.filter(x => x.vence_em !== null && x.vence_em <= 7).length,
+    d30: a.filter(x => x.vence_em !== null && x.vence_em <= 30).length, sem: a.filter(x => !x.previsao_devolucao).length };
+  const chip = (k, t) => `<button class="est-tab ${LOC.devFiltro === k ? 'active' : ''}" onclick="locDevFiltro('${k}')">${t} (${n[k]})</button>`;
+  const l = locDevLista();
+  locEl('locConteudo').innerHTML = `
+    <div class="imp-filtros" style="margin-bottom:10px">${chip('todas', 'Todas ativas')}${chip('vencidas', '🔴 Vencidas')}${chip('hoje', 'Vencem hoje')}${chip('d7', 'Próx. 7 dias')}${chip('d30', 'Próx. 30 dias')}${chip('sem', 'Sem previsão')}
+      <span style="flex:1"></span>
+      <button class="button ghost small" onclick="locAvisoZap()">💬 Resumo p/ WhatsApp</button>
+      <button class="button ghost small" onclick="window.open('api.php?action=locacoes_ics','_blank','noopener')">📅 Calendário (.ics)</button>
+      <button class="button ghost small" onclick="locAlertasConfig()">🔔 Configurar avisos</button></div>
+    ${l.length ? `<div class="table-wrap"><table class="est-table"><thead><tr><th>Equipamento</th><th>Onde está / responsável</th><th>Devolver até</th><th>Situação</th><th>Custo acumulado</th><th></th></tr></thead><tbody>${l.map(x => `
+      <tr class="${x.vencida ? 'fer-atrasado' : ''}"><td><b>${x.quantidade > 1 ? x.quantidade + '× ' : ''}${locH(x.equipamento)}</b><br><small class="muted"><code>${locH(x.id)}</code> · ${locH(x.fornecedor)}${x.contrato ? ' · contrato ' + locH(x.contrato) : ''}</small></td>
+      <td>${locH(x.local_atual)}${x.responsavel ? `<br><small class="muted">${locH(x.responsavel)}</small>` : ''}</td>
+      <td>${x.previsao_devolucao ? locD(x.previsao_devolucao) : '—'}${(x.prorrogacoes || []).length ? `<br><small class="muted">prorrogada ${(x.prorrogacoes || []).length}×</small>` : ''}</td>
+      <td>${locDevSituacao(x)}</td><td>${locR(x.custo.total)}</td>
+      <td class="est-actions"><button class="button ghost small" onclick="locProrrogar('${locH(x.id)}')">Prorrogar</button><button class="button ghost small" title="Lembrar pelo WhatsApp" onclick="locAvisoZap('${locH(x.id)}')">💬</button><button class="button primary small" onclick="locDevolver('${locH(x.id)}')">Devolver</button></td></tr>`).join('')}</tbody></table></div>`
+      : '<div class="notice-empty">Nenhuma locação neste filtro.</div>'}
+    <p class="muted" style="margin-top:10px">Avisos automáticos: sino/push, e-mail e esta tela. Equipamento vencido continua gerando custo até a devolução.</p>`;
+}
+function locProrrogar(id) {
+  const x = LOC.p.locacoes.find(l => l.id === id);
+  const hist = (x.prorrogacoes || []).map(p => `<li>${locD(p.de)} → <b>${locD(p.para)}</b> · ${locH(p.motivo)} <small class="muted">(${locH(p.usuario)}, ${locD(p.em)})</small></li>`).join('');
+  const bg = locModal('Prorrogar devolução', `<p><b>${locH(x.equipamento)}</b> · ${locH(x.fornecedor)} · em ${locH(x.local_atual)}<br><small class="muted">Previsão atual: ${x.previsao_devolucao ? locD(x.previsao_devolucao) : 'não informada'}</small></p>
+    <div class="rd-ass-campos"><label>Nova data de devolução*<input name="nova_data" type="date" value="${x.previsao_devolucao ? '' : locHoje()}" ${x.inicio ? 'min="' + locH(x.inicio) + '"' : ''}></label>
+    <label>Motivo*<input name="motivo" maxlength="300" placeholder="Ex.: obra atrasou, locadora autorizou mais 15 dias"></label></div>
+    ${hist ? `<p class="muted" style="margin:10px 0 2px">Prorrogações anteriores:</p><ul style="margin:0 0 6px 18px">${hist}</ul>` : ''}
+    <div class="rd-ass-acoes"><button type="button" class="button ghost" data-x2>Cancelar</button><button type="button" class="button primary" data-ok>Salvar nova data</button></div>`);
+  bg.querySelector('[data-ok]').onclick = () => locEnviar(bg, 'locacoes_prorrogar', { id, nova_data: locVal(bg, 'nova_data'), motivo: locVal(bg, 'motivo') }, 'Previsão de devolução atualizada.');
+}
+function locAvisoZap(id) {
+  const lista = id ? LOC.p.locacoes.filter(l => l.id === id) : locDevLista().filter(x => x.previsao_devolucao && x.vence_em !== null ? x.vence_em <= 7 : !!x.vencida);
+  if (!lista.length) { locToast('Nada vencido ou próximo do vencimento para avisar.', true); return; }
+  const lin = x => `• ${x.equipamento} (${x.fornecedor}, ${x.local_atual}) — devolver até ${locD(x.previsao_devolucao)}: ${x.vencida ? 'VENCIDA há ' + x.dias_vencida + ' dia(s)' : x.vence_em === 0 ? 'vence HOJE' : 'em ' + x.vence_em + ' dia(s)'}`;
+  const txt = `*Devolução de locação*\n${lista.map(lin).join('\n')}\n\nDevolver ou prorrogar no sistema.`;
+  const num = (LOC.alertas && LOC.alertas.config && LOC.alertas.config.whatsapp) || '';
+  window.open(`https://wa.me/${num}?text=${encodeURIComponent(txt)}`, '_blank', 'noopener');
+}
+async function locAlertasConfig() {
+  let p; try { p = await locApi('locacoes_alertas_config'); } catch (e) { return locToast(e.message, true); }
+  LOC.alertas = p; const c = p.config;
+  const hist = (p.historico || []).map(h => `<li>${new Date(h.em).toLocaleString('pt-BR')} · ${h.qtd} item(ns)${h.vencidas ? ` (${h.vencidas} vencida/s)` : ''} · ${h.sino ? '🔔' : ''}${h.email ? '✉' : ''} <small class="muted">${locH(h.motivo)}</small></li>`).join('');
+  const bg = locModal('Avisos de devolução', `
+    <div class="rd-ass-campos">
+      <label style="grid-column:1/-1"><span><input type="checkbox" name="ativo" ${c.ativo ? 'checked' : ''}> Avisar automaticamente</span></label>
+      <label>Avisar quando faltarem (dias)<input name="marcos" value="${locH((c.marcos || []).join(', '))}" placeholder="7, 3, 1, 0"></label>
+      <label>Repetir se vencida, a cada (horas)<input name="repetir" type="number" min="1" max="168" value="${c.repetir_vencida_horas}"></label>
+      <label style="grid-column:1/-1"><span><input type="checkbox" name="sino" ${c.sino ? 'checked' : ''}> Sino e notificação push</span></label>
+      <label style="grid-column:1/-1"><span><input type="checkbox" name="email" ${c.email ? 'checked' : ''}> Enviar e-mail</span></label>
+      <label style="grid-column:1/-1">E-mails (separe por vírgula)<input name="emails" value="${locH((c.emails || []).join(', '))}" placeholder="${(p.email_geral || []).length ? 'vazio = usa os e-mails dos alertas de estoque: ' + locH(p.email_geral.join(', ')) : 'nome@empresa.com.br'}"></label>
+      <label style="grid-column:1/-1">WhatsApp de destino (opcional, com DDI: 5511999999999)<input name="whatsapp" value="${locH(c.whatsapp || '')}"></label>
+    </div>
+    <p class="muted">Última verificação: ${p.ultima_verificacao ? new Date(p.ultima_verificacao).toLocaleString('pt-BR') : 'ainda não'} · último e-mail: ${p.ultimo_email ? new Date(p.ultimo_email).toLocaleString('pt-BR') : '—'}.
+      O e-mail usa o SMTP configurado em Estoque → Alertas.</p>
+    ${hist ? `<details><summary>Últimos avisos</summary><ul style="margin:6px 0 0 18px">${hist}</ul></details>` : ''}
+    <div class="rd-ass-acoes"><button type="button" class="button ghost" data-x2>Fechar</button><button type="button" class="button ghost" data-agora>Enviar aviso agora</button><button type="button" class="button primary" data-ok>Salvar</button></div>`, 680);
+  const corpo = () => ({ ativo: bg.querySelector('[name=ativo]').checked, marcos: locVal(bg, 'marcos').split(/[\s,;]+/).filter(Boolean), repetir_vencida_horas: locVal(bg, 'repetir'),
+    sino: bg.querySelector('[name=sino]').checked, email: bg.querySelector('[name=email]').checked, emails: locVal(bg, 'emails'), whatsapp: locVal(bg, 'whatsapp') });
+  bg.querySelector('[data-ok]').onclick = async () => { try { LOC.alertas = await locPost('locacoes_alertas_salvar', corpo()); bg.remove(); locToast('Avisos salvos.'); } catch (e) { locToast(e.message, true); } };
+  bg.querySelector('[data-agora]').onclick = async () => {
+    try { await locPost('locacoes_alertas_salvar', corpo()); const r = await locPost('locacoes_alertas_verificar', {}); const z = r.resultado || {};
+      locToast(z.avisados ? `Aviso enviado (${z.avisados} item/ns)${z.sino ? ' · sino' : ''}${z.email ? ' · e-mail' : ''}${z.erro_email ? ' · e-mail falhou: ' + z.erro_email : ''}` : 'Nenhuma locação vencida ou próxima do vencimento.', !!z.erro_email); }
+    catch (e) { locToast(e.message, true); } };
 }

@@ -402,7 +402,7 @@ function rd_rota(string $action): ?array {
             'locacoes_painel' => ['estoque', 'listar'], 'locacoes_csv' => ['estoque', 'listar'],
             'locacoes_salvar' => ['estoque', 'editar'], 'locacoes_transferir' => ['estoque', 'criar'], 'locacoes_desfazer_transferencia' => ['estoque', 'editar'],
             'locacoes_extra' => ['estoque', 'criar'], 'locacoes_devolver' => ['estoque', 'criar'], 'locacoes_reabrir' => ['estoque', 'editar'],
-            'locacoes_excluir' => ['estoque', 'aprovar'], 'locacoes_arquivo' => ['estoque', 'listar'], 'locacoes_doc_enviar' => ['estoque', 'anexar'], 'locacoes_doc_remover' => ['estoque', 'editar'],
+            'locacoes_excluir' => ['estoque', 'aprovar'], 'locacoes_arquivo' => ['estoque', 'listar'], 'locacoes_alertas_config' => ['estoque', 'listar'], 'locacoes_ics' => ['estoque', 'listar'], 'locacoes_alertas_salvar' => ['estoque', 'editar'], 'locacoes_alertas_verificar' => ['estoque', 'editar'], 'locacoes_prorrogar' => ['estoque', 'editar'], 'locacoes_doc_enviar' => ['estoque', 'anexar'], 'locacoes_doc_remover' => ['estoque', 'editar'],
             'obras_painel' => ['estoque', 'listar'], 'obras_pc' => ['estoque', 'listar'], 'obras_obra' => ['estoque', 'detalhe'], 'obras_arquivo' => ['estoque', 'detalhe'],
             'obras_nova' => ['estoque', 'criar'], 'obras_envio_salvar' => ['estoque', 'criar'], 'obras_arquivo_enviar' => ['estoque', 'anexar'],
             'obras_arquivo_remover' => ['estoque', 'editar'], 'obras_envio_excluir' => ['estoque', 'aprovar'],

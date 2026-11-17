@@ -522,6 +522,7 @@ const RCB_SEMENTE = [
     ['KENNETON FERREIRA', 'manutencao@drilling.com.br', 'MANUTENÇÃO, MECÂNICA'],
     ['ALINE', 'seguranca.drilling@drilling.com.br', 'SEGURANÇA, SEGURANCA'],
     ['DAIANA', 'seguranca2@drilling.com.br', 'SEGURANÇA, SEGURANCA'],
+    ['MATEUS', 'comercial@drilling.com.br', 'COMERCIAL'],   // v3.41.0
 ];
 /** v3.35.1: Aline e Daiana (Segurança). Corrige o NOME dos dois e-mails ja semeados com nome generico, UMA vez; nome editado a mao nao e tocado. */
 function rcb_semear_nomes_seguranca(): void {
