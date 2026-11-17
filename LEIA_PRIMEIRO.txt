@@ -1,3 +1,12 @@
+v3.39.0 — Terceiros: Romaneio de saída de material do pátio para a obra
+ * Novo item do menu "Terceiros". Para material da empresa que está no pátio (fora do estoque, controlado por outra
+   pessoa) e vai para a obra SEM nota de remessa. Não movimenta o Estoque e não é documento fiscal.
+ * Fluxo: salvar rascunho (editável) -> emitir (número ROM-0001...) -> imprimir 2 vias (Obra e Arquivo) / baixar PDF / baixar CSV
+   -> marcar entregue (quem recebeu e data). Também: duplicar e cancelar (com motivo). Histórico em cada romaneio.
+ * Campos: data, origem, responsável pelo pátio, obra de destino (lista de obras ou texto livre), solicitante,
+   transportadora, motorista, veículo/placa, itens (SKU, material, unidade, quantidade, obs.) e observações.
+ * Dados em data/romaneios.json (não é sobrescrito ao atualizar; entra nos backups da pasta data).
+
 v3.38.1 — Correção: o menu lateral agora rola (em zoom 100% os últimos itens ficavam cortados e sem como acessar).
 
 v3.38.0 — Assinatura digital do Protocolo de NFs

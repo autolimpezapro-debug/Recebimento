@@ -13,7 +13,7 @@ const rdaData = v => v ? new Date(v).toLocaleString('pt-BR', { dateStyle: 'short
 
 /* página do menu → módulo */
 const RDA_PAGINAS = { dashboard: 'dashboard', inicio: null, pedidos: 'pedidos', importacao: 'importacao',
-  estoque: 'estoque', importados: 'estoque', ferramentas: 'estoque', locacoes: 'estoque', obras: 'estoque', coletas: 'coletas', exportacao: 'exportacao', administracao: 'administracao', notificacoes: 'notificacoes' };
+  estoque: 'estoque', importados: 'estoque', ferramentas: 'estoque', locacoes: 'estoque', terceiros: 'estoque', obras: 'estoque', coletas: 'coletas', exportacao: 'exportacao', administracao: 'administracao', notificacoes: 'notificacoes' };
 
 function rdaCan(modulo, op) { return !!(RDA.perm && RDA.perm[modulo] && RDA.perm[modulo][op]); }
 /* sem login obrigatório = comportamento legado: nada é escondido */
