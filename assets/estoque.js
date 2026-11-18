@@ -253,6 +253,18 @@ function estRenderItens(r) {
   estEl('estItensBody').innerHTML = rows || '<tr><td colspan="8" class="empty">Nenhum item de estoque. As entradas recebidas criam os itens automaticamente.</td></tr>';
 }
 
+/* v3.51.0: busca por nome do insumo nas demais abas */
+let EST_DEB = null;
+function estBuscaDebounce(fn) { clearTimeout(EST_DEB); EST_DEB = setTimeout(fn, 300); }
+function estNormTxt(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim(); }
+function estFiltrarLinhas(inputId, tbodyId) {
+  const palavras = estNormTxt(estEl(inputId).value).split(' ').filter(Boolean);
+  estEl(tbodyId).querySelectorAll('tr').forEach(tr => {
+    if (tr.querySelector('td.empty')) return;
+    const t = estNormTxt(tr.textContent);
+    tr.hidden = !palavras.every(w => t.includes(w));
+  });
+}
 function estFiltroChanged() {
   EST.filtro.q = estEl('estQ').value;
   EST.filtro.status = estEl('estStatus').value;
@@ -333,7 +345,8 @@ async function estSalvarItem(ev) {
 async function estLoadEntradas() {
   try {
     const status = estEl('estEntStatus') ? estEl('estEntStatus').value : '';
-    const r = await estApi('estoque_entradas', { query: status ? { status } : {} });
+    const q = estEl('estEntQ') ? estEl('estEntQ').value.trim() : '';
+    const r = await estApi('estoque_entradas', { query: { ...(status ? { status } : {}), ...(q ? { q } : {}) } });
     EST.entradas = r.entradas;
     estEl('estEntradasBody').innerHTML = r.entradas.map(e => {
       const badge = e.status === 'recebido' ? 'ok' : e.status === 'conferido' ? 'info' : 'warn';
@@ -496,7 +509,8 @@ async function estReceber(pc) {
 
 async function estLoadRequisicoes() {
   try {
-    const r = await estApi('estoque_requisicoes');
+    const qq = estEl('estReqQ') ? estEl('estReqQ').value.trim() : '';
+    const r = await estApi('estoque_requisicoes', { query: qq ? { q: qq } : {} });
     estEl('estReqBody').innerHTML = r.requisicoes.map(q => `
       <tr><td><code>${estHtml(q.id)}</code></td><td>${estHtml(q.setor || '—')}<small class="est-sub">${estHtml(q.solicitante || '—')}${q.os ? ' · OS ' + estHtml(q.os) : ''}${q.equipamento ? ' · ' + estHtml(q.equipamento) : ''}</small></td>
       <td>${estNum((q.linhas || []).length)}</td>
@@ -763,7 +777,7 @@ async function estSalvarSaida(ev) {
 
 async function estLoadMovimentos() {
   try {
-    const q = new URLSearchParams({ tipo: EST.movFiltro.tipo, de: EST.movFiltro.de, ate: EST.movFiltro.ate });
+    const q = new URLSearchParams({ tipo: EST.movFiltro.tipo, de: EST.movFiltro.de, ate: EST.movFiltro.ate, q: estEl('estMovQ') ? estEl('estMovQ').value.trim() : '' });
     const r = await estApi('estoque_movimentos', { query: q });
     EST.movimentos = r.movimentos;
     const tipos = r.tipos || {};
@@ -907,7 +921,8 @@ async function estAplicarContagem() {
 
 async function estLoadReservas() {
   try {
-    const r = await estApi('estoque_reservas');
+    const qq = estEl('estResQ') ? estEl('estResQ').value.trim() : '';
+    const r = await estApi('estoque_reservas', { query: qq ? { q: qq } : {} });
     estEl('estResBody').innerHTML = r.reservas.map(x => `
       <tr><td><code>${estHtml(x.id)}</code></td><td>PC ${x.pc}</td><td>${estNum((x.itens || []).length)}</td>
       <td><span class="est-badge ${x.status === 'ativa' ? 'ok' : 'danger'}">${x.status}</span></td>
@@ -953,6 +968,7 @@ async function estLoadReposicao() {
       <td>${estHtml(i.fornecedor || '—')}</td>
       <td><span class="est-badge ${i.urgencia === 'ZERADO' ? 'danger' : 'warn'}">${i.urgencia}</span></td></tr>`).join('')
       || '<tr><td colspan="8" class="empty">Nenhum item no ponto de pedido. Configure mínimo/ponto de pedido na ficha do item.</td></tr>';
+    estFiltrarLinhas('estRepQ', 'estRepBody');
   } catch (e) { estEl('estRepBody').innerHTML = `<tr><td colspan="8" class="empty">${estHtml(e.message)}</td></tr>`; }
 }
 
@@ -966,6 +982,7 @@ async function estLoadAbc() {
       <td>${estHtml(i.descricao)}<small class="est-sub"><code>${estHtml(i.codigo)}</code></small></td>
       <td>${estMoeda(i.valor)}</td><td>${i.percentual}%</td><td>${i.acumulado}%</td></tr>`).join('')
       || '<tr><td colspan="5" class="empty">Sem saídas no período para classificar.</td></tr>';
+    estFiltrarLinhas('estAbcQ', 'estAbcBody');
   } catch (e) { estEl('estAbcBody').innerHTML = `<tr><td colspan="5" class="empty">${estHtml(e.message)}</td></tr>`; }
 }
 

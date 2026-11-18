@@ -103,10 +103,25 @@ function est_item_detail(array $db, $codigo) {
     return ['item' => $item, 'movimentos' => $movs];
 }
 
+/** v3.51.0: busca por nome do insumo (e código/PC/fornecedor/NF): todas as palavras digitadas precisam aparecer, sem acento e sem maiúsculas. */
+function est_q_norm($t): string {
+    $t = mb_strtolower((string)$t, 'UTF-8');
+    $t = strtr($t, ['á'=>'a','à'=>'a','â'=>'a','ã'=>'a','ä'=>'a','é'=>'e','è'=>'e','ê'=>'e','ë'=>'e','í'=>'i','ì'=>'i','î'=>'i','ï'=>'i','ó'=>'o','ò'=>'o','ô'=>'o','õ'=>'o','ö'=>'o','ú'=>'u','ù'=>'u','û'=>'u','ü'=>'u','ç'=>'c','ñ'=>'n']);
+    return trim(preg_replace('/[^a-z0-9]+/', ' ', $t));
+}
+function est_q_match($registro, string $q): bool {
+    $q = est_q_norm($q);
+    if ($q === '') return true;
+    $txt = est_q_norm(is_string($registro) ? $registro : json_encode($registro, JSON_UNESCAPED_UNICODE));
+    foreach (explode(' ', $q) as $w) if ($w !== '' && !str_contains($txt, $w)) return false;
+    return true;
+}
+
 function est_entradas_list(array $db, array $q) {
     $rows = [];
     foreach ($db['recebimentos'] as $key => $d) {
         if (!empty($q['status']) && ($d['status'] ?? '') !== $q['status']) continue;
+        if (!empty($q['q']) && !est_q_match([$d['pc'] ?? '', $d['fornecedor'] ?? '', $d['numero_nf'] ?? '', array_map(fn($l) => [$l['descricao'] ?? '', $l['codigo'] ?? ''], $d['linhas'] ?? [])], (string)$q['q'])) continue;
         $linhas = $d['linhas'] ?? [];
         $conf = 0; $div = 0; $qtd = 0.0; $rec = 0.0;
         foreach ($linhas as $l) {
@@ -148,6 +163,7 @@ function est_movimentos_list(array $db, array $q) {
     foreach (array_reverse($db['movimentos']) as $m) {
         if ($tipo !== '' && ($m['tipo'] ?? '') !== $tipo) continue;
         if ($code !== '' && ($m['codigo'] ?? '') !== $code) continue;
+        if (!empty($q['q']) && !est_q_match([$m['codigo'] ?? '', $m['descricao_origem'] ?? '', $db['itens'][$m['codigo'] ?? '']['descricao'] ?? '', $m['pc'] ?? '', $m['setor'] ?? '', $m['fornecedor'] ?? ''], (string)$q['q'])) continue;
         $dia = substr((string)($m['em'] ?? ''), 0, 10);
         if ($ini !== '' && $dia < $ini) continue;
         if ($fim !== '' && $dia > $fim) continue;
@@ -239,6 +255,7 @@ function est_handle() {
             case 'estoque_reservas':
                 $db = est_read();
                 $rows = array_values($db['reservas'] ?? []);
+                if (($q = trim((string)($_GET['q'] ?? ''))) !== '') $rows = array_values(array_filter($rows, fn($r) => est_q_match($r, $q)));
                 usort($rows, fn($a, $b) => strcmp((string)($b['atualizado_em'] ?? ''), (string)($a['atualizado_em'] ?? '')));
                 respond(['ok' => true, 'reservas' => $rows, 'total' => count($rows)]);
             case 'estoque_reposicao':
@@ -250,6 +267,7 @@ function est_handle() {
             case 'estoque_requisicoes':
                 $db = est_read();
                 $rows = array_values($db['requisicoes']);
+                if (($q = trim((string)($_GET['q'] ?? ''))) !== '') $rows = array_values(array_filter($rows, fn($r) => est_q_match($r, $q)));
                 usort($rows, fn($a, $b) => strcmp((string)($b['atualizado_em'] ?? ''), (string)($a['atualizado_em'] ?? '')));
                 respond(['ok' => true, 'requisicoes' => $rows, 'total' => count($rows)]);
             case 'estoque_export_csv':

@@ -1,3 +1,11 @@
+v3.51.0 — Várias rotas, pendências do dia, busca no Estoque e menu para celular/tablet
+- COLETAS: até 10 rotas em andamento ao mesmo tempo (abas "🚚 Motorista 2/5" + "＋ Nova rota"). Cada motorista tem o seu link (até 10) e vê só a rota com o nome dele (escreva o nome no campo "Motorista" ao iniciar a rota). Uma coleta não entra em duas rotas. Rotas já concluídas (ou paradas há 36 h) fecham sozinhas. Rota antiga em andamento é migrada sozinha.
+- COLETAS: ao montar a rota, avisos automáticos (parada sem localização/divergente, baixa confiança, parada muito longe); ao iniciar, pede confirmação se houver aviso grave.
+- DASHBOARD: painel "Pendências de hoje" (coletas atrasadas, de hoje e sem localização; itens a repor; entradas a conferir/receber), cada seção só para quem tem acesso ao módulo. Coleta atrasada tem botão "◉ Cobrar" (WhatsApp com mensagem pronta; abre o telefone do cadastro, se houver) — também no detalhe da coleta.
+- ESTOQUE: busca por nome do insumo (sem acento) em Entradas, Movimentações, Saídas, Reservas, Reposição e Curva ABC.
+- CELULAR/TABLET: menu em gaveta (botão "Menu") em vez da faixa que obrigava a rolar para os lados; tabelas viram cartões, sem rolagem lateral.
+- DEPLOY: novo .github/workflows/deploy-ftps.yml (HostGator sem shell). Só roda após criar a variável DEPLOY_FTPS=true e os secrets FTP_HOST, FTP_USER, FTP_PASS, FTP_DIR. O deploy por SSH agora só roda com DEPLOY_SSH=true.
+
 v3.50.2 — Administrador principal nunca mais fica sem acesso (ex.: "Acesso negado: Estoque — Visualizar listagem"). O perfil dele agora é sempre o do código e overrides individuais não o bloqueiam.
 
 v3.50.1 — Coletas: o mapa deixava de cobrir janelas (ex.: "App do motorista"). Cada mapa agora tem camada própria, abaixo dos modais.

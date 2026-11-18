@@ -280,6 +280,7 @@ async function colCarregar() {
 COL.sel = new Set(JSON.parse(localStorage.getItem('rd_col_sel') || '[]'));
 COL.ordem = null;          // ordem manual (ids) depois de mexer nas setas
 COL.ativa = null; COL.pos = null; COL.camadaPos = null;
+COL.rotas = []; COL.posicoes = {}; COL.rotaSel = null; COL.maxRotas = 10;   // v3.51.0: até 10 rotas ao mesmo tempo
 const COL_PIPE = [['', 'Todos', '◈'], ['AGUARDANDO', 'Aguardando retirada', '◷'], ['ROTA', 'Rota de coleta', '↗'], ['ESTOQUE', 'Estoque', '▦'], ['FABRICACAO', 'Fabricação', '⚙'], ['COLETADO', 'Coletado', '✓']];
 function colSalvarSel() { try { localStorage.setItem('rd_col_sel', JSON.stringify([...COL.sel])); } catch (e) {} }
 
@@ -318,8 +319,8 @@ function colRenderTabela() {
   const todas = colEl('colSelTodas'); if (todas) { const ab = lista.filter(c => !fechada(c)); todas.checked = ab.length > 0 && ab.every(c => COL.sel.has(c.id)); }
 }
 
-function colMarcar(id, on) { on ? COL.sel.add(id) : COL.sel.delete(id); COL.ordem = null; colSalvarSel(); colRenderTabela(); colCarregarRota(); }
-function colMarcarTodas(on) { COL.coletas.filter(c => !['COLETADO', 'TRANSPORTE', 'CHEGOU'].includes(c.status)).forEach(c => on ? COL.sel.add(c.id) : COL.sel.delete(c.id)); COL.ordem = null; colSalvarSel(); colRenderTabela(); colCarregarRota(); }
+function colMarcar(id, on) { COL.rotaSel = 'nova'; on ? COL.sel.add(id) : COL.sel.delete(id); COL.ordem = null; colSalvarSel(); colRenderTabela(); colCarregarRota(); }
+function colMarcarTodas(on) { COL.rotaSel = 'nova'; COL.coletas.filter(c => !['COLETADO', 'TRANSPORTE', 'CHEGOU'].includes(c.status)).forEach(c => on ? COL.sel.add(c.id) : COL.sel.delete(c.id)); COL.ordem = null; colSalvarSel(); colRenderTabela(); colCarregarRota(); }
 function colLimparSel() { COL.sel.clear(); COL.ordem = null; colSalvarSel(); colRenderTabela(); colCarregarRota(); }
 
 function colFiltro() { colCarregar(); }
@@ -327,14 +328,32 @@ function colFiltro() { colCarregar(); }
 async function colCarregarRota() {
   try {
     const at = await colApi('coletas_rota_ativa');
-    COL.ativa = at.rota; COL.pos = at.posicao; colDesenharMotorista();
-    if (COL.ativa) return colRenderRotaAtiva();
+    COL.rotas = at.rotas || (at.rota ? [at.rota] : []); COL.posicoes = at.posicoes || {}; COL.maxRotas = at.max_rotas || 10;
+    if (COL.rotaSel !== 'nova' && !COL.rotas.some(r => r.id === COL.rotaSel)) COL.rotaSel = COL.rotas[0] ? COL.rotas[0].id : 'nova';
+    if (!COL.motNomes) { try { COL.motNomes = ((await colApi('coletas_motorista_info')).motoristas || []).map(m => m.nome); } catch (e) { COL.motNomes = []; } }
+    colRenderChips();
+    if (COL.rotaSel !== 'nova') {
+      COL.ativa = COL.rotas.find(r => r.id === COL.rotaSel) || null; COL.pos = COL.posicoes[COL.rotaSel] || null;
+      colDesenharMotorista();
+      if (COL.ativa) return colRenderRotaAtiva();
+    }
+    COL.ativa = null; COL.pos = null; colDesenharMotorista();
     const ids = COL.ordem || [...COL.sel];
     const r = ids.length ? await colApi('coletas_rota_escolhida', { query: { ids: ids.join(','), otimizar: COL.ordem ? '0' : '1' } }) : null;
     COL.rota = r;
     colRenderMontagem(r);
   } catch (e) { colEl('colRouteList').innerHTML = `<li class="col-empty">${colEsc(e.message)}</li>`; }
 }
+
+/* v3.51.0: abas das rotas em andamento (até 10) + "Nova rota" */
+function colRenderChips() {
+  const box = colEl('colRotasChips'); if (!box) return;
+  if (!COL.rotas.length) { box.hidden = true; box.innerHTML = ''; return; }
+  box.hidden = false;
+  box.innerHTML = COL.rotas.map((r, i) => `<button type="button" class="col-chip ${COL.rotaSel === r.id ? 'on' : ''}" onclick="colRotaSelecionar('${colEsc(r.id)}')" title="${colEsc(r.motorista || 'Sem motorista')} · iniciada ${colDataHora(r.criada_em)}">🚚 ${colEsc(r.motorista || 'Rota ' + (i + 1))} <b>${r.feitas}/${r.total}</b></button>`).join('')
+    + (COL.rotas.length < COL.maxRotas ? `<button type="button" class="col-chip col-chip-nova ${COL.rotaSel === 'nova' ? 'on' : ''}" onclick="colRotaSelecionar('nova')">＋ Nova rota</button>` : `<small class="muted">Limite de ${COL.maxRotas} rotas</small>`);
+}
+function colRotaSelecionar(id) { COL.rotaSel = id; if (id === 'nova') COL.rota = null; colCarregarRota(); }
 
 function colLinkMaps(r) {
   const o = r.origem, ps = r.paradas.filter(p => p.tem_coordenadas && !p.concluida).slice(0, 9);
@@ -372,8 +391,9 @@ function colRenderMontagem(r) {
       </li>`).join('')
     + r.sem_local.map(p => `<li class="col-stop col-stop-warn"><span class="col-stop-num">!</span><span class="col-stop-body" onclick="colAbrirDetalhe('${colEsc(p.id)}')"><strong>${colEsc(p.fornecedor)}</strong><small>Sem localização — entra no fim da lista</small></span><span class="col-stop-ctl"><button onclick="colMarcar('${colEsc(p.id)}',false)">✕</button></span></li>`).join('')
     + `<li class="col-stop col-stop-origem"><span class="col-stop-num">⌂</span><span class="col-stop-body"><strong>Volta</strong><small>Drilling</small></span></li>`;
+  const avisos = (r.avisos || []).length ? `<div class="col-ia-box"><b>⚠ Confira antes de iniciar</b><ul class="col-ia-lista">${r.avisos.map(a => `<li>${colEsc(a.texto)}</li>`).join('')}</ul><small>Abra a coleta e use “Localizar endereço” ou “🤖 Conferir com Gemini”, ou use o botão abaixo para o Gemini revisar a rota.</small></div>` : '';
   const link = colLinkMaps(r);
-  act.innerHTML = `<label class="col-motorista-campo"><span>Motorista</span><input id="colMotorista" list="colMotoristas" placeholder="Nome do motorista" value="${colEsc(localStorage.getItem('rd_col_motorista') || '')}"></label>
+  act.innerHTML = avisos + `<label class="col-motorista-campo"><span>Motorista</span><input id="colMotorista" list="colMotoristas" placeholder="Nome do motorista" value="${colEsc(localStorage.getItem('rd_col_motorista') || '')}"><datalist id="colMotoristas">${(COL.motNomes || []).map(n => `<option value="${colEsc(n)}">`).join('')}</datalist></label>
     <div class="col-route-btns">
       <button class="button primary" onclick="colIniciarRota()">▶ Iniciar rota</button>
       ${link ? `<a class="button ghost" href="${link}" target="_blank" rel="noopener">🗺 Google Maps</a>` : ''}
@@ -409,7 +429,7 @@ async function colRotaPorPcs(ev) {
   const btn = ev.target.querySelector('button'); btn.disabled = true; btn.textContent = 'Montando…';
   try {
     const r = await colPost('coletas_rota_por_pcs', { pcs });
-    COL.sel = new Set(r.ids); COL.ordem = null; colSalvarSel();
+    COL.rotaSel = 'nova'; COL.sel = new Set(r.ids); COL.ordem = null; colSalvarSel();
     colEl('colPcs').value = '';
     if (r.avisos.length) alert('Atenção:\n\n' + r.avisos.join('\n'));
     colToast(`${r.ids.length} parada(s) na rota${r.criadas.length ? ` · ${r.criadas.length} coleta(s) criada(s)` : ''}`);
@@ -457,7 +477,7 @@ function colMover(i, d) {
   COL.ordem = [...ids, ...COL.rota.sem_local.map(p => p.id)];
   colCarregarRota();
 }
-function colSugerir() { COL.coletas.filter(c => c.status === 'AGUARDANDO' && c.tem_coordenadas).forEach(c => COL.sel.add(c.id)); COL.ordem = null; colSalvarSel(); colRenderTabela(); colCarregarRota(); }
+function colSugerir() { COL.rotaSel = 'nova'; COL.coletas.filter(c => c.status === 'AGUARDANDO' && c.tem_coordenadas).forEach(c => COL.sel.add(c.id)); COL.ordem = null; colSalvarSel(); colRenderTabela(); colCarregarRota(); }
 
 function colEnviarWA() {
   if (!COL.rota) return;
@@ -466,21 +486,22 @@ function colEnviarWA() {
 }
 
 async function colIniciarRota() {
-  if (COL.rota?.sem_local?.some(p => p.geo_status === 'divergente') && !confirm('Há parada(s) com endereço que o mapa NÃO confirmou (cidade/UF divergente). Elas ficarão fora da ordem otimizada. Iniciar mesmo assim? (Dica: use “Conferir rota com Gemini”.)')) return;
+  const grav = (COL.rota?.avisos || []).filter(a => a.tipo !== 'baixa');
+  if (grav.length && !confirm('Atenção:\n\n' + grav.map(a => '• ' + a.texto).join('\n') + '\n\nIniciar a rota mesmo assim? (Dica: use “Conferir rota com Gemini”.)')) return;
   const ids = COL.ordem || [...COL.sel], motorista = colEl('colMotorista')?.value || '';
   try { localStorage.setItem('rd_col_motorista', motorista); } catch (e) {}
   try {
-    await colPost('coletas_rota_iniciar', { ids: COL.rota ? [...COL.rota.paradas.map(p => p.id), ...COL.rota.sem_local.map(p => p.id)] : ids, motorista, otimizar: false, rua: COL.rua || {} });
+    const ini = await colPost('coletas_rota_iniciar', { ids: COL.rota ? [...COL.rota.paradas.map(p => p.id), ...COL.rota.sem_local.map(p => p.id)] : ids, motorista, otimizar: false, rua: COL.rua || {} });
     colCarregarHist();
-    COL.sel.clear(); COL.ordem = null; colSalvarSel();
+    COL.sel.clear(); COL.ordem = null; colSalvarSel(); COL.rotaSel = ini.rota_id || null;
     colToast('Rota iniciada. As coletas passaram para "Rota de coleta".');
     colCarregar(); colCarregarRota();
   } catch (e) { colToast(e.message, true); }
 }
 async function colEncerrarRota() {
   const pend = COL.ativa ? COL.ativa.total - COL.ativa.feitas : 0;
-  if (!confirm(pend ? `Ainda há ${pend} parada(s) sem coleta. Encerrar a rota mesmo assim? (as coletas continuam no status atual)` : 'Encerrar a rota?')) return;
-  try { await colPost('coletas_rota_encerrar', {}); colToast('Rota encerrada.'); colCarregarRota(); colCarregar(); colCarregarHist(); } catch (e) { colToast(e.message, true); }
+  if (!confirm(pend ? `Ainda há ${pend} parada(s) sem coleta nesta rota. Encerrar a rota mesmo assim? (as coletas continuam no status atual)` : 'Encerrar a rota?')) return;
+  try { await colPost('coletas_rota_encerrar', { rota_id: COL.ativa ? COL.ativa.id : '' }); COL.rotaSel = null; colToast('Rota encerrada.'); colCarregarRota(); colCarregar(); colCarregarHist(); } catch (e) { colToast(e.message, true); }
 }
 
 function colRenderRotaAtiva() {
@@ -510,13 +531,17 @@ function colRenderRotaAtiva() {
 function colDesenharMotorista() {
   if (!COL.mapa) return;
   if (COL.camadaPos) { COL.mapa.removeLayer(COL.camadaPos); COL.camadaPos = null; }
-  if (!COL.pos) return;
-  COL.camadaPos = L.marker([COL.pos.lat, COL.pos.lng], { zIndexOffset: 1000, icon: L.divIcon({ className: 'col-pin-wrap', html: '<span class="col-truck">🚚</span>', iconSize: [36, 36], iconAnchor: [18, 18] }) })
-    .addTo(COL.mapa).bindPopup(`<strong>Motorista</strong><small>${colEsc(COL.pos.por || '')} · ${colDataHora(COL.pos.em)}</small>`);
+  const grupo = L.layerGroup();
+  COL.rotas.forEach(r => {
+    const p = COL.posicoes[r.id]; if (!p) return;
+    L.marker([p.lat, p.lng], { zIndexOffset: 1000, icon: L.divIcon({ className: 'col-pin-wrap', html: '<span class="col-truck">🚚</span>', iconSize: [36, 36], iconAnchor: [18, 18] }) })
+      .addTo(grupo).bindPopup(`<strong>${colEsc(r.motorista || 'Motorista')}</strong><small>${colDataHora(p.em)} · ${r.feitas}/${r.total} coletas</small>`);
+  });
+  COL.camadaPos = grupo.addTo(COL.mapa);
 }
-function colCentrarMotorista() { if (COL.pos && COL.mapa) { COL.mapa.setView([COL.pos.lat, COL.pos.lng], 14); COL.camadaPos?.openPopup(); } }
+function colCentrarMotorista() { if (COL.pos && COL.mapa) { COL.mapa.setView([COL.pos.lat, COL.pos.lng], 14); COL.camadaPos?.eachLayer(l => l.openPopup && l.getLatLng().lat === COL.pos.lat && l.openPopup()); } }
 // Atualiza a posição do motorista e o andamento da rota a cada 60 s enquanto a tela de coletas estiver aberta.
-setInterval(() => { const pg = document.getElementById('page-coletas'); if (pg && pg.classList.contains('active') && !document.hidden && COL.carregado && COL.ativa) { COL.semZoom = true; colCarregarRota().finally(() => { COL.semZoom = false; }); } }, 60000);
+setInterval(() => { const pg = document.getElementById('page-coletas'); if (pg && pg.classList.contains('active') && !document.hidden && COL.carregado && COL.rotas.length) { COL.semZoom = true; colCarregarRota().finally(() => { COL.semZoom = false; }); } }, 60000);
 
 /* ---------------- formulário ---------------- */
 
@@ -664,6 +689,7 @@ async function colAbrirDetalhe(id) {
         <button class="button primary small" onclick="colMudarStatus()">Aplicar</button>
         <button class="button ghost small" onclick="colEditar()">Editar dados</button>
         <button class="button ghost small" onclick="colAbrirRetorno()">Registrar retorno</button>
+        ${c.atrasada ? '<button class="button ghost small" onclick="colCobrarFornecedor()">◉ Cobrar fornecedor</button>' : ''}
         ${c.tem_coordenadas ? `<a class="button ghost small" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}">Abrir no Google Maps</a>` : ''}
       </div>
       <h4 class="col-h4">Histórico</h4>
@@ -843,30 +869,37 @@ function colMotModal(titulo, html) {
 async function colMotorista() {
   const bg = colMotModal('📱 App do motorista', '<p class="muted">Carregando…</p>');
   const dt = v => v ? colDataHora(v) : '—';
-  const render = (i, link) => {
+  const render = (info, link, linkNome) => {
     const corpo = bg.querySelector('[data-corpo]');
-    corpo.innerHTML = `<p class="muted">O motorista instala o app uma vez, pelo link abaixo, e depois ele abre direto na rota do dia — sem login. Ao tocar em "Coletei" o app grava horário e localização, e isso alimenta os Indicadores. Não mexe no estoque.</p>
-      ${i.configurado ? `<div class="panel" style="margin:10px 0;padding:10px 12px"><b>${colEsc(i.nome)}</b> — ${i.ativo ? '<span style="color:#34d399">link ativo</span>' : i.revogado ? '<span style="color:#f87171">link revogado</span>' : '<span style="color:#f87171">link vencido</span>'}<br>
-        <small class="muted">Gerado em ${dt(i.criado_em)} por ${colEsc(i.criado_por)} · último acesso: ${dt(i.ultimo_acesso)} · aparelhos: ${i.aparelhos} de ${i.max_aparelhos} · vence em ${dt(i.expira_em)} (renova a cada uso)</small></div>` : '<p><b>Ainda não há link do motorista.</b></p>'}
-      ${link ? `<div class="panel" style="margin:10px 0;padding:10px 12px;border-color:#34d399"><b>Link do motorista</b> <small class="muted">(guarde: por segurança ele só aparece agora)</small>
+    const lista = info.motoristas || [];
+    corpo.innerHTML = `<p class="muted">Cada motorista tem o seu link (até ${info.max_motoristas || 10}). Ele instala o app uma vez e depois abre direto na rota que leva o nome dele — sem login. Ao tocar em "Coletei" o app grava horário e localização, e isso alimenta os Indicadores. Não mexe no estoque.</p>
+      ${link ? `<div class="panel" style="margin:10px 0;padding:10px 12px;border-color:#34d399"><b>Link de ${colEsc(linkNome)}</b> <small class="muted">(guarde: por segurança ele só aparece agora)</small>
         <input readonly id="colMotLink" style="width:100%;margin:8px 0" value="${colEsc(link)}" onclick="this.select()">
         <div class="col-route-btns"><button class="button primary" id="colMotCopiar">Copiar link</button><button class="button ghost" id="colMotWa">◉ Enviar por WhatsApp</button></div></div>` : ''}
-      <label style="display:block;margin-top:10px">Nome do motorista<input id="colMotNome" maxlength="80" style="width:100%" value="${colEsc(i.nome || '')}" placeholder="Ex.: Leandro"></label>
-      <div class="rd-ass-acoes" style="flex-wrap:wrap"><button class="button primary" id="colMotGerar">${i.configurado ? 'Gerar novo link (o anterior deixa de valer)' : 'Gerar link do motorista'}</button>
-        ${i.configurado && i.aparelhos ? '<button class="button ghost" id="colMotLiberar">Liberar aparelhos (celular novo)</button>' : ''}${i.configurado && i.ativo ? '<button class="button ghost danger" id="colMotRevogar">Revogar link</button>' : ''}</div>
-      <p class="muted" style="font-size:12px">Segurança: quem tem o link vê apenas a rota em andamento e pode registrar coleta. Se o celular for perdido ou o link vazar, revogue ou gere um novo.</p>`;
-    const g = id => corpo.querySelector(id);
+      ${lista.map(i => `<div class="panel" style="margin:8px 0;padding:10px 12px" data-mot="${colEsc(i.id)}"><b>${colEsc(i.nome)}</b> — ${i.ativo ? '<span style="color:#34d399">link ativo</span>' : i.revogado ? '<span style="color:#f87171">link revogado</span>' : '<span style="color:#fbbf24">link vencido</span>'}<br>
+        <small class="muted">Gerado em ${dt(i.criado_em)} · último acesso: ${dt(i.ultimo_acesso)} · aparelhos: ${i.aparelhos} de ${i.max_aparelhos}</small>
+        <div class="rd-ass-acoes" style="flex-wrap:wrap;margin-top:6px"><button class="button ghost small" data-a="gerar">Gerar novo link</button>${i.aparelhos ? '<button class="button ghost small" data-a="liberar">Liberar aparelhos</button>' : ''}${i.ativo ? '<button class="button ghost small danger" data-a="revogar">Revogar</button>' : ''}<button class="button ghost small danger" data-a="remover">Remover</button></div></div>`).join('') || '<p class="muted">Nenhum motorista cadastrado ainda.</p>'}
+      <label style="display:block;margin-top:10px">Novo motorista<input id="colMotNome" maxlength="80" style="width:100%" placeholder="Ex.: Leandro"></label>
+      <div class="rd-ass-acoes"><button class="button primary" id="colMotGerar">Gerar link do motorista</button></div>
+      <p class="muted" style="font-size:12px">Para o motorista ver a rota, escreva o nome dele no campo "Motorista" ao iniciar a rota. Segurança: quem tem o link vê só a rota dele e pode registrar coleta. Se o celular for perdido ou o link vazar, revogue ou gere um novo.</p>`;
+    const g = q => corpo.querySelector(q);
     if (link) {
       g('#colMotCopiar').onclick = async () => { try { await navigator.clipboard.writeText(link); colToast('Link copiado'); } catch { g('#colMotLink').select(); colToast('Selecione e copie o link', true); } };
       g('#colMotWa').onclick = () => window.open('https://wa.me/?text=' + encodeURIComponent('Rota Drilling — abra este link no seu celular e instale o app (Chrome: ⋮ > Instalar app; iPhone: Safari > Compartilhar > Adicionar à Tela de Início):\n' + link), '_blank');
     }
     g('#colMotGerar').onclick = async () => {
       const nome = g('#colMotNome').value.trim(); if (nome.length < 2) return colToast('Informe o nome do motorista', true);
-      if (i.configurado && !confirm('Gerar um novo link? O link atual do motorista deixa de funcionar.')) return;
-      try { const r = await colPost('coletas_motorista_gerar', { nome }); render(r, r.link); } catch (e) { colToast(e.message, true); }
+      try { const r = await colPost('coletas_motorista_gerar', { nome }); render(r, r.link, nome); } catch (e) { colToast(e.message, true); }
     };
-    const lib = g('#colMotLiberar'); if (lib) lib.onclick = async () => { try { render(await colPost('coletas_motorista_liberar', {}), null); colToast('Aparelhos liberados'); } catch (e) { colToast(e.message, true); } };
-    const rev = g('#colMotRevogar'); if (rev) rev.onclick = async () => { if (!confirm('Revogar o link? O app do motorista para de funcionar até você gerar outro.')) return; try { render(await colPost('coletas_motorista_revogar', {}), null); colToast('Link revogado'); } catch (e) { colToast(e.message, true); } };
+    corpo.querySelectorAll('[data-mot]').forEach(box => box.querySelectorAll('[data-a]').forEach(btn => btn.onclick = async () => {
+      const id = box.dataset.mot, a = btn.dataset.a, m = lista.find(x => x.id === id);
+      try {
+        if (a === 'gerar') { if (!confirm(`Gerar um novo link para ${m.nome}? O link atual dele deixa de funcionar.`)) return; const r = await colPost('coletas_motorista_gerar', { nome: m.nome }); render(r, r.link, m.nome); return; }
+        if (a === 'liberar') { render(await colPost('coletas_motorista_liberar', { id }), null); colToast('Aparelhos liberados'); return; }
+        if (a === 'revogar') { if (!confirm(`Revogar o link de ${m.nome}? O app dele para de funcionar até você gerar outro.`)) return; render(await colPost('coletas_motorista_revogar', { id }), null); colToast('Link revogado'); return; }
+        if (a === 'remover') { if (!confirm(`Remover ${m.nome} da lista? O link dele deixa de funcionar.`)) return; render(await colPost('coletas_motorista_remover', { id }), null); }
+      } catch (e) { colToast(e.message, true); }
+    }));
   };
   try { render(await colApi('coletas_motorista_info'), null); } catch (e) { bg.querySelector('[data-corpo]').innerHTML = `<p>${colEsc(e.message)}</p>`; }
 }
@@ -947,4 +980,15 @@ async function colIaRota() {
     const b = colEl('colIaAplicaRota');
     if (b) b.onclick = () => { COL.ordem = COL.iaOrdem; colCarregarRota(); colToast('Ordem sugerida aplicada. Revise e inicie a rota.'); };
   } catch (e) { box.innerHTML = `<small>${colEsc(e.message)}</small>`; }
+}
+
+
+/* v3.51.0 — cobrança de retirada atrasada pelo WhatsApp (abre a conversa com a mensagem pronta; a pessoa revisa e envia) */
+function colCobrarFornecedor() {
+  const c = COL.coletaAtual; if (!c) return;
+  const quando = c.agendada_data ? c.agendada_data.split('-').reverse().join('/') + (c.agendada_hora ? ' às ' + c.agendada_hora : '') : 'a data combinada';
+  const msg = `Olá, ${c.fornecedor || 'fornecedor'}! Aqui é da Drilling do Brasil.\n\nSobre a retirada${c.pc ? ' do PC ' + c.pc : ''}: estava agendada para ${quando} e ainda não foi realizada.${c.motivo_atraso_label ? ' (motivo registrado: ' + c.motivo_atraso_label + ')' : ''}\n\nPode nos confirmar quando o material estará liberado para retirada? Assim reorganizamos a rota do nosso motorista.\n\nObrigado!`;
+  let tel = ''; for (const m of String(c.contato || '').match(/\(?\d[\d\s().-]{7,}\d/g) || []) { const d = m.replace(/\D/g, ''); if (d.length === 10 || d.length === 11) { tel = '55' + d; break; } if ((d.length === 12 || d.length === 13) && d.startsWith('55')) { tel = d; break; } }
+  window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(msg), '_blank', 'noopener');
+  if (!tel) colToast('Sem telefone no cadastro: escolha o contato no WhatsApp.');
 }

@@ -24,8 +24,8 @@ if ($metodo === 'POST') {
 }
 switch ($acao) {
     case 'rota':
-        $db = col_read(); $pos = $db['motorista_pos'] ?? null;
-        respond(['ok' => true, 'motorista' => $nome, 'servidor_em' => date('c'), 'motivos' => COL_RETORNO_MOTIVOS, 'posicao_enviada_em' => $pos['em'] ?? null] + mot_rota());
+        $db = col_read(); $mr = mot_rota($nome); $pos = $db['motorista_posicoes'][$mr['rota']['id'] ?? ''] ?? ($db['motorista_pos'] ?? null);
+        respond(['ok' => true, 'motorista' => $nome, 'servidor_em' => date('c'), 'motivos' => COL_RETORNO_MOTIVOS, 'posicao_enviada_em' => $pos['em'] ?? null] + $mr);
     case 'coletou':
         $c = mot_coleta_na_rota((string)($b['id'] ?? ''));
         if (mot_op_repetida((string)($b['op'] ?? ''))) respond(['ok' => true, 'repetida' => true]);
@@ -41,15 +41,18 @@ switch ($acao) {
         mot_op_marcar((string)($b['op'] ?? ''));
         respond(['ok' => true]);
     case 'posicao':
-        $r = col_posicao($b, $quem);
+        $minha = mot_rota($nome)['rota'] ?? null;
+        $r = col_posicao($b + ['rota_id' => $minha['id'] ?? ''], $quem);
         respond(['ok' => true]);
     case 'reotimizar':
         if ($metodo !== 'POST') respond(['ok' => false, 'error' => 'Método não permitido'], 405);
-        $r = col_rota_reotimizar((float)($b['lat'] ?? 0), (float)($b['lng'] ?? 0), $quem);
+        $minha = mot_rota($nome)['rota'] ?? null;
+        if (!$minha) respond(['ok' => false, 'error' => 'Você não tem rota em andamento.'], 409);
+        $r = col_rota_reotimizar((float)($b['lat'] ?? 0), (float)($b['lng'] ?? 0), $quem, (string)$minha['id']);
         respond(['ok' => true, 'reordenada' => $r['reordenada'], 'motivo' => $r['motivo']]);
     case 'pdf':
         $pc = (int)($_GET['pc'] ?? 0); $achou = false;
-        foreach (mot_rota()['rota']['paradas'] ?? [] as $p) if ((int)$p['pc'] === $pc && $pc > 0) $achou = true;
+        foreach (mot_rota($nome)['rota']['paradas'] ?? [] as $p) if ((int)$p['pc'] === $pc && $pc > 0) $achou = true;
         $f = $achou ? mot_pdf_arquivo($pc) : null;
         if (!$f) { http_response_code(404); header('Content-Type: text/plain; charset=utf-8'); exit('PDF do pedido não disponível.'); }
         header('Content-Type: application/pdf'); header('Content-Disposition: inline; filename="PC-' . $pc . '.pdf"'); header('Content-Length: ' . filesize($f)); readfile($f); exit;

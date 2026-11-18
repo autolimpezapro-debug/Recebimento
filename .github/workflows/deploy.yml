@@ -14,6 +14,8 @@ permissions:
 
 jobs:
   deploy:
+    # v3.51.0: só roda se a variável DEPLOY_SSH = true (ou manualmente). Em contas sem shell use deploy-ftps.yml.
+    if: ${{ vars.DEPLOY_SSH == 'true' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

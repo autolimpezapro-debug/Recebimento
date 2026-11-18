@@ -888,36 +888,102 @@ function col_itens_pc($pc) {
     return array_map(fn($x) => ['descricao' => (string)($x['descricao'] ?? ''), 'quantidade' => $x['quantidade_pedida'] ?? '', 'unidade' => (string)($x['unidade'] ?? '')], array_slice((array)($it['insumos'] ?? []), 0, 40));
 }
 
-function col_rota_ativa_view(array $db) {
-    $r = $db['rota_ativa'] ?? null;
-    $pos = $db['motorista_pos'] ?? null;
-    if ($pos && strtotime($pos['em'] ?? '') < time() - 6 * 3600) $pos = null;
-    if (!$r || empty($r['paradas'])) return ['rota' => null, 'posicao' => $pos];
+/* ---------- v3.51.0: até 10 rotas ativas ao mesmo tempo ---------- */
+const COL_MAX_ROTAS = 10;
+
+/** Mapa id → rota das rotas em andamento. Migra a antiga rota única (rota_ativa) na hora, em memória. */
+function col_rotas_map(array &$db): array {
+    $m = (array)($db['rotas_ativas'] ?? []);
+    if (!empty($db['rota_ativa']['id'])) { $rid = (string)$db['rota_ativa']['id']; $m[$rid] = $m[$rid] ?? $db['rota_ativa']; }
+    $db['rota_ativa'] = null;
+    $db['rotas_ativas'] = $m;
+    return $m;
+}
+
+function col_coleta_concluida(array $c): bool { return in_array($c['status'] ?? '', ['COLETADO', 'TRANSPORTE', 'CHEGOU'], true); }
+
+/** Visão completa de UMA rota (paradas na ordem, andamento, itens do pedido). */
+function col_rota_view_uma(array $db, array $r): array {
     $o = col_ordenar_paradas($db, $r['paradas'], false);
     foreach ($o['paradas'] as &$p) {
         $p['itens'] = $p['pc'] ? col_itens_pc($p['pc']) : [];
-        $p['concluida'] = in_array($p['status'] ?? '', ['COLETADO', 'TRANSPORTE', 'CHEGOU'], true);
+        $p['concluida'] = col_coleta_concluida($p);
         $ult = end($p['retornos']) ?: null;
         $p['nao_coletada'] = !$p['concluida'] && $ult && strcmp((string)$ult['em'], (string)$r['criada_em']) >= 0;
         if ($p['nao_coletada']) $p['nao_coletada_motivo'] = $ult['motivo_label'] ?? '';
     }
     unset($p);
-    foreach ($o['sem_local'] as &$p) { $p['itens'] = $p['pc'] ? col_itens_pc($p['pc']) : []; $p['concluida'] = in_array($p['status'] ?? '', ['COLETADO', 'TRANSPORTE', 'CHEGOU'], true); $p['nao_coletada'] = false; }
+    foreach ($o['sem_local'] as &$p) { $p['itens'] = $p['pc'] ? col_itens_pc($p['pc']) : []; $p['concluida'] = col_coleta_concluida($p); $p['nao_coletada'] = false; }
     unset($p);
     $todas = array_merge($o['paradas'], $o['sem_local']);
     $feitas = count(array_filter($todas, fn($p) => $p['concluida']));
     $o['nao_coletadas'] = count(array_filter($todas, fn($p) => $p['nao_coletada']));
-    return ['rota' => $o + ['id' => $r['id'], 'criada_em' => $r['criada_em'], 'criada_por' => $r['criada_por'], 'motorista' => $r['motorista'] ?? '',
-        'feitas' => $feitas, 'total' => count($o['paradas']) + count($o['sem_local'])], 'posicao' => $pos];
+    return $o + ['id' => $r['id'], 'criada_em' => $r['criada_em'], 'criada_por' => $r['criada_por'], 'motorista' => $r['motorista'] ?? '',
+        'feitas' => $feitas, 'total' => count($o['paradas']) + count($o['sem_local'])];
 }
 
-/** Inicia (ou substitui) a rota do dia: guarda a ordem e passa as coletas abertas para "Rota de coleta". */
+/** Todas as rotas em andamento (mais antiga primeiro) + a última posição de cada motorista. Mantém 'rota'/'posicao' (a 1ª) por compatibilidade. */
+function col_rotas_view(array $db): array {
+    $m = col_rotas_map($db);
+    $rotas = []; $pos = [];
+    foreach ($m as $id => $r) {
+        if (empty($r['paradas'])) continue;
+        $rotas[] = col_rota_view_uma($db, $r);
+        $p = $db['motorista_posicoes'][$id] ?? null;
+        if ($p && strtotime($p['em'] ?? '') >= time() - 6 * 3600) $pos[$id] = $p;
+    }
+    usort($rotas, fn($a, $b) => strcmp((string)$a['criada_em'], (string)$b['criada_em']));
+    $leg = $db['motorista_pos'] ?? null;
+    if ($leg && strtotime($leg['em'] ?? '') < time() - 6 * 3600) $leg = null;
+    $primeira = $rotas[0] ?? null;
+    return ['rotas' => $rotas, 'posicoes' => (object)$pos, 'max_rotas' => COL_MAX_ROTAS, 'rota' => $primeira,
+        'posicao' => $primeira ? ($pos[$primeira['id']] ?? $leg) : $leg];
+}
+
+/** Compatibilidade: uma rota (a pedida, ou a mais antiga). */
+function col_rota_ativa_view(array $db, ?string $id = null) {
+    $v = col_rotas_view($db);
+    if ($id) foreach ($v['rotas'] as $r) if ($r['id'] === $id) return ['rota' => $r, 'posicao' => ((array)$v['posicoes'])[$id] ?? null];
+    return ['rota' => $v['rota'], 'posicao' => $v['posicao']];
+}
+
+/** Rotas que o motorista (pelo nome do link) deve ver: as que têm o nome dele; se só houver uma rota sem motorista, é dele. */
+function col_rotas_do_motorista(array $db, string $nome): array {
+    $v = col_rotas_view($db); $n = col_norm_txt($nome); $mine = [];
+    foreach ($v['rotas'] as $r) if ($n !== '' && col_norm_txt($r['motorista'] ?? '') === $n) $mine[] = $r;
+    if (!$mine) { $sem = array_values(array_filter($v['rotas'], fn($r) => trim((string)($r['motorista'] ?? '')) === '')); if (count($sem) === 1) $mine = $sem; }
+    return $mine;
+}
+
+/** Fecha sozinha as rotas já concluídas (ou paradas há mais de 36 h), para não lotar o limite de 10. */
+function col_rotas_limpar(array &$db, string $por = 'automático'): int {
+    $m = col_rotas_map($db); $n = 0;
+    foreach ($m as $id => $r) {
+        $todas = true;
+        foreach ((array)($r['paradas'] ?? []) as $cid) { $c = $db['coletas'][$cid] ?? null; if ($c && !col_coleta_concluida($c)) { $todas = false; break; } }
+        $velha = strtotime((string)($r['criada_em'] ?? '')) < time() - 36 * 3600;
+        if ($todas || $velha) {
+            foreach ($db['rotas_hist'] ?? [] as $i => $h) if (($h['id'] ?? '') === $id && empty($h['encerrada_em'])) { $db['rotas_hist'][$i]['encerrada_em'] = col_now(); $db['rotas_hist'][$i]['encerrada_por'] = $por; }
+            unset($m[$id], $db['motorista_posicoes'][$id]); $n++;
+        }
+    }
+    $db['rotas_ativas'] = $m;
+    return $n;
+}
+
+/** Inicia uma rota nova (até 10 ao mesmo tempo): guarda a ordem e passa as coletas abertas para "Rota de coleta". */
 function col_rota_iniciar(array $ids, string $motorista, string $usuario, bool $otimizar, array $rua = []) {
     return col_with_lock(function () use ($ids, $motorista, $usuario, $otimizar, $rua) {
         $db = col_read();
+        col_rotas_limpar($db);
+        $m = col_rotas_map($db);
+        if (count($m) >= COL_MAX_ROTAS) respond(['ok' => false, 'error' => 'Já existem ' . COL_MAX_ROTAS . ' rotas em andamento. Encerre uma para montar outra.'], 409);
         $o = col_ordenar_paradas($db, array_slice($ids, 0, 40), $otimizar);
         $ordem = array_merge(array_column($o['paradas'], 'id'), array_column($o['sem_local'], 'id'));
         if (!$ordem) respond(['ok' => false, 'error' => 'Escolha ao menos uma coleta para a rota.'], 422);
+        foreach ($ordem as $cid) foreach ($m as $r) if (in_array($cid, (array)$r['paradas'], true) && !col_coleta_concluida($db['coletas'][$cid] ?? [])) {
+            respond(['ok' => false, 'error' => 'A coleta ' . ($db['coletas'][$cid]['pc'] ?? $cid) . ' já está na rota de ' . (($r['motorista'] ?? '') ?: 'outro motorista') . '. Tire-a de uma das rotas.'], 409);
+        }
         $now = col_now();
         foreach ($ordem as $id) {
             $c = $db['coletas'][$id];
@@ -928,83 +994,119 @@ function col_rota_iniciar(array $ids, string $motorista, string $usuario, bool $
                 $db['coletas'][$id] = $c;
             }
         }
-        $db['rota_ativa'] = ['id' => 'ROTA-' . date('Ymd-His'), 'paradas' => $ordem, 'criada_em' => $now, 'criada_por' => $usuario, 'motorista' => col_str($motorista, 80)];
-        $db['rotas_hist'] = array_slice(array_merge($db['rotas_hist'] ?? [], [['id' => $db['rota_ativa']['id'], 'em' => $now, 'por' => $usuario, 'paradas' => $ordem, 'km_estimado' => $o['km_estimado'], 'motorista' => col_str($motorista, 80)]
+        $rid = 'ROTA-' . date('Ymd-His') . '-' . bin2hex(random_bytes(1));
+        $db['rotas_ativas'][$rid] = ['id' => $rid, 'paradas' => $ordem, 'criada_em' => $now, 'criada_por' => $usuario, 'motorista' => col_str($motorista, 80)];
+        $db['rotas_hist'] = array_slice(array_merge($db['rotas_hist'] ?? [], [['id' => $rid, 'em' => $now, 'por' => $usuario, 'paradas' => $ordem, 'km_estimado' => $o['km_estimado'], 'motorista' => col_str($motorista, 80)]
             + ((($rua['km'] ?? 0) > 0) ? ['km_rua' => round((float)$rua['km'], 1), 'min_rua' => (int)($rua['min'] ?? 0)] : [])]), -200);
         col_write($db);
-        return col_rota_ativa_view($db);
+        return ['rota_id' => $rid] + col_rotas_view($db);
     });
 }
 
-function col_rota_encerrar(string $usuario) {
-    return col_with_lock(function () use ($usuario) {
+/**
+ * v3.51.0 — Avisos automáticos ao montar a rota (sem IA): parada sem localização/divergente, localização de baixa confiança
+ * e parada muito longe das demais (típico de endereço de outra cidade). $o = resultado de col_ordenar_paradas().
+ */
+function col_rota_alertas(array $o): array {
+    $origem = $o['origem']; $alertas = [];
+    foreach ($o['sem_local'] as $p) $alertas[] = ['id' => $p['id'], 'tipo' => 'sem_local', 'texto' => ($p['fornecedor'] ?: $p['id']) . ': sem localização no mapa' . (($p['geo_status'] ?? '') === 'divergente' ? ' (cidade/UF não bate com o mapa)' : '') . '.'];
+    $dist = [];
+    foreach ($o['paradas'] as $p) $dist[$p['id']] = col_distancia_km($origem, $p) ?? 0;
+    $ds = array_values($dist); sort($ds); $med = $ds ? $ds[intdiv(count($ds), 2)] : 0;
+    foreach ($o['paradas'] as $p) {
+        $d = $dist[$p['id']];
+        $outros = array_filter($o['paradas'], fn($q) => $q['id'] !== $p['id']);
+        $min = INF; foreach ($outros as $q) $min = min($min, col_distancia_km($p, $q) ?? INF);
+        if (($d > 250 && $d > 3 * max($med, 30)) || (count($outros) >= 2 && $min > 120 && $min > 4 * max($med, 20)))
+            $alertas[] = ['id' => $p['id'], 'tipo' => 'longe', 'texto' => ($p['fornecedor'] ?: $p['id']) . ' (' . ($p['cidade'] ?? '?') . '/' . ($p['uf'] ?? '?') . ') fica a ' . round($d) . ' km da Drilling e longe das demais paradas — confira o endereço.'];
+        if (($p['geo_confianca'] ?? '') === 'baixa') $alertas[] = ['id' => $p['id'], 'tipo' => 'baixa', 'texto' => ($p['fornecedor'] ?: $p['id']) . ': localização de baixa confiança.'];
+    }
+    return $alertas;
+}
+
+/** Resolve qual rota: a pedida; ou, se só houver uma, ela. */
+function col_rota_escolher(array $m, string $rotaId): string {
+    if ($rotaId !== '' && isset($m[$rotaId])) return $rotaId;
+    if ($rotaId === '' && count($m) === 1) return (string)array_key_first($m);
+    respond(['ok' => false, 'error' => $m ? 'Informe qual rota.' : 'Não há rota em andamento.'], $m ? 422 : 409);
+}
+
+function col_rota_encerrar(string $usuario, string $rotaId = '') {
+    return col_with_lock(function () use ($usuario, $rotaId) {
         $db = col_read();
-        if (!empty($db['rota_ativa'])) {
-            foreach ($db['rotas_hist'] ?? [] as $i => $h) if (($h['id'] ?? '') === $db['rota_ativa']['id']) { $db['rotas_hist'][$i]['encerrada_em'] = col_now(); $db['rotas_hist'][$i]['encerrada_por'] = $usuario; }
-        }
-        $db['rota_ativa'] = null;
+        $m = col_rotas_map($db);
+        $id = col_rota_escolher($m, $rotaId);
+        foreach ($db['rotas_hist'] ?? [] as $i => $h) if (($h['id'] ?? '') === $id) { $db['rotas_hist'][$i]['encerrada_em'] = col_now(); $db['rotas_hist'][$i]['encerrada_por'] = $usuario; }
+        unset($db['rotas_ativas'][$id], $db['motorista_posicoes'][$id]);
         col_write($db);
-        return ['rota' => null];
+        return col_rotas_view($db);
     });
 }
 
 /**
  * v3.49.0 — Reotimiza só o que falta: a partir da posição atual do motorista, reordena as paradas ainda pendentes
  * (vizinho mais próximo + 2-opt, respeitando URGENTE/ALTA). As já feitas ou não coletadas ficam onde estão.
+ * v3.51.0 — por rota.
  */
-function col_rota_reotimizar(float $lat, float $lng, string $usuario) {
+function col_rota_reotimizar(float $lat, float $lng, string $usuario, string $rotaId = '') {
     if ($lat < -90 || $lat > 90 || $lng < -180 || $lng > 180 || ($lat == 0.0 && $lng == 0.0)) respond(['ok' => false, 'error' => 'Posição inválida.'], 422);
-    return col_with_lock(function () use ($lat, $lng, $usuario) {
+    return col_with_lock(function () use ($lat, $lng, $usuario, $rotaId) {
         $db = col_read();
-        $r = $db['rota_ativa'] ?? null;
-        if (!$r || empty($r['paradas'])) respond(['ok' => false, 'error' => 'Não há rota em andamento.'], 409);
+        $m = col_rotas_map($db);
+        $rid = col_rota_escolher($m, $rotaId);
+        $r = $m[$rid];
+        if (empty($r['paradas'])) respond(['ok' => false, 'error' => 'Não há rota em andamento.'], 409);
         $origem = $db['config']['origem'] ?? COL_ORIGEM_PADRAO;
         $fixas = []; $pend = []; $semLoc = [];
         foreach ($r['paradas'] as $id) {
             $c = $db['coletas'][$id] ?? null; if (!$c) continue;
-            $feita = in_array($c['status'] ?? '', ['COLETADO', 'TRANSPORTE', 'CHEGOU'], true);
+            $feita = col_coleta_concluida($c);
             $ult = !empty($c['retornos']) ? end($c['retornos']) : null;
             $nao = !$feita && $ult && strcmp((string)($ult['em'] ?? ''), (string)$r['criada_em']) >= 0;
             if ($feita || $nao) { $fixas[] = $id; continue; }
             if (isset($c['lat'], $c['lng']) && $c['lat'] !== null) $pend[] = $c; else $semLoc[] = $id;
         }
-        if (count($pend) < 2) return ['reordenada' => false, 'motivo' => 'Só há ' . count($pend) . ' parada pendente com localização.'] + col_rota_ativa_view($db);
-        // vizinho mais próximo a partir de onde o motorista está
+        if (count($pend) < 2) return ['reordenada' => false, 'motivo' => 'Só há ' . count($pend) . ' parada pendente com localização.'] + col_rota_ativa_view($db, $rid);
         $at = ['lat' => $lat, 'lng' => $lng]; $ord = []; $rest = $pend;
         while ($rest) {
-            $m = 0; $md = INF;
+            $mi = 0; $md = INF;
             foreach ($rest as $i => $c) {
                 $dd = col_distancia_km($at, $c) ?? INF; $pr = (string)($c['prioridade'] ?? '');
                 $b = $pr === 'URGENTE' ? -30 : ($pr === 'ALTA' ? -10 : 0);
-                if ($dd + $b < $md) { $md = $dd + $b; $m = $i; }
+                if ($dd + $b < $md) { $md = $dd + $b; $mi = $i; }
             }
-            $ord[] = $rest[$m]; $at = $rest[$m]; array_splice($rest, $m, 1);
+            $ord[] = $rest[$mi]; $at = $rest[$mi]; array_splice($rest, $mi, 1);
         }
         $ord = col_2opt($ord, $origem);
         $novo = array_merge($fixas, array_column($ord, 'id'), $semLoc);
         $mudou = $novo !== array_values($r['paradas']);
-        $db['rota_ativa']['paradas'] = $novo;
-        $db['rota_ativa']['reotimizada_em'] = col_now(); $db['rota_ativa']['reotimizada_por'] = $usuario;
+        $db['rotas_ativas'][$rid]['paradas'] = $novo;
+        $db['rotas_ativas'][$rid]['reotimizada_em'] = col_now(); $db['rotas_ativas'][$rid]['reotimizada_por'] = $usuario;
         col_write($db);
-        return ['reordenada' => $mudou, 'motivo' => $mudou ? '' : 'A ordem atual já é a melhor a partir de onde você está.'] + col_rota_ativa_view($db);
+        return ['reordenada' => $mudou, 'motivo' => $mudou ? '' : 'A ordem atual já é a melhor a partir de onde você está.'] + col_rota_ativa_view($db, $rid);
     });
 }
 
-/** Posição do motorista (só a última fica guardada). */
+/** Posição do motorista (a última de cada rota fica guardada). */
 function col_posicao(array $b, string $usuario) {
     $lat = (float)($b['lat'] ?? 0); $lng = (float)($b['lng'] ?? 0);
     if ($lat < -34 || $lat > 6 || $lng < -75 || $lng > -28) respond(['ok' => false, 'error' => 'Posição fora do Brasil.'], 422);
     return col_with_lock(function () use ($lat, $lng, $b, $usuario) {
         $db = col_read();
-        $db['motorista_pos'] = ['lat' => round($lat, 6), 'lng' => round($lng, 6), 'precisao' => (int)($b['precisao'] ?? 0), 'em' => col_now(), 'por' => $usuario];
+        $m = col_rotas_map($db);
+        $rid = (string)($b['rota_id'] ?? '');
+        if (!isset($m[$rid])) $rid = count($m) === 1 ? (string)array_key_first($m) : '';
+        $pos = ['lat' => round($lat, 6), 'lng' => round($lng, 6), 'precisao' => (int)($b['precisao'] ?? 0), 'em' => col_now(), 'por' => $usuario];
+        $db['motorista_pos'] = $pos;
+        if ($rid !== '') $db['motorista_posicoes'][$rid] = $pos;
         col_write($db);
-        return ['posicao' => $db['motorista_pos']];
+        return ['posicao' => $pos];
     });
 }
 
 /** v3.24.0: rotas já feitas — quantas, km, tempo e coletas, por período. */
 function col_rotas_resumo(array $q) {
-    $db = col_read();
+    $db = col_read(); $ativasMapa = col_rotas_map($db);
     $de = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($q['de'] ?? '')) ? $q['de'] : date('Y-m-01');
     $ate = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($q['ate'] ?? '')) ? $q['ate'] : date('Y-m-d');
     $lista = []; $t = ['rotas' => 0, 'km' => 0.0, 'min_deslocamento' => 0, 'min_total' => 0, 'paradas' => 0, 'coletadas' => 0, 'nao_coletadas' => 0];
@@ -1023,7 +1125,7 @@ function col_rotas_resumo(array $q) {
         $minTot = !empty($h['encerrada_em']) ? (int)round((strtotime($h['encerrada_em']) - strtotime($h['em'])) / 60) : null;
         $lista[] = ['id' => $h['id'], 'em' => $h['em'], 'encerrada_em' => $h['encerrada_em'] ?? null, 'motorista' => $h['motorista'] ?? '', 'paradas' => count($h['paradas']),
             'coletadas' => $col, 'nao_coletadas' => $nao, 'km' => round($km, 1), 'km_fonte' => isset($h['km_rua']) ? 'ruas' : 'estimado', 'km_motorista' => $temKmReal ? round($kmReal, 1) : null,
-            'min_deslocamento' => $minDesl, 'min_total' => $minTot, 'ativa' => ($db['rota_ativa']['id'] ?? '') === $h['id']];
+            'min_deslocamento' => $minDesl, 'min_total' => $minTot, 'ativa' => isset($ativasMapa[$h['id']])];
         $t['rotas']++; $t['km'] += $km; $t['min_deslocamento'] += $minDesl; $t['min_total'] += (int)$minTot; $t['paradas'] += count($h['paradas']); $t['coletadas'] += $col; $t['nao_coletadas'] += $nao;
     }
     $t['km'] = round($t['km'], 1);

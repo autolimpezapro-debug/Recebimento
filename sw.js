@@ -1,14 +1,14 @@
 /* Recebimento Drilling v2.9.8 — PWA offline-shell + Web Push, cache corrigido. */
 'use strict';
-const CACHE='recebimento-drilling-shell-v3.50.2.20261116r1';
+const CACHE='recebimento-drilling-shell-v3.51.0.20261116r1';
 const SHELL=['/','/index.html','/manifest.webmanifest',
- '/assets/app.css?v=3.50.2.20261116r1','/assets/app.js?v=3.50.2.20261116r1',
- '/assets/nf.js?v=3.50.2.20261116r1',
- '/assets/push.js?v=3.50.2.20261116r1','/assets/wizard.js?v=3.50.2.20261116r1','/assets/pwa.js?v=3.50.2.20261116r1','/assets/whatsapp-import.js?v=3.50.2.20261116r1','/assets/datas.js?v=3.50.2.20261116r1','/assets/upload.js?v=3.50.2.20261116r1','/assets/admin-backup.js?v=3.50.2.20261116r1',
- '/assets/estoque.css?v=3.50.2.20261116r1','/assets/estoque.js?v=3.50.2.20261116r1','/assets/importados.css?v=3.50.2.20261116r1','/assets/importados.js?v=3.50.2.20261116r1','/assets/assinatura.js?v=3.50.2.20261116r1','/assets/ferramentas.js?v=3.50.2.20261116r1','/assets/locacoes.js?v=3.50.2.20261116r1','/assets/protocolos.js?v=3.50.2.20261116r1','/assets/terceiros.js?v=3.50.2.20261116r1','/assets/terceiros.css?v=3.50.2.20261116r1','/assets/locacoes.css?v=3.50.2.20261116r1','/assets/protocolos.css?v=3.50.2.20261116r1',
- '/assets/notify.css?v=3.50.2.20261116r1','/assets/notify.js?v=3.50.2.20261116r1',
- '/assets/backup.css?v=3.50.2.20261116r1','/assets/backup.js?v=3.50.2.20261116r1',
- '/assets/premium.css?v=3.50.2.20261116r1','/assets/coletas.css?v=3.50.2.20261116r1','/assets/coletas.js?v=3.50.2.20261116r1','/assets/etiquetas.css?v=3.50.2.20261116r1','/assets/etiquetas.js?v=3.50.2.20261116r1','/assets/acesso.css?v=3.50.2.20261116r1','/assets/acesso.js?v=3.50.2.20261116r1','/assets/novo-pedido.js?v=3.50.2.20261116r1','/assets/exportacao.js?v=3.50.2.20261116r1','/assets/alertas.js?v=3.50.2.20261116r1','/assets/obras.js?v=3.50.2.20261116r1','/assets/obras.css?v=3.50.2.20261116r1','/assets/avisos.js?v=3.50.2.20261116r1','/assets/avisos.css?v=3.50.2.20261116r1','/assets/exportacao.css?v=3.50.2.20261116r1','/assets/xlsx-lib.js','/assets/icons/logo-drilling.png',
+ '/assets/app.css?v=3.51.0.20261116r1','/assets/app.js?v=3.51.0.20261116r1',
+ '/assets/nf.js?v=3.51.0.20261116r1',
+ '/assets/push.js?v=3.51.0.20261116r1','/assets/wizard.js?v=3.51.0.20261116r1','/assets/pwa.js?v=3.51.0.20261116r1','/assets/whatsapp-import.js?v=3.51.0.20261116r1','/assets/datas.js?v=3.51.0.20261116r1','/assets/upload.js?v=3.51.0.20261116r1','/assets/admin-backup.js?v=3.51.0.20261116r1',
+ '/assets/estoque.css?v=3.51.0.20261116r1','/assets/estoque.js?v=3.51.0.20261116r1','/assets/importados.css?v=3.51.0.20261116r1','/assets/importados.js?v=3.51.0.20261116r1','/assets/assinatura.js?v=3.51.0.20261116r1','/assets/ferramentas.js?v=3.51.0.20261116r1','/assets/locacoes.js?v=3.51.0.20261116r1','/assets/protocolos.js?v=3.51.0.20261116r1','/assets/terceiros.js?v=3.51.0.20261116r1','/assets/terceiros.css?v=3.51.0.20261116r1','/assets/locacoes.css?v=3.51.0.20261116r1','/assets/protocolos.css?v=3.51.0.20261116r1',
+ '/assets/notify.css?v=3.51.0.20261116r1','/assets/notify.js?v=3.51.0.20261116r1',
+ '/assets/backup.css?v=3.51.0.20261116r1','/assets/backup.js?v=3.51.0.20261116r1',
+ '/assets/premium.css?v=3.51.0.20261116r1','/assets/coletas.css?v=3.51.0.20261116r1','/assets/mobile-nav.css?v=3.51.0.20261116r1','/assets/mobile-nav.js?v=3.51.0.20261116r1','/assets/pendencias.css?v=3.51.0.20261116r1','/assets/pendencias.js?v=3.51.0.20261116r1','/assets/coletas.js?v=3.51.0.20261116r1','/assets/etiquetas.css?v=3.51.0.20261116r1','/assets/etiquetas.js?v=3.51.0.20261116r1','/assets/acesso.css?v=3.51.0.20261116r1','/assets/acesso.js?v=3.51.0.20261116r1','/assets/novo-pedido.js?v=3.51.0.20261116r1','/assets/exportacao.js?v=3.51.0.20261116r1','/assets/alertas.js?v=3.51.0.20261116r1','/assets/obras.js?v=3.51.0.20261116r1','/assets/obras.css?v=3.51.0.20261116r1','/assets/avisos.js?v=3.51.0.20261116r1','/assets/avisos.css?v=3.51.0.20261116r1','/assets/exportacao.css?v=3.51.0.20261116r1','/assets/xlsx-lib.js','/assets/icons/logo-drilling.png',
  '/assets/vendor/leaflet/leaflet.js?v=1.9.4','/assets/vendor/leaflet/leaflet.css?v=1.9.4',
  '/assets/icons/icon-192.png','/assets/icons/icon-512.png','/assets/icons/icon-maskable-512.png','/assets/icons/notification.svg'];
 self.addEventListener('install',event=>event.waitUntil((async()=>{

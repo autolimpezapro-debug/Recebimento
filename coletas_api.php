@@ -79,12 +79,13 @@ if ($colMethod === 'GET') {
             respond(['ok' => true, 'coleta' => col_view($db['coletas'][$id])]);
         case 'coletas_rota_escolhida':   // v3.23.0: rota só com as coletas marcadas
             $db = col_read();
-            respond(['ok' => true] + col_ordenar_paradas($db, array_filter(explode(',', (string)($_GET['ids'] ?? ''))), ($_GET['otimizar'] ?? '1') !== '0'));
+            $o = col_ordenar_paradas($db, array_filter(explode(',', (string)($_GET['ids'] ?? ''))), ($_GET['otimizar'] ?? '1') !== '0');
+            respond(['ok' => true, 'avisos' => col_rota_alertas($o)] + $o);
         case 'coletas_km_media': respond(['ok' => true] + col_km_media($_GET));
         case 'coletas_rotas_resumo':
             respond(['ok' => true] + col_rotas_resumo($_GET));
         case 'coletas_rota_ativa':
-            respond(['ok' => true] + col_rota_ativa_view(col_read()));
+            respond(['ok' => true] + col_rotas_view(col_read()));
         case 'coletas_config':
             $db = col_read();
             respond(['ok' => true, 'config' => $db['config'], 'status' => COL_STATUS, 'prioridades' => COL_PRIORIDADES, 'motivos_retorno' => COL_RETORNO_MOTIVOS]);
@@ -180,7 +181,7 @@ switch ($colAction) {
         respond(['ok' => true] + col_rota_iniciar((array)($colBody['ids'] ?? []), (string)($colBody['motorista'] ?? ''), $colUser, !empty($colBody['otimizar']), (array)($colBody['rua'] ?? [])));
 
     case 'coletas_rota_encerrar':
-        respond(['ok' => true] + col_rota_encerrar($colUser));
+        respond(['ok' => true] + col_rota_encerrar($colUser, (string)($colBody['rota_id'] ?? '')));
 
     case 'coletas_motorista_gerar':   // v3.40.0: gera o link pessoal (o anterior deixa de valer)
         require_once __DIR__ . '/motorista_lib.php';
@@ -188,9 +189,11 @@ switch ($colAction) {
         $esq = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
         respond(['ok' => true, 'link' => $esq . '://' . ($_SERVER['HTTP_HOST'] ?? '') . '/motorista.html?t=' . $tk] + mot_info());
     case 'coletas_motorista_revogar':
-        require_once __DIR__ . '/motorista_lib.php'; mot_revogar($colUser); respond(['ok' => true] + mot_info());
+        require_once __DIR__ . '/motorista_lib.php'; mot_revogar($colUser, (string)($colBody['id'] ?? '')); respond(['ok' => true] + mot_info());
+    case 'coletas_motorista_remover':
+        require_once __DIR__ . '/motorista_lib.php'; mot_remover($colUser, (string)($colBody['id'] ?? '')); respond(['ok' => true] + mot_info());
     case 'coletas_motorista_liberar':
-        require_once __DIR__ . '/motorista_lib.php'; mot_liberar_aparelhos($colUser); respond(['ok' => true] + mot_info());
+        require_once __DIR__ . '/motorista_lib.php'; mot_liberar_aparelhos($colUser, (string)($colBody['id'] ?? '')); respond(['ok' => true] + mot_info());
 
     case 'coletas_posicao':
         respond(['ok' => true] + col_posicao($colBody, $colUser));

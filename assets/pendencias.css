@@ -1,0 +1,21 @@
+/* v3.51.0 — Pendências de hoje */
+.pend-panel { margin: 0 0 18px; }
+.pend-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.pend-head h2 { margin: 0; font-size: 18px; }
+.pend-ok { padding: 12px 14px; border-radius: 12px; border: 1px solid #1f6f55; background: #0f2a25; color: #7ee2c0; margin: 0; }
+.pend-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 12px; }
+.pend-card { border: 1px solid var(--border, #253550); border-left: 4px solid #4c8dff; border-radius: 12px; padding: 12px; background: var(--card, #111e32); min-width: 0; }
+.pend-card.pend-danger { border-left-color: #f17e89; }
+.pend-card.pend-warn { border-left-color: #f8bf60; }
+.pend-card header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.pend-card header strong { flex: 1; font-size: 14px; }
+.pend-card header b { font-size: 20px; }
+.pend-resumo { display: block; color: var(--muted, #92a3bb); margin-bottom: 4px; }
+.pend-card ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.pend-card li { display: flex; gap: 6px; align-items: center; }
+.pend-item { flex: 1; min-width: 0; text-align: left; background: transparent; border: 0; border-radius: 8px; padding: 6px 8px; color: inherit; font: inherit; cursor: pointer; }
+.pend-item:hover { background: #ffffff12; }
+.pend-item strong { display: block; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pend-item small { display: block; color: var(--muted, #92a3bb); font-size: 11.5px; }
+.pend-wa { white-space: nowrap; }
+.pend-mais { display: block; margin-top: 6px; color: var(--muted, #92a3bb); }

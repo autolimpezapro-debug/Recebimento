@@ -127,19 +127,7 @@ function col_ia_rota(array $ids): array {
     $db = col_read();
     $atual = col_ordenar_paradas($db, $ids, false);
     $origem = $atual['origem'];
-    $alertas = [];
-    foreach ($atual['sem_local'] as $p) $alertas[] = ['id' => $p['id'], 'tipo' => 'sem_local', 'texto' => ($p['fornecedor'] ?: $p['id']) . ': sem localização no mapa' . (($p['geo_status'] ?? '') === 'divergente' ? ' (cidade/UF não bate com o mapa)' : '') . '.'];
-    $dist = [];
-    foreach ($atual['paradas'] as $p) $dist[$p['id']] = col_distancia_km($origem, $p) ?? 0;
-    $ds = array_values($dist); sort($ds); $med = $ds ? $ds[intdiv(count($ds), 2)] : 0;
-    foreach ($atual['paradas'] as $p) {
-        $d = $dist[$p['id']];
-        $outros = array_filter($atual['paradas'], fn($q) => $q['id'] !== $p['id']);
-        $min = INF; foreach ($outros as $q) $min = min($min, col_distancia_km($p, $q) ?? INF);
-        if (($d > 250 && $d > 3 * max($med, 30)) || (count($outros) >= 2 && $min > 120 && $min > 4 * max($med, 20)))
-            $alertas[] = ['id' => $p['id'], 'tipo' => 'longe', 'texto' => ($p['fornecedor'] ?: $p['id']) . ' (' . ($p['cidade'] ?? '?') . '/' . ($p['uf'] ?? '?') . ') fica a ' . round($d) . ' km da Drilling e longe das demais paradas — confira o endereço.'];
-        if (($p['geo_confianca'] ?? '') === 'baixa') $alertas[] = ['id' => $p['id'], 'tipo' => 'baixa', 'texto' => ($p['fornecedor'] ?: $p['id']) . ': localização de baixa confiança.'];
-    }
+    $alertas = col_rota_alertas($atual);
 
     $out = ['km_atual' => $atual['km_estimado'], 'ordem_atual' => array_column($atual['paradas'], 'id'), 'alertas' => $alertas,
         'problemas_ia' => [], 'resumo' => '', 'ordem_sugerida' => null, 'km_sugerido' => null, 'ia' => false, 'ia_disponivel' => col_ia_disponivel(), 'ia_erro' => ''];

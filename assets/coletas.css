@@ -184,3 +184,10 @@ button.col-pill{cursor:pointer}
 
 /* v3.50.1 — o Leaflet usa z-index 400–1000 internamente; sem isolar, o mapa cobria os modais (ex.: App do motorista). */
 .col-map, .col-map-small, .leaflet-container { position: relative; z-index: 0; isolation: isolate; }
+
+/* v3.51.0 — abas das rotas em andamento */
+.col-rotas-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.col-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--rd-line, var(--border, #2c3d57)); background: transparent; color: inherit; font: inherit; font-size: 13px; cursor: pointer; }
+.col-chip b { font-weight: 800; }
+.col-chip.on { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+.col-chip-nova { border-style: dashed; }
