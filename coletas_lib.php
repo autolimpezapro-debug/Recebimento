@@ -408,6 +408,33 @@ function col_sanitize_id($id) {
     return mb_substr((string)$id, 0, 40);
 }
 
+/**
+ * v3.51.4: um PC não pode ter duas coletas ao mesmo tempo.
+ * Retorna a coleta que impede a nova (ou null se pode criar). Exceção: coleta anterior já concluída
+ * (coletado/em transporte/chegou) E o pedido foi recebido PARCIAL — aí falta saldo e uma nova coleta é válida.
+ */
+function col_pc_conflito(array $db, int $pc, string $ignorarId = ''): ?array {
+    if ($pc <= 0) return null;
+    $concluidas = null;
+    foreach ($db['coletas'] as $c) {
+        if ((int)($c['pc'] ?? 0) !== $pc || ($c['id'] ?? '') === $ignorarId || ($c['status'] ?? '') === 'CANCELADA') continue;
+        if (!col_coleta_concluida($c)) return $c;       // já existe uma coleta aberta/em rota
+        $concluidas = $c;
+    }
+    if (!$concluidas) return null;
+    if (function_exists('read_items')) foreach (read_items() as $p) {
+        if ((int)($p['pc'] ?? 0) !== $pc) continue;
+        $ent = (array)($p['entregas'] ?? []); $ult = $ent ? end($ent) : [];
+        if (($p['chegou'] ?? '') === 'PARCIAL' || (is_array($ult) && ($ult['status'] ?? '') === 'PARCIAL')) return null;
+        break;
+    }
+    return $concluidas;
+}
+function col_pc_conflito_msg(array $c, int $pc): string {
+    return 'O PC ' . $pc . ' já tem a coleta ' . ($c['id'] ?? '') . ' (' . (COL_STATUS[$c['status'] ?? ''] ?? ($c['status'] ?? '')) . '). '
+         . (col_coleta_concluida($c) ? 'Uma nova coleta só é permitida quando o pedido chega PARCIAL (falta saldo).' : 'Use a existente ou cancele-a antes de criar outra.');
+}
+
 function col_salvar(array $input, $usuario) {
     $pc = (int)($input['pc'] ?? 0);
     $fornecedor = col_str($input['fornecedor'] ?? '', 200);
@@ -418,6 +445,8 @@ function col_salvar(array $input, $usuario) {
         $id = col_sanitize_id($input['id'] ?? '');
         $novo = $id === '' || !isset($db['coletas'][$id]);
         $now = col_now();
+        if ($novo && ($dup = col_pc_conflito($db, $pc))) respond(['ok' => false, 'error' => col_pc_conflito_msg($dup, $pc), 'coleta_existente' => $dup['id']], 409);
+        if (!$novo && $pc > 0 && $pc !== (int)($db['coletas'][$id]['pc'] ?? 0) && ($dup = col_pc_conflito($db, $pc, $id))) respond(['ok' => false, 'error' => col_pc_conflito_msg($dup, $pc), 'coleta_existente' => $dup['id']], 409);
         if ($novo) {
             $db['sequencia']['coleta'] = (int)($db['sequencia']['coleta'] ?? 0) + 1;
             $id = 'COL-' . date('Y') . '-' . str_pad((string)$db['sequencia']['coleta'], 4, '0', STR_PAD_LEFT);
@@ -983,6 +1012,16 @@ function col_rota_iniciar(array $ids, string $motorista, string $usuario, bool $
         if (!$ordem) respond(['ok' => false, 'error' => 'Escolha ao menos uma coleta para a rota.'], 422);
         foreach ($ordem as $cid) foreach ($m as $r) if (in_array($cid, (array)$r['paradas'], true) && !col_coleta_concluida($db['coletas'][$cid] ?? [])) {
             respond(['ok' => false, 'error' => 'A coleta ' . ($db['coletas'][$cid]['pc'] ?? $cid) . ' já está na rota de ' . (($r['motorista'] ?? '') ?: 'outro motorista') . '. Tire-a de uma das rotas.'], 409);
+        }
+        // v3.51.4: o mesmo pedido não entra duas vezes na rota, nem em duas rotas.
+        $vistos = [];
+        foreach ($ordem as $cid) {
+            $pcx = (int)($db['coletas'][$cid]['pc'] ?? 0);
+            if ($pcx <= 0 || col_coleta_concluida($db['coletas'][$cid] ?? [])) continue;
+            if (isset($vistos[$pcx])) respond(['ok' => false, 'error' => 'O PC ' . $pcx . ' está duas vezes na rota (coletas ' . $vistos[$pcx] . ' e ' . $cid . '). Cancele a duplicada e monte de novo.'], 422);
+            $vistos[$pcx] = $cid;
+            foreach ($m as $r) foreach ((array)$r['paradas'] as $outro) if ($outro !== $cid && (int)($db['coletas'][$outro]['pc'] ?? 0) === $pcx && !col_coleta_concluida($db['coletas'][$outro] ?? []))
+                respond(['ok' => false, 'error' => 'O PC ' . $pcx . ' já está em outra rota (coleta ' . $outro . '). Cancele a coleta duplicada.'], 409);
         }
         $now = col_now();
         foreach ($ordem as $id) {

@@ -113,6 +113,7 @@ function coli_confirmar(array $body, string $usuario): array {
         $db = col_read();
         $existe = null;
         foreach ($db['coletas'] as $c) if ((int)$c['pc'] === $pc && $pc > 0 && $c['status'] !== 'CHEGOU') { $existe = $c; break; }
+        if (!$existe && ($dupc = col_pc_conflito($db, $pc))) { $ignoradas[] = ['pc' => $pc, 'coleta' => $dupc['id']]; continue; }   // v3.51.4
         if ($existe && empty($body['atualizar_existentes'])) { $ignoradas[] = ['pc' => $pc, 'coleta' => $existe['id']]; continue; }
         $cnpj = preg_replace('/\D/', '', (string)($r['cnpj'] ?? ''));
         $itens = array_map(fn($i) => rtrim(rtrim(number_format((float)($i['quantidade'] ?? 0), 3, ',', ''), '0'), ',') . ' ' . ($i['unidade'] ?? '') . ' ' . ($i['descricao'] ?? ''), (array)($r['itens'] ?? []));
@@ -177,6 +178,7 @@ function coli_rota_por_pcs(array $pcs, string $usuario): array {
         $aberta = null;
         foreach ($db['coletas'] as $c) if ((int)($c['pc'] ?? 0) === $pc && !in_array($c['status'] ?? '', ['COLETADO', 'TRANSPORTE', 'CHEGOU', 'CANCELADA'], true)) { $aberta = $c; break; }
         if ($aberta) { $ids[] = $aberta['id']; continue; }
+        if ($dupc = col_pc_conflito($db, $pc)) { $avisos[] = "PC $pc: já tem a coleta " . $dupc['id'] . " (" . (COL_STATUS[$dupc['status'] ?? ''] ?? '') . ") — só gera nova coleta se o pedido chegar PARCIAL."; continue; }   // v3.51.4
         $p = $pedidos[$pc] ?? null;
         if (!$p) { $avisos[] = "PC $pc não está cadastrado no sistema."; continue; }
         $forn = (string)($p['fornecedor'] ?? ''); $cnpj = preg_replace('/\D/', '', (string)($p['cnpjEmitente'] ?? ''));

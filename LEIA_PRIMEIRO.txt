@@ -1,3 +1,9 @@
+v3.51.5 — Coletas: o mesmo pedido não pode ter duas coletas/rotas
+- Não dá mais para criar uma coleta para um PC que já tem coleta aberta, em rota, ou já coletada/em transporte/chegou. Única exceção: a coleta anterior já foi concluída E o pedido chegou PARCIAL (falta saldo) — aí uma nova coleta é permitida.
+- Ao iniciar uma rota, o sistema recusa o mesmo PC duas vezes na rota ou em duas rotas (mostra as duas coletas para cancelar a duplicada).
+- Importação por chat/lista e "montar rota por PCs" pulam PCs já cobertos e avisam.
+- ATENÇÃO: duplicadas que JÁ existem não somem sozinhas. No servidor: PC 5027 (COL-2026-0018), PC 5069 (COL-2026-0016) e PC 5066 (COL-2026-0010 e 0017) — cancele a repetida em Coletas.
+
 v3.51.4 — Saída de PC já recebido manualmente + fornecedor do pedido
 - ESTOQUE → Saída: PC com recebimento JÁ finalizado mas sem entrada no estoque (caso do PC 5007: finalizado em 12/11, antes de a integração existir) não diz mais "finalize o recebimento". Mostra o aviso correto e o botão "Gerar entrada deste PC agora"; depois é só conferir e confirmar o recebimento para liberar a saída. Nada entra no saldo sozinho.
 - ESTOQUE → Integridade dos pedidos: lista os PCs finalizados sem entrada no estoque, com botão "Gerar entrada" em cada um.
