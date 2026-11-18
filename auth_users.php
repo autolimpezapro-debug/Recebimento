@@ -57,7 +57,7 @@ function rd_auth_route(string $action):never {
    $u=$db['usuarios'][$identity['username']]??null;
    $mat=[];
    foreach(RD_MODULOS as $m=>$_){$mat[$m]=[];
-    foreach(RD_OPERACOES as $op=> $__){$v=$u['perm'][$m][$op] ?? $perfil['perm'][$m][$op] ?? false;$mat[$m][$op]=(bool)$v;}}
+    foreach(RD_OPERACOES as $op=> $__){$v=rd_e_admin_principal($identity['username']) ? true : ($u['perm'][$m][$op] ?? $perfil['perm'][$m][$op] ?? false);$mat[$m][$op]=(bool)$v;}}
    $out['exigir_login']=$exigir;
    $out['permissoes']=$mat;
    $out['perfil']=$perfil['nome']??'— sem perfil —';

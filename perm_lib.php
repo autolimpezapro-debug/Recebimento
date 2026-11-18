@@ -207,6 +207,8 @@ function rd_perm_read(): array {
         if (!isset($out['perfis'][$id])) $out['perfis'][$id] = $p;
         else $out['perfis'][$id] = array_merge($p, $out['perfis'][$id]);
     }
+    // v3.50.2: o perfil do Administrador principal é sempre o do código (um perfil salvo antes de existir um módulo novo o deixava sem acesso a ele).
+    if (isset($base['perfis']['admin_principal'])) $out['perfis']['admin_principal'] = $base['perfis']['admin_principal'];
     return $out;
 }
 
@@ -320,6 +322,8 @@ function rd_user_profile(array $db, string $username): ?array {
 function rd_perm(string $modulo, string $operacao): bool {
     $id = rd_identity();
     if ($id === null) return !rd_exigir_login();          // legado: sem login, operador local
+    // v3.50.2: o Administrador principal nunca fica sem acesso (perfil salvo antigo, sem módulos novos, ou override individual o trancava fora).
+    if (rd_e_admin_principal($id['username'])) return true;
     $db = rd_perm_read();
     $u = $db['usuarios'][$id['username']] ?? null;
     $ov = $u['perm'][$modulo][$operacao] ?? null;
