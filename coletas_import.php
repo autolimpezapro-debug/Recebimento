@@ -164,6 +164,77 @@ function coli_localizar_fornecedores(int $limite = 12): array {
             'total_com_coordenadas' => count(array_filter($conhecidos, fn($x) => !empty($x['lat'])))];
 }
 
+/* ------------------------------------------------------------------ */
+/* v3.52.1 — Gemini localiza (cidade) os fornecedores que o CNPJ não resolve */
+/* ------------------------------------------------------------------ */
+/** Fornecedores que aparecem em coleta nossa e ainda não têm cidade/coordenada em lugar nenhum. */
+function coli_ia_pendentes(array $db): array {
+    require_once __DIR__ . '/coletas_ia_lib.php';
+    $n = fn($x) => col_norm_txt((string)$x);
+    $porNome = []; $forn = [];
+    $pedidos = function_exists('read_items') ? read_items() : [];
+    foreach ($pedidos as $p) { $c = preg_replace('/\D/', '', (string)($p['cnpjEmitente'] ?? '')); if (strlen($c) === 14 && ($p['fornecedor'] ?? '') !== '') $porNome[$n($p['fornecedor'])] = $c; }
+    foreach ($db['coletas'] as $c) { $cn = preg_replace('/\D/', '', (string)($c['cnpj'] ?? '')); if (strlen($cn) === 14 && ($c['fornecedor'] ?? '') !== '') $porNome[$n($c['fornecedor'])] ??= $cn; }
+    $temLocal = [];
+    foreach ((array)($db['fornecedores'] ?? []) as $cn => $x) if (!empty($x['lat']) || !empty($x['cidade'])) $temLocal['C' . $cn] = true;
+    foreach ((array)($db['cnpjcache'] ?? []) as $cn => $x) if (is_array($x) && !empty($x['cidade'])) $temLocal['C' . $cn] = true;
+    foreach ($db['coletas'] as $c) if (!empty($c['cidade']) || (isset($c['lat']) && $c['lat'] !== null)) {
+        $cn = preg_replace('/\D/', '', (string)($c['cnpj'] ?? '')); $temLocal[strlen($cn) === 14 ? 'C' . $cn : 'N' . $n($c['fornecedor'] ?? '')] = true;
+        if (!empty($c['fornecedor']) && isset($porNome[$n($c['fornecedor'])])) $temLocal['C' . $porNome[$n($c['fornecedor'])]] = true;
+    }
+    $ia = (array)($db['fornecedores_ia'] ?? []);
+    $usa = function ($nome, $cnpj, $mat) use (&$forn, $n, $porNome) {
+        $nome = trim((string)$nome); if ($nome === '') return;
+        $cn = preg_replace('/\D/', '', (string)$cnpj); if (strlen($cn) !== 14) $cn = $porNome[$n($nome)] ?? '';
+        $k = $cn !== '' ? 'C' . $cn : 'N' . $n($nome);
+        $forn[$k] = $forn[$k] ?? ['chave' => $k, 'nome' => $nome, 'cnpj' => $cn, 'materiais' => []];
+        if ($mat !== '' && count($forn[$k]['materiais']) < 5) $forn[$k]['materiais'][] = mb_substr($mat, 0, 80);
+    };
+    foreach ($pedidos as $p) if (($p['origem_entrega'] ?? '') === 'COLETA_DRILLING') $usa($p['fornecedor'] ?? '', $p['cnpjEmitente'] ?? '', trim((string)($p['insumos'][0]['descricao'] ?? $p['material'] ?? '')));
+    foreach ($db['coletas'] as $c) if (($c['status'] ?? '') !== 'CANCELADA') $usa($c['fornecedor'] ?? '', $c['cnpj'] ?? '', '');
+    $pend = [];
+    foreach ($forn as $k => $f) {
+        if (isset($temLocal[$k])) continue;
+        $x = $ia[$k] ?? null;
+        if ($x && (empty($x['falhou_em']) || strtotime((string)$x['falhou_em']) > time() - 7 * 86400)) continue;   // já sugerido (ou falhou há pouco)
+        $pend[] = $f;
+    }
+    return $pend;
+}
+
+/** Pergunta ao Gemini a CIDADE (centro) de cada fornecedor pendente. Só guarda sugestão — usada para estimar km, nunca para rota/endereço de coleta. */
+function coli_ia_localizar_fornecedores(int $limite = 6): array {
+    require_once __DIR__ . '/coletas_ia_lib.php';
+    if (!col_ia_disponivel()) return ['ia_disponivel' => false, 'ia_processados' => 0, 'ia_localizados' => 0, 'ia_restantes' => 0, 'ia_falhas' => []];
+    $db = col_read(); $pend = coli_ia_pendentes($db);
+    $ia = (array)($db['fornecedores_ia'] ?? []); $ok = 0; $falhas = [];
+    foreach (array_slice($pend, 0, $limite) as $f) {
+        $prompt = "Você ajuda a localizar fornecedores brasileiros de materiais industriais para estimar a distância de coleta.\n"
+            . "Diga em que CIDADE/UF fica a sede ou loja mais provável do fornecedor abaixo. Regras: (1) NUNCA invente; se não reconhecer a empresa com segurança, devolva cidade \"\" e confianca \"baixa\"; "
+            . "(2) use o CNPJ e os materiais só como pista; (3) devolva o centro aproximado da CIDADE (lat/lng), não de uma rua; "
+            . "Responda SOMENTE JSON: {\"cidade\":\"\",\"uf\":\"\",\"lat\":0,\"lng\":0,\"confianca\":\"alta|media|baixa\",\"observacao\":\"em uma frase, em que se baseou\"}\nDados: "
+            . json_encode(['fornecedor' => $f['nome'], 'cnpj' => $f['cnpj'], 'materiais_comprados' => $f['materiais']], JSON_UNESCAPED_UNICODE);
+        $reg = ['nome' => $f['nome'], 'cnpj' => $f['cnpj']];
+        try {
+            $j = col_ia_chamar($prompt, 500);
+            $cid = col_ia_txt($j['cidade'] ?? '', 80); $uf = strtoupper(substr(col_ia_txt($j['uf'] ?? '', 2), 0, 2));
+            $conf = in_array($j['confianca'] ?? '', ['alta', 'media', 'baixa'], true) ? $j['confianca'] : 'baixa';
+            $lat = is_numeric($j['lat'] ?? null) ? (float)$j['lat'] : null; $lng = is_numeric($j['lng'] ?? null) ? (float)$j['lng'] : null;
+            $foraBR = $lat === null || $lng === null || $lat < -34 || $lat > 6 || $lng < -75 || $lng > -28;
+            if ($cid === '' || $conf === 'baixa' || !isset(COL_UFS[$uf])) { $reg += ['falhou_em' => date('c'), 'motivo' => 'Gemini não identificou com segurança']; $falhas[] = $f['nome']; }
+            else {
+                $reg += ['cidade' => $cid, 'uf' => $uf, 'confianca' => $conf, 'observacao' => col_ia_txt($j['observacao'] ?? '', 200), 'fonte' => 'gemini', 'em' => date('c'), 'confirmado' => false];
+                if (!$foraBR) $reg += ['lat' => round($lat, 4), 'lng' => round($lng, 4)];
+                $ok++;
+            }
+        } catch (Throwable $e) { $reg += ['falhou_em' => date('c'), 'motivo' => mb_substr($e->getMessage(), 0, 120)]; $falhas[] = $f['nome']; }
+        $ia[$f['chave']] = $reg;
+    }
+    col_with_lock(function () use ($ia) { $d = col_read(); $d['fornecedores_ia'] = array_slice($ia, -400, null, true); col_write($d); });
+    $proc = min($limite, count($pend));
+    return ['ia_disponivel' => true, 'ia_processados' => $proc, 'ia_localizados' => $ok, 'ia_restantes' => max(0, count($pend) - $proc), 'ia_falhas' => $falhas];
+}
+
 /** v3.24.0: monta a rota a partir dos números de PC digitados. Usa a coleta aberta do PC ou cria uma
  *  (fornecedor do pedido + endereço de coleta anterior, do cadastro de fornecedores ou do CNPJ). */
 function coli_rota_por_pcs(array $pcs, string $usuario): array {

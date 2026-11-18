@@ -300,6 +300,12 @@ function kpi_coletas_fornecedor(int $dias, ?string $de = null, ?string $ate = nu
         [$gk] = kg_forn_resolve('', (string)$cn);
         $cidade[$gk] ??= [(string)$x['cidade'], (string)($x['uf'] ?? '')];
     }
+    // v3.52.1: cidade sugerida pelo Gemini (fornecedor sem CNPJ/endereço) — só entra se nada mais disse onde o fornecedor fica
+    $cidadeIa = []; $iaCoord = [];
+    foreach ((array)($col['fornecedores_ia'] ?? []) as $x) if (is_array($x) && !empty($x['cidade'])) {
+        [$gk] = kg_forn_resolve((string)($x['nome'] ?? ''), (string)($x['cnpj'] ?? ''));
+        if (!isset($cidade[$gk])) { $cidade[$gk] = [(string)$x['cidade'], (string)($x['uf'] ?? '')]; $cidadeIa[$gk] = true; if (isset($x['lat'], $x['lng'])) $iaCoord[$gk] = ['lat' => $x['lat'], 'lng' => $x['lng']]; }
+    }
     // eventos de coleta realizados no período
     $ev = []; $comRegistro = []; $incons = []; $vistoPc = [];
     foreach ((array)($col['coletas'] ?? []) as $c) {
@@ -332,14 +338,17 @@ function kpi_coletas_fornecedor(int $dias, ?string $de = null, ?string $ate = nu
         [$k, $nome, $cn] = kg_forn_resolve($e['fornecedor'], $cnpjBruto);
         $aprox = false;
         if (!$e['geo']) $e['geo'] = $geo[$k] ?? null;
-        $F[$k] = $F[$k] ?? ['chave' => $k, 'fornecedor' => $nome, 'cnpj' => $cn, 'geo' => $e['geo'], 'aprox' => false, 'cidade' => $cidade[$k] ?? null, 'eventos' => [], 'pcs' => [], 'dias' => []];
+        $F[$k] = $F[$k] ?? ['chave' => $k, 'fornecedor' => $nome, 'cnpj' => $cn, 'geo' => $e['geo'], 'aprox' => false, 'ia' => false, 'cidade' => $cidade[$k] ?? null, 'eventos' => [], 'pcs' => [], 'dias' => []];
         if (!$F[$k]['geo'] && $e['geo']) $F[$k]['geo'] = $e['geo'];
         $F[$k]['eventos'][] = $e;
         if ($pc) $F[$k]['pcs'][$pc] = $e['data'];
         $F[$k]['dias'][$e['data']][] = $e;
     }
     // v3.52.0: sem coordenadas no mapa, estima pelo centro da cidade (cadastro/CNPJ) — marcado como "estimado pela cidade"
-    foreach ($F as $k => &$f) if (!$f['geo'] && $f['cidade']) { $g = kg_cidade_geo($f['cidade'][0], $f['cidade'][1]); if ($g) { $f['geo'] = $g; $f['aprox'] = true; } }
+    foreach ($F as $k => &$f) if (!$f['geo'] && $f['cidade']) {
+        $g = kg_cidade_geo($f['cidade'][0], $f['cidade'][1]) ?? (!empty($cidadeIa[$k]) ? ($iaCoord[$k] ?? null) : null);
+        if ($g) { $f['geo'] = $g; $f['aprox'] = true; $f['ia'] = !empty($cidadeIa[$k]); }
+    }
     unset($f);
     // km por dia: rota do dia (Matriz → fornecedores → Matriz). Km real informado vale para a viagem do dia.
     $porDia = [];
@@ -429,11 +438,12 @@ function kpi_coletas_fornecedor(int $dias, ?string $de = null, ?string $ate = nu
             'km_a_menos' => $kmIda !== null ? round(($idas - $idasAgrup) * $kmIda) : null,
             'insumos_recorrentes' => count(array_filter($insL, fn($i) => $i['recorrente']))];
         $tipo = isset($kmTipo[$k]['real']) ? ((isset($kmTipo[$k]['estimado']) || isset($kmTipo[$k]['cidade'])) ? 'misto' : 'real')
-            : (isset($kmTipo[$k]['cidade']) ? 'estimado pela cidade' : ($km !== null ? 'estimado' : 'sem endereço'));
+            : (isset($kmTipo[$k]['cidade']) ? ($F[$k]['ia'] ? 'estimado pela cidade (IA)' : 'estimado pela cidade') : ($km !== null ? 'estimado' : 'sem endereço'));
         $out[] = ['fornecedor' => $f['fornecedor'], 'cnpj' => $f['cnpj'], 'idas' => $idas, 'pcs' => count($pcs), 'valor' => round($valor, 2),
             'km' => $km !== null ? round($km, 1) : null, 'km_tipo' => $tipo,
             'km_por_ida' => $kmIda !== null ? round($kmIda, 1) : null, 'ultima_ida' => max(array_keys($f['dias'])), 'semanas' => $idasAgrup,
             'alerta_distancia' => $kmIda !== null && $kmIda > 300 ? 'Ida e volta de ' . round($kmIda) . ' km: confirme se foi viagem nossa (pode ter vindo por transportadora e inflar o km).' : '',
+            'local_ia' => (bool)$f['ia'],
             'cidade' => $f['cidade'] ? trim($f['cidade'][0] . ($f['cidade'][1] ? '/' . $f['cidade'][1] : '')) : '',
             'insumos' => array_slice($insL, 0, 80), 'idas_lista' => $idasL, 'insumos_total' => count($insL), 'compras' => $lista, 'sugestao' => $sug,
             'economia_entrega' => ['idas' => $idas, 'km' => $km !== null ? round($km, 1) : null]];
@@ -444,7 +454,8 @@ function kpi_coletas_fornecedor(int $dias, ?string $de = null, ?string $ate = nu
     return ['de' => $de, 'ate' => $ate, 'fator_estrada' => KG_FATOR_ESTRADA, 'origem' => $origem['nome'] ?? 'Matriz',
         'totais' => ['fornecedores' => count($out), 'idas' => $totIdas, 'pcs' => $totPcs, 'km' => round($totKm, 1), 'valor' => round($totValor, 2),
             'sem_endereco' => count(array_filter($out, fn($f) => $f['km'] === null)),
-            'km_estimado_cidade' => count(array_filter($out, fn($f) => $f['km_tipo'] === 'estimado pela cidade')),
+            'km_estimado_cidade' => count(array_filter($out, fn($f) => str_starts_with($f['km_tipo'], 'estimado pela cidade'))),
+            'localizados_ia' => count(array_filter($out, fn($f) => !empty($f['local_ia']))),
             'km_a_menos' => array_sum(array_map(fn($f) => (int)($f['sugestao']['km_a_menos'] ?? 0), $out)),
             'idas_a_menos' => array_sum(array_map(fn($f) => (int)($f['sugestao']['idas_a_menos'] ?? 0), $out)),
             'entrega_idas' => $totIdas, 'entrega_km' => round($totKm, 1),

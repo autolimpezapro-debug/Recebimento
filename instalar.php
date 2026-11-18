@@ -21,7 +21,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: no-referrer');
 
-const INST_VERSAO = '3.52.0';
+const INST_VERSAO = '3.52.1';
 const INST_ROOT = __DIR__;
 const INST_DATA = __DIR__ . '/data';
 

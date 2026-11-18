@@ -250,6 +250,7 @@ function ecoRender(){
   </div>
   ${inc.length?`<div class="alert bad"><b>${inc.length} coleta(s) desconsiderada(s)</b> — o recebimento foi marcado como “fornecedor entregou” mas há coleta registrada (não entram nos km): ${inc.map(x=>`PC ${x.pc} (${H(x.fornecedor)}, ${H(x.coleta)})`).join('; ')}. Corrija o cadastro de um dos dois.</div>`:''}
   ${longas.length?`<div class="alert"><b>${longas.length} viagem(ns) muito longa(s)</b>: ${longas.map(f=>`${H(f.fornecedor)} (${H(f.cidade||'—')}, ${N(Math.round(f.km_por_ida))} km)`).join('; ')}. Se veio por transportadora, os km estão inflados — registre o km real na coleta ou marque “fornecedor entregou”.</div>`:''}
+  ${F.some(f=>f.local_ia)?`<div class="alert"><b>${F.filter(f=>f.local_ia).length} fornecedor(es) localizado(s) pelo Gemini</b> (só a cidade, sem confirmação): ${F.filter(f=>f.local_ia).map(f=>`${H(f.fornecedor)} → ${H(f.cidade)}`).join('; ')}. Confira — se estiver errado, preencha o endereço numa coleta do fornecedor que ele passa a valer.</div>`:''}
   ${semLoc.length?`<div class="alert"><b>${semLoc.length} fornecedor(es) sem localização</b>: o km deles não entrou na conta. Use “📍 Localizar fornecedores” ou preencha o endereço numa coleta: ${semLoc.slice(0,12).map(f=>H(f.fornecedor)).join('; ')}${semLoc.length>12?'…':''}.</div>`:''}
   <h3 style="margin:14px 0 6px;font-size:14px">Quem mais pesa nos km — candidatos a pedir entrega</h3>
   <div class="scroll" style="max-height:none"><table><tr><th>Fornecedor</th><th>Cidade</th><th class="num">Idas</th><th class="num">Semanas</th><th class="num">Km (total)</th><th class="num">Km/ida</th><th class="num">② idas a menos</th><th class="num">② km a menos</th><th class="num">① horas</th></tr>
@@ -299,15 +300,15 @@ function cfDet(f){
   </td></tr>`;
 }
 $('#cfGeo').onclick=async()=>{
-  const b=$('#cfGeo');b.disabled=true;let tot=0;
+  const b=$('#cfGeo');b.disabled=true;let tot=0,ia=0;
   try{
     for(let i=0;i<40;i++){
-      b.textContent=`📍 Localizando… ${tot} encontrado(s)`;
+      b.textContent=`📍 Localizando… ${tot} pelo CNPJ${ia?` · ${ia} pelo Gemini`:''}`;
       const r=await fetch('/api.php?action=coletas_localizar_fornecedores',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:'{}'});
       const d=await r.json();if(!d.ok)throw new Error(d.error||'Entre no sistema com permissão de Coletas.');
-      tot+=d.localizados;if(!d.restantes||!d.processados)break;
+      tot+=d.localizados;ia+=d.ia_localizados||0;if(!((d.restantes&&d.processados)||(d.ia_restantes>0&&d.ia_processados)))break;
     }
-    alert(`Localização concluída: ${tot} fornecedor(es) localizado(s) agora. Os que não foram encontrados podem ter o endereço preenchido numa coleta.`);cfLoad();
+    alert(`Localização concluída: ${tot} fornecedor(es) pelo CNPJ e ${ia} pelo Gemini (só a cidade — confira na aba Economia). Os que não foram encontrados podem ter o endereço preenchido numa coleta.`);cfLoad();
   }catch(e){alert(e.message);}finally{b.disabled=false;b.textContent='📍 Localizar fornecedores';}
 };
 if(TK)document.addEventListener('DOMContentLoaded',()=>{const g=$('#cfGeo');if(g)g.remove();});

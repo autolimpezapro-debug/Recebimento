@@ -1,3 +1,8 @@
+v3.52.1 — Gemini localiza fornecedores nos Indicadores
+- "📍 Localizar fornecedores" (Indicadores de gestão): primeiro o CNPJ/mapa, como antes; o que sobrar (fornecedor sem CNPJ ou não encontrado) vai para o Gemini, que sugere só a CIDADE/UF (centro da cidade) usando o nome, CNPJ e materiais comprados. Só roda se o Gemini estiver ligado com chave (Importar pedidos → Leitura assistida).
+- A sugestão NÃO vira endereço de coleta nem entra em rota: serve apenas para estimar o km. Aparece como "estimado pela cidade (IA)" e a aba Economia lista os fornecedores localizados pelo Gemini para você conferir. Confiança "baixa" é descartada; nova tentativa só depois de 7 dias.
+- Se o endereço for preenchido numa coleta do fornecedor, ele vale mais que a sugestão do Gemini.
+
 v3.52.0 — Auditoria dos Indicadores de gestão + novo visual
 CORREÇÕES (achadas comparando os números com os dados reais do servidor):
 - FORNECEDORES DUPLICADOS: a mesma empresa aparecia como 2-3 fornecedores por grafia (ex.: "TRIÂNGULO PEÇAS", "TRIANGULO PECAS E FILTROS LTDA", "TRIÂNGULO PEÇAS E FILTROS"; "MPA" / "MPA HIDRÁULICA"). Agora são unidos pelo CNPJ ou pelo nome (sem LTDA/COMERCIO etc.; nome que é começo de outro só une quando há um único candidato).

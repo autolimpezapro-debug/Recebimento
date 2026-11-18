@@ -127,7 +127,10 @@ if ($colAction === 'coletas_importar_previa_partes') {   // v3.14.0: arquivos en
 if ($colAction === 'coletas_localizar_fornecedores') {   // v3.18.1: endereços/coordenadas pelo CNPJ (lotes de 12)
     require_once __DIR__ . '/coletas_import.php';
     @set_time_limit(120);
-    respond(['ok' => true] + coli_localizar_fornecedores(12));
+    $cnpjR = coli_localizar_fornecedores(12);
+    // v3.52.1: o que o CNPJ não resolveu (sem CNPJ, não encontrado) vai para o Gemini sugerir a CIDADE — só para estimar km
+    $iaR = empty($cnpjR['restantes']) ? coli_ia_localizar_fornecedores(6) : ['ia_disponivel' => true, 'ia_processados' => 0, 'ia_localizados' => 0, 'ia_restantes' => -1, 'ia_falhas' => []];
+    respond(['ok' => true] + $cnpjR + $iaR);
 }
 if ($colAction === 'coletas_rota_por_pcs') {   // v3.24.0: digitar os PCs e montar a rota
     require_once __DIR__ . '/coletas_import.php';
