@@ -1104,6 +1104,46 @@ function col_posicao(array $b, string $usuario) {
     });
 }
 
+/**
+ * v3.51.2 — Quantas coletas por fornecedor no mês.
+ * Data da coleta = quando foi coletada; se ainda não foi, a data agendada; se não houver, a de criação. Canceladas ficam de fora.
+ * Fornecedor = CNPJ (quando houver) ou o nome sem acento/maiúsculas. Ordenado do que mais se repete para o que menos.
+ */
+function col_por_fornecedor(array $q) {
+    $db = col_read();
+    $mes = preg_match('/^\d{4}-\d{2}$/', (string)($q['mes'] ?? '')) ? $q['mes'] : date('Y-m');
+    $grupos = [];
+    foreach ($db['coletas'] as $c) {
+        if (($c['status'] ?? '') === 'CANCELADA') continue;
+        $feita = col_coleta_concluida($c); $quando = '';
+        if ($feita) {
+            foreach (array_reverse((array)($c['historico'] ?? [])) as $h) if (($h['acao'] ?? '') === 'status' && in_array($h['para'] ?? '', ['Coletado', 'Em transporte', 'Chegou ao almoxarifado'], true)) { $quando = substr((string)$h['em'], 0, 10); }
+            if ($quando === '') $quando = substr((string)($c['atualizado_em'] ?? ''), 0, 10);
+        }
+        if ($quando === '') $quando = (string)($c['agendada_data'] ?? '') ?: substr((string)($c['criado_em'] ?? ''), 0, 10);
+        if (substr($quando, 0, 7) !== $mes) continue;
+        $nome = trim((string)($c['fornecedor'] ?? '')) ?: '(sem fornecedor)';
+        $cnpj = preg_replace('/\D/', '', (string)($c['cnpj'] ?? ''));
+        $chave = strlen($cnpj) === 14 ? $cnpj : col_norm_txt($nome);
+        $g = &$grupos[$chave];
+        if (!isset($g)) $g = ['fornecedor' => $nome, 'cnpj' => strlen($cnpj) === 14 ? $cnpj : '', 'total' => 0, 'coletadas' => 0, 'abertas' => 0, 'pcs' => [], 'nomes' => []];
+        $g['total']++; $feita ? $g['coletadas']++ : $g['abertas']++;
+        if (!empty($c['pc'])) $g['pcs'][] = (int)$c['pc'];
+        $g['nomes'][$nome] = ($g['nomes'][$nome] ?? 0) + 1;
+        unset($g);
+    }
+    $lista = [];
+    foreach ($grupos as $g) {
+        arsort($g['nomes']); $g['fornecedor'] = (string)array_key_first($g['nomes']); unset($g['nomes']);
+        $g['pcs'] = array_values(array_unique($g['pcs'])); sort($g['pcs']); $g['repetido'] = $g['total'] >= 2;
+        $lista[] = $g;
+    }
+    usort($lista, fn($a, $b) => [$b['total'], $a['fornecedor']] <=> [$a['total'], $b['fornecedor']]);
+    $tot = array_sum(array_column($lista, 'total'));
+    return ['mes' => $mes, 'fornecedores' => $lista, 'totais' => ['coletas' => $tot, 'fornecedores' => count($lista), 'repetidos' => count(array_filter($lista, fn($g) => $g['repetido'])),
+        'em_repetidos' => array_sum(array_map(fn($g) => $g['repetido'] ? $g['total'] : 0, $lista))]];
+}
+
 /** v3.24.0: rotas já feitas — quantas, km, tempo e coletas, por período. */
 function col_rotas_resumo(array $q) {
     $db = col_read(); $ativasMapa = col_rotas_map($db);

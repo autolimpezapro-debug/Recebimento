@@ -82,6 +82,7 @@ if ($colMethod === 'GET') {
             $o = col_ordenar_paradas($db, array_filter(explode(',', (string)($_GET['ids'] ?? ''))), ($_GET['otimizar'] ?? '1') !== '0');
             respond(['ok' => true, 'avisos' => col_rota_alertas($o)] + $o);
         case 'coletas_km_media': respond(['ok' => true] + col_km_media($_GET));
+        case 'coletas_por_fornecedor': respond(['ok' => true] + col_por_fornecedor($_GET));
         case 'coletas_rotas_resumo':
             respond(['ok' => true] + col_rotas_resumo($_GET));
         case 'coletas_rota_ativa':

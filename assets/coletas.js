@@ -460,6 +460,7 @@ async function colCarregarHist() {
       <td>${colHm(x.min_deslocamento)}</td><td>${x.min_total != null ? colHm(x.min_total) : (x.ativa ? 'em andamento' : '—')}</td></tr>`).join('')
       || '<tr><td colspan="7" class="empty">Nenhuma rota iniciada neste mês.</td></tr>';
   } catch (e) { colEl('colHistBody').innerHTML = `<tr><td colspan="7" class="empty">${colEsc(e.message)}</td></tr>`; }
+  colCarregarForn(v);
 }
 async function colHistExcel() {
   const r = COL.hist; if (!r || !r.rotas.length) return colToast('Nenhuma rota no período.', true);
@@ -991,4 +992,29 @@ function colCobrarFornecedor() {
   let tel = ''; for (const m of String(c.contato || '').match(/\(?\d[\d\s().-]{7,}\d/g) || []) { const d = m.replace(/\D/g, ''); if (d.length === 10 || d.length === 11) { tel = '55' + d; break; } if ((d.length === 12 || d.length === 13) && d.startsWith('55')) { tel = d; break; } }
   window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(msg), '_blank', 'noopener');
   if (!tel) colToast('Sem telefone no cadastro: escolha o contato no WhatsApp.');
+}
+
+
+/* v3.51.2 — coletas por fornecedor no mês (usa o mesmo seletor de mês de "Rotas realizadas") */
+async function colCarregarForn(mes) {
+  const box = colEl('colForn'); if (!box) return;
+  try {
+    const r = await colApi('coletas_por_fornecedor', { query: { mes } }); COL.forn = r; const t = r.totais;
+    const lista = r.fornecedores;
+    box.innerHTML = `<div class="col-forn-head"><h3>Coletas por fornecedor no mês</h3><small class="muted">${colNum(t.coletas)} coleta(s) · ${colNum(t.fornecedores)} fornecedor(es) · <b>${colNum(t.repetidos)}</b> com 2 ou mais coletas (${colNum(t.em_repetidos)} coletas)</small>
+      <button class="button ghost small" onclick="colFornExcel()">▦ Excel</button></div>`
+      + (lista.length ? `<div class="table-scroll"><table class="orders-table"><thead><tr><th>Fornecedor</th><th>Coletas no mês</th><th>Coletadas</th><th>Em aberto</th><th>PCs</th></tr></thead><tbody>${lista.map(g => `<tr class="${g.repetido ? 'col-forn-rep' : ''}">
+        <td><strong>${colEsc(g.fornecedor)}</strong>${g.cnpj ? `<small class="est-sub">${colEsc(g.cnpj)}</small>` : ''}</td>
+        <td><b>${g.total}</b>${g.repetido ? ' <span class="est-badge warn">repetido</span>' : ''}</td><td>${g.coletadas}</td><td>${g.abertas}</td>
+        <td><small class="est-sub" style="display:inline">${g.pcs.slice(0, 12).map(p => 'PC ' + p).join(', ')}${g.pcs.length > 12 ? ' +' + (g.pcs.length - 12) : ''}</small></td></tr>`).join('')}</tbody></table></div>`
+        : '<p class="muted">Nenhuma coleta neste mês.</p>');
+  } catch (e) { box.innerHTML = `<p class="muted">${colEsc(e.message)}</p>`; }
+}
+async function colFornExcel() {
+  const r = COL.forn; if (!r || !r.fornecedores.length) return colToast('Nenhuma coleta no mês.', true);
+  const X = await import('./xlsx-lib.js');
+  const head = ['Fornecedor', 'CNPJ', 'Coletas no mês', 'Coletadas', 'Em aberto', 'PCs'];
+  const rows = r.fornecedores.map(g => [g.fornecedor, g.cnpj, g.total, g.coletadas, g.abertas, g.pcs.join(', ')]);
+  const ws = X.utils.aoa_to_sheet([head, ...rows]); ws['!cols'] = [{ wch: 42 }, { wch: 18 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 40 }];
+  const wb = X.utils.book_new(); X.utils.book_append_sheet(wb, ws, 'Por fornecedor'); X.writeFile(wb, `coletas_por_fornecedor_${r.mes}.xlsx`);
 }
