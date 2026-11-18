@@ -461,6 +461,10 @@ try {
         }
         kpi_out(200, ['ok' => true, 'publico' => $publico] + $g);
     }
+    if ($metodo === 'GET' && ($_GET['op'] ?? '') === 'recebimentos_fornecedor') {   // v3.52.0
+        require_once __DIR__ . '/gestao_lib.php';
+        kpi_out(200, ['ok' => true, 'publico' => $publico] + kpi_recebimentos_fornecedor($_GET['de'] ?? null, $_GET['ate'] ?? null));
+    }
     if ($metodo === 'GET' && ($_GET['op'] ?? '') === 'coletas_fornecedor') {   // v3.17.0
         require_once __DIR__ . '/gestao_lib.php';
         kpi_out(200, ['ok' => true, 'publico' => $publico] + kpi_coletas_fornecedor((int)($_GET['dias'] ?? 90), $_GET['de'] ?? null, $_GET['ate'] ?? null));

@@ -41,6 +41,39 @@ td{padding:7px 8px;border-bottom:1px solid #18263d;vertical-align:top}tr:last-ch
 .cf-cols{display:grid;grid-template-columns:2fr 1fr;gap:14px}@media(max-width:900px){.cf-cols{grid-template-columns:1fr}}
 @media(max-width:900px){.grid{grid-template-columns:1fr}}
 @media print{.bar,.filt,#cfGeo,#cfCsv{display:none!important}body{background:#fff;color:#000;font-size:11px}.card,.kpi{border-color:#ccc;background:#fff;break-inside:avoid}.kpi strong,.card h2{color:#000}.kpi span,.kpi small,.sub,th,.note,.kmt{color:#444}td{border-color:#ddd}.cf-det td{background:#f6f8fb}.track{background:#e8edf3}.scroll{max-height:none!important;overflow:visible}.grid{grid-template-columns:1fr 1fr}main{max-width:none;padding:0}.sug{background:#fff8e6;color:#5a4300;border-color:#e8c46a}tr.cf-det{break-inside:auto}#cf,.card.wide{break-inside:auto!important}h1{color:#000}@page{size:A4;margin:12mm}}
+
+/* v3.52.0 — visual refeito: navegação por seções, abas, tabelas legíveis, celular */
+html{scroll-behavior:smooth;scroll-padding-top:104px}
+.subnav{position:sticky;top:37px;z-index:4;display:flex;gap:6px;overflow-x:auto;padding:8px 0 10px;margin:-6px 0 12px;background:var(--bg);border-bottom:1px solid #16233a;scrollbar-width:none}
+.subnav::-webkit-scrollbar{display:none}
+.subnav a{flex:none;color:var(--tx2);text-decoration:none;font-size:12.5px;font-weight:600;padding:6px 13px;border-radius:999px;border:1px solid var(--line);background:var(--card)}
+.subnav a:hover{color:var(--ac);border-color:#3b4f72}
+.sec{grid-column:1/-1;margin:14px 0 -2px;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--ac);font-weight:700;display:flex;align-items:center;gap:10px}
+.sec::after{content:"";flex:1;height:1px;background:var(--line)}
+.kpi{position:relative;transition:border-color .15s,transform .15s}.kpi:hover{border-color:#3b4f72;transform:translateY(-1px)}
+.kpi[title]{cursor:help}
+.kpi.bad{border-left:3px solid var(--bad)}.kpi.warn{border-left:3px solid var(--warn)}.kpi.ok{border-left:3px solid var(--ok)}
+.card{box-shadow:0 1px 0 #ffffff08 inset}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:6px 0 14px;overflow-x:auto}
+.tabs button{border:0;border-radius:9px 9px 0 0;background:transparent;color:var(--tx2);padding:9px 16px;font-weight:600;border-bottom:2px solid transparent;white-space:nowrap}
+.tabs button.on{color:var(--ac);border-bottom-color:var(--ac);background:#13213a}
+.pane{display:none}.pane.on{display:block}
+th{position:sticky;top:0;background:var(--card);z-index:1}
+tbody tr:hover td,table tr:hover>td{background:#12203600}
+.cf-row:hover td{background:#13213a}
+.pill{display:inline-block;font-size:10.5px;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--tx2);margin-right:4px;white-space:nowrap}
+.pill.ok{color:var(--ok);border-color:#1f5a47}.pill.warn{color:var(--warn);border-color:#5b4614}.pill.bad{color:var(--bad);border-color:#6a2b2b}
+.split{display:flex;height:8px;border-radius:9px;overflow:hidden;background:#18263d;min-width:90px}.split i{display:block;height:100%}
+.alert{border:1px solid #5b4614;background:#1c1709;color:#f3d38a;border-radius:10px;padding:8px 12px;font-size:12.5px;margin:0 0 10px}
+.alert.bad{border-color:#6a2b2b;background:#1c0d0d;color:#f3b0ab}
+.how{margin:0 0 12px;font-size:12px;color:var(--tx3)}.how summary{cursor:pointer;color:var(--tx2);font-weight:600}.how ul{margin:6px 0 0 18px;padding:0}.how li{margin:2px 0}
+.inp{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--tx2)}.inp input{width:84px;background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit}
+.find{min-width:210px;background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:9px;padding:7px 10px;font:inherit;font-size:13px}
+.big{font-size:26px;font-weight:750;letter-spacing:-.01em}
+.sc{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin:0 0 12px}
+.sc>div{background:#0b1526;border:1px solid var(--line);border-radius:12px;padding:12px 14px}.sc h4{margin:0 0 6px;font-size:12.5px;color:var(--tx2)}.sc p{margin:3px 0 0;font-size:12px;color:var(--tx3)}
+@media(max-width:700px){.hm{display:none}main{padding:12px}.head{align-items:flex-start}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi strong{font-size:18px}.filt{width:100%}.filt select,.filt button,.find{flex:1 1 140px}.card{padding:12px}table{font-size:12px}td,th{padding:6px 5px}.subnav{top:34px}.bar{flex-direction:column;align-items:flex-start;gap:4px}}
+@media print{.pane{display:block!important}.tabs,.subnav,.find,.inp{display:none!important}.sec{color:#000}}
 </style>
 </head>
 <body>
@@ -49,30 +82,36 @@ td{padding:7px 8px;border-bottom:1px solid #18263d;vertical-align:top}tr:last-ch
   <div class="head"><div><h1>Indicadores de gestão</h1><p id="ger">Carregando…</p></div>
     <div class="filt"><select id="mes"></select><div class="seg" id="per"><button data-p="mes" class="on">Mês</button><button data-p="ano">Ano até o mês</button><button data-p="12m">12 meses</button></div><button id="btnXlsx" title="Planilha com todas as tabelas, uma aba por indicador">⇩ Excel detalhado</button><button id="btnPdf" title="Relatório completo para salvar em PDF">⇩ PDF detalhado</button><button id="btnLink" hidden title="Gerar o link público para enviar">🔗 Link público</button></div></div>
   <div class="kpis" id="kpis"></div>
+  <nav class="subnav" id="subnav"><a href="#cf">Fornecedores</a><a href="#s-custos">Custos e obras</a><a href="#s-ferr">Ferramentas</a><a href="#s-ped">Pedidos</a><a href="#s-est">Estoque</a><a href="#s-rank">Ranking</a></nav>
   <section class="card wide" id="cf" style="margin-bottom:14px">
     <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start">
-      <div><h2>Coletas por fornecedor</h2><p class="sub" id="cfSub">Quantas vezes fomos a cada fornecedor, quantas compras, km rodados e insumos coletados</p></div>
+      <div><h2>Fornecedores: recebimentos, coletas e km</h2><p class="sub" id="cfSub">Quantas vezes recebemos de cada fornecedor, o que fomos buscar, km rodados e quanto poderia ser economizado</p></div>
       <div class="filt"><div class="seg" id="cfDias"><button data-d="30">30 dias</button><button data-d="90" class="on">90 dias</button><button data-d="180">180 dias</button><button data-d="365">12 meses</button></div><select id="cfMes" title="Ver um mês específico"><option value="">ou escolha o mês…</option></select><button id="cfGeo" title="Busca o endereço de cada fornecedor pelo CNPJ e localiza no mapa, para calcular os km">📍 Localizar fornecedores</button><button id="cfCsv">⇩ Excel (CSV)</button></div>
     </div>
-    <div class="kpis" id="cfKpis" style="margin:4px 0 12px"></div>
-    <div id="cdBox" style="margin:0 0 16px"></div>
-    <div id="cfTab"></div>
+    <div class="tabs" id="cfTabs"><button data-t="rec" class="on">Recebimentos</button><button data-t="col">Coletas e km</button><button data-t="eco">Economia possível</button></div>
+    <div class="pane on" id="paneRec"><div class="empty">Carregando…</div></div>
+    <div class="pane" id="paneCol"><div class="kpis" id="cfKpis" style="margin:4px 0 12px"></div><div id="cdBox" style="margin:0 0 16px"></div><div id="cfTab"></div></div>
+    <div class="pane" id="paneEco"><div class="empty">Carregando…</div></div>
   </section>
   <div class="grid" id="grid"></div>
 </main>
 <script>
 'use strict';
 const $=s=>document.querySelector(s);
+const TIPS={'Custo das obras':'Saídas do estoque (qtd × custo médio de hoje) + remessas por NF (valor + frete) + locação rateada pelos dias em cada local.','Locação de equipamentos':'Diárias rateadas pelos dias em cada local no período + extras e fretes.','Ferramentas fora':'Empréstimos em aberto agora. Atrasado = passou da data prevista de devolução.','PCs urgentes':'PCs marcados urgentes ÷ PCs criados no período (data de importação/cadastro; se faltar, a data do pedido).','Devoluções a fornecedor':'Devoluções registradas no pedido, pela data da devolução.','Recebimentos com divergência':'PCs com 1ª conferência no período em que a quantidade recebida difere da pedida, ou entrega parcial.','Risco de ruptura':'Saldo ÷ consumo médio por dia dos últimos 90 dias ≤ 15 dias.','Capital parado':'Saldo × custo dos itens sem entrada/saída há 180 dias. Carga de inventário SAP não conta como movimento. Item sem custo cadastrado entra com valor 0.'};
+
 let TK='';try{const q=new URLSearchParams(location.search).get('p');if(q)sessionStorage.setItem('rdKpiLink',q);TK=sessionStorage.getItem('rdKpiLink')||'';}catch(e){}
 const H=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const R=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
 const N=n=>Number(n||0).toLocaleString('pt-BR');
 const MES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-const st={mes:new Date().toISOString().slice(0,7),per:'mes'};
-(function(){const s=$('#mes');for(let i=0;i<18;i++){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);const m=d.toISOString().slice(0,7);s.insertAdjacentHTML('beforeend',`<option value="${m}">${MES[+m.slice(5)-1]}/${m.slice(0,4)}</option>`);}s.onchange=()=>{st.mes=s.value;load();};})();
+const pad=n=>String(n).padStart(2,'0');const ym=d=>d.getFullYear()+'-'+pad(d.getMonth()+1);const ymd=d=>ym(d)+'-'+pad(d.getDate());
+const st={mes:ym(new Date()),per:'mes'};   // v3.52.0: antes usava UTC e virava o mês às 21h do último dia
+(function(){const s=$('#mes');for(let i=0;i<18;i++){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);const m=ym(d);s.insertAdjacentHTML('beforeend',`<option value="${m}">${MES[+m.slice(5)-1]}/${m.slice(0,4)}</option>`);}s.onchange=()=>{st.mes=s.value;load();};})();
 document.querySelectorAll('#per button').forEach(b=>b.onclick=()=>{st.per=b.dataset.p;document.querySelectorAll('#per button').forEach(x=>x.classList.toggle('on',x===b));load();});
 function bars(rows,lbl,val,extra,cls='c1'){const max=Math.max(1,...rows.map(val));return rows.length?'<div class="bars">'+rows.map(r=>`<div><div class="b-l"><span title="${H(lbl(r))}">${H(lbl(r))}</span><b>${extra(r)}</b></div><div class="track"><i class="${cls}" style="width:${Math.max(1.5,val(r)/max*100)}%"></i></div></div>`).join('')+'</div>':'<div class="empty">Sem dados no período.</div>';}
 function card(t,sub,body,wide,tag){return `<section class="card ${wide?'wide':''}">${tag?`<span class="tag">${tag}</span>`:''}<h2>${t}</h2><p class="sub">${sub}</p>${body}</section>`;}
+const sec=(id,t)=>`<h3 class="sec" id="${id}">${t}</h3>`;
 async function load(){
   $('#ger').textContent='Carregando…';
   let d;try{const r=await fetch(`api.php?op=gestao&mes=${st.mes}&periodo=${st.per}`,{credentials:'same-origin',cache:'no-store',headers:TK?{'X-KPI-Link':TK}:{}});d=await r.json();if(!d.ok)throw new Error(d.erro||'Erro');}
@@ -91,8 +130,9 @@ async function load(){
     ['Recebimentos com divergência',(DI.pct||0).toLocaleString('pt-BR')+'%',`${N(DI.com_divergencia)} de ${N(DI.finalizados)} PCs`,DI.pct>10?'bad':'ok'],
     ['Risco de ruptura',N((d.ruptura||[]).length),'itens acabam em até 15 dias',(d.ruptura||[]).length?'bad':'ok'],
     ['Capital parado',R(CP.valor),`${N(CP.itens)} itens · ${(CP.pct||0).toLocaleString('pt-BR')}% do estoque`,CP.pct>15?'warn':''],
-  ].map(([a,b,c,k])=>`<div class="kpi ${k}"><span>${a}</span><strong>${b}</strong><small>${c}</small></div>`).join('');
+  ].map(([a,b,c,k])=>`<div class="kpi ${k}" title="${H(TIPS[a]||'')}"><span>${a}</span><strong>${b}</strong><small>${c}</small></div>`).join('');
   const g=[];
+  g.push(sec('s-custos','Custos e obras'));
   // 2 custo por obra
   g.push(card('Custo por obra / local','Material retirado do estoque + remessas por NF (com frete) + locação de equipamentos',
     '<div class="leg"><span><i class="c1"></i>Estoque</span><span><i class="c2"></i>Remessas NF</span><span><i class="c3"></i>Locação</span></div>'+
@@ -103,9 +143,11 @@ async function load(){
     (L.sem_valor?`<p class="note">${N(L.sem_valor)} equipamento(s) locado(s) sem valor de diária — não entram no custo.</p>`:'')+(L.vencidas?`<p class="note" style="color:#e5534b">${N(L.vencidas)} locação(ões) com devolução vencida.</p>`:'')));
   // consumo por setor
   g.push(card('Consumo do estoque por setor','Saídas de material valorizadas pelo custo médio',bars(C.por_setor||[],x=>x.setor,x=>x.valor,x=>R(x.valor))));
+  g.push(sec('s-ferr','Ferramentas'));
   // 3 ferramentas
   g.push(card('Ferramentas emprestadas','Unidades fora do almoxarifado por destino (agora)',bars(F.por_destino||[],x=>x.destino,x=>x.unidades,x=>`${N(x.unidades)} un${x.atrasados?` <small style="color:#e5534b">${x.atrasados} atrasado(s)</small>`:''}`)+
     ((F.lista_atrasados||[]).length?`<table style="margin-top:12px"><tr><th>Responsável</th><th>Destino</th><th>Ferramentas</th><th class="num">Atraso</th></tr>${F.lista_atrasados.map(e=>`<tr><td>${H(e.responsavel)}</td><td>${H(e.destino)}</td><td>${H(e.itens)}</td><td class="num" style="color:#e5534b">${e.dias} d</td></tr>`).join('')}</table>`:'<p class="note">Nenhum empréstimo atrasado.</p>'),false,'agora'));
+  g.push(sec('s-ped','Pedidos e recebimento'));
   // 4 urgentes
   g.push(card('PCs urgentes por solicitante','Quem mais pede com urgência — sinal de falta de planejamento',
     `<table><tr><th>Solicitante</th><th class="num">PCs</th><th class="num">Urgentes</th><th class="num">%</th></tr>${(U.por_solicitante||[]).map(s=>`<tr><td>${H(s.solicitante)}</td><td class="num">${N(s.pcs)}</td><td class="num">${N(s.urgentes)}</td><td class="num" style="color:${s.pct>30?'#e5534b':s.pct>15?'#e0a43b':'inherit'}">${s.pct.toLocaleString('pt-BR')}%</td></tr>`).join('')}</table>`+
@@ -117,29 +159,103 @@ async function load(){
   // 9 divergências
   g.push(card('Divergências no recebimento','PCs recebidos com quantidade diferente da pedida (ou entrega parcial)',
     (DI.por_fornecedor||[]).length?`<table><tr><th>Fornecedor</th><th class="num">PCs</th><th>Exemplos</th></tr>${DI.por_fornecedor.map(f=>`<tr><td>${H(f.fornecedor)}</td><td class="num">${N(f.pcs)}</td><td><small>${f.exemplos.map(H).join('<br>')}</small></td></tr>`).join('')}</table>`:`<div class="empty">Nenhuma divergência em ${N(DI.finalizados)} PC(s) recebido(s) no período.</div>`));
+  g.push(sec('s-est','Estoque'));
   // 6 ruptura
   g.push(card('Risco de ruptura','Itens que acabam em até 15 dias pelo consumo dos últimos 90 dias',
     (d.ruptura||[]).length?`<table><tr><th>Item</th><th class="num">Saldo</th><th class="num">Consumo/dia</th><th class="num">Dias</th></tr>${d.ruptura.map(c=>`<tr><td>${H(c.descricao)}<br><small style="color:#6f8199">${H(c.codigo)}</small></td><td class="num">${N(c.saldo)} ${H(c.unidade)}</td><td class="num">${c.consumo_dia.toLocaleString('pt-BR')}</td><td class="num" style="color:${c.dias<=7?'#e5534b':'#e0a43b'}">${c.dias<=0?'zerado':c.dias.toLocaleString('pt-BR')}</td></tr>`).join('')}</table>`:'<div class="empty">Nenhum item em risco.</div>',false,'agora'));
   // 7 capital parado
-  g.push(card('Capital parado','Itens com saldo e sem movimento há mais de 180 dias',
+  g.push(card('Capital parado','Itens com saldo e sem entrada/saída há mais de 180 dias (carga de inventário não conta como movimento)',
     (CP.top||[]).length?`<table><tr><th>Item</th><th class="num">Saldo</th><th class="num">Valor</th><th class="num">Último mov.</th></tr>${CP.top.map(c=>`<tr><td>${H(c.descricao)}<br><small style="color:#6f8199">${H(c.codigo)}</small></td><td class="num">${N(c.saldo)} ${H(c.unidade)}</td><td class="num">${R(c.valor)}</td><td class="num">${c.ultimo?new Date(c.ultimo).toLocaleDateString('pt-BR'):'—'}</td></tr>`).join('')}</table>`+(CP.valor===0?'<p class="note">Os itens parados estão sem custo cadastrado — preencha o custo para medir o valor.</p>':''):'<div class="empty">Nenhum item parado.</div>',false,'agora'));
+  g.push(sec('s-rank','Ranking de fornecedores'));
   // 10 ranking
   const FR=d.fornecedores||[];
-  g.push(card('Ranking de fornecedores','Nota = 50% no prazo + 50% completo (sem divergência), menos penalidades por coleta atrasada e devolução. A ≥ 90 · B ≥ 75 · C ≥ 60 · D < 60',
-    FR.length?`<div class="scroll"><table><tr><th></th><th>Fornecedor</th><th class="num">PCs recebidos</th><th class="num">No prazo</th><th class="num">Completos</th><th class="num">Coletas atrasadas</th><th class="num">Devoluções</th><th class="num">Nota</th></tr>${FR.map(f=>`<tr><td><span class="cls c${f.classe}">${f.classe}</span></td><td>${H(f.fornecedor)}</td><td class="num">${N(f.finalizados)}</td><td class="num">${f.pct_prazo.toLocaleString('pt-BR')}%</td><td class="num">${f.pct_completo.toLocaleString('pt-BR')}%</td><td class="num">${N(f.coletas_atrasadas)}</td><td class="num">${f.devolucoes?R(f.devolucoes):'—'}</td><td class="num"><b>${f.nota.toLocaleString('pt-BR')}</b></td></tr>`).join('')}</table></div>`:'<div class="empty">Nenhum pedido recebido no período.</div>',true));
+  g.push(card('Ranking de fornecedores','Nota = 50% no prazo + 50% completo (sem divergência), menos penalidades por coleta atrasada e devolução. Sem data combinada o prazo não é medido e a nota usa só o completo. Fornecedores com grafias diferentes são unidos. A ≥ 90 · B ≥ 75 · C ≥ 60 · D < 60',
+    FR.length?`<div class="scroll"><table><tr><th></th><th>Fornecedor</th><th class="num">PCs recebidos</th><th class="num">No prazo</th><th class="num">Completos</th><th class="num">Coletas atrasadas</th><th class="num">Devoluções</th><th class="num">Nota</th></tr>${FR.map(f=>`<tr><td><span class="cls c${f.classe}">${f.classe}</span></td><td>${H(f.fornecedor)}</td><td class="num">${N(f.finalizados)}</td><td class="num">${f.pct_prazo===null?'<span title="Sem data combinada (coleta agendada) para medir prazo" style="color:#6f8199">—</span>':f.pct_prazo.toLocaleString('pt-BR')+'%'}</td><td class="num">${f.pct_completo.toLocaleString('pt-BR')}%</td><td class="num">${N(f.coletas_atrasadas)}</td><td class="num">${f.devolucoes?R(f.devolucoes):'—'}</td><td class="num"><b>${f.nota.toLocaleString('pt-BR')}</b></td></tr>`).join('')}</table></div>`:'<div class="empty">Nenhum pedido recebido no período.</div>',true));
   $('#grid').innerHTML=g.join('');
 }
 const cf={dias:90,d:null,aberto:{},mes:''};
 document.querySelectorAll('#cfDias button').forEach(b=>b.onclick=()=>{cf.dias=+b.dataset.d;cf.mes='';$('#cfMes').value='';document.querySelectorAll('#cfDias button').forEach(x=>x.classList.toggle('on',x===b));cfLoad();});
-(function(){const s=$('#cfMes');for(let i=0;i<18;i++){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);const m=d.toISOString().slice(0,7);s.insertAdjacentHTML('beforeend',`<option value="${m}">${MES[+m.slice(5)-1]}/${m.slice(0,4)}</option>`);}
+(function(){const s=$('#cfMes');for(let i=0;i<18;i++){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);const m=ym(d);s.insertAdjacentHTML('beforeend',`<option value="${m}">${MES[+m.slice(5)-1]}/${m.slice(0,4)}</option>`);}
  s.onchange=()=>{cf.mes=s.value;document.querySelectorAll('#cfDias button').forEach(x=>x.classList.toggle('on',!cf.mes&&+x.dataset.d===cf.dias));cfLoad();};})();
 const D=s=>s?new Date(s+'T12:00').toLocaleDateString('pt-BR'):'—';
 const Q=n=>Number(n||0).toLocaleString('pt-BR',{maximumFractionDigits:3});
+function cfRange(){
+  if(cf.mes){const y=+cf.mes.slice(0,4),m=+cf.mes.slice(5);return{de:cf.mes+'-01',ate:cf.mes+'-'+pad(new Date(y,m,0).getDate())};}
+  const h=new Date(),i=new Date();i.setDate(i.getDate()-cf.dias);return{de:ymd(i),ate:ymd(h)};
+}
 async function cfLoad(){
-  $('#cfTab').innerHTML='<div class="empty">Carregando…</div>';
-  try{const r=await fetch(`api.php?op=coletas_fornecedor&dias=${cf.dias}${cf.mes?`&de=${cf.mes}-01&ate=${cf.mes}-${new Date(+cf.mes.slice(0,4),+cf.mes.slice(5),0).getDate()}`:''}`,{credentials:'same-origin',cache:'no-store',headers:TK?{'X-KPI-Link':TK}:{}});cf.d=await r.json();if(!cf.d.ok)throw new Error(cf.d.erro||'Erro');}
-  catch(e){$('#cfTab').innerHTML=`<div class="empty">${H(e.message)}</div>`;return;}
-  cfRender();
+  $('#cfTab').innerHTML='<div class="empty">Carregando…</div>';$('#paneRec').innerHTML='<div class="empty">Carregando…</div>';$('#paneEco').innerHTML='<div class="empty">Carregando…</div>';
+  const {de,ate}=cfRange(),hd={credentials:'same-origin',cache:'no-store',headers:TK?{'X-KPI-Link':TK}:{}};
+  try{
+    const [a,b]=await Promise.all([fetch(`api.php?op=coletas_fornecedor&de=${de}&ate=${ate}`,hd).then(r=>r.json()),fetch(`api.php?op=recebimentos_fornecedor&de=${de}&ate=${ate}`,hd).then(r=>r.json())]);
+    if(!a.ok)throw new Error(a.erro||'Erro');if(!b.ok)throw new Error(b.erro||'Erro');cf.d=a;cf.r=b;
+  }catch(e){const m=`<div class="empty">${H(e.message)}</div>`;$('#cfTab').innerHTML=m;$('#paneRec').innerHTML=m;$('#paneEco').innerHTML=m;return;}
+  cfRender();recRender();ecoRender();
+}
+document.querySelectorAll('#cfTabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#cfTabs button').forEach(x=>x.classList.toggle('on',x===b));
+  ({rec:'#paneRec',col:'#paneCol',eco:'#paneEco'}[b.dataset.t]&&['#paneRec','#paneCol','#paneEco'].forEach(id=>$(id).classList.toggle('on',id===({rec:'#paneRec',col:'#paneCol',eco:'#paneEco'}[b.dataset.t]))));});
+const SEM=d=>{const a=new Date(d+'T12:00'),b=new Date(a);b.setDate(b.getDate()+6);return a.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' a '+b.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});};
+const DSEM=d=>['dom','seg','ter','qua','qui','sex','sáb'][new Date(d+'T12:00').getDay()]+' '+D(d);
+cf.vis='dia';cf.busca='';cf.rAberto={};
+/* ---------- Aba Recebimentos ---------- */
+function recRender(){
+  const r=cf.r;if(!r)return;const t=r.totais,F=r.fornecedores,o=t.por_origem;
+  const pct=n=>t.pcs?Math.round(n/t.pcs*100):0;
+  const serie=cf.vis==='mes'?r.meses.map(x=>[MES[+x.mes.slice(5)-1]+'/'+x.mes.slice(0,4),x]):cf.vis==='sem'?r.semanas.map(x=>[SEM(x.semana),x]):r.dias.map(x=>[DSEM(x.data),x]);
+  const sMax=Math.max(1,...serie.map(([_,x])=>x.pcs));
+  const q=cf.busca.trim().toLowerCase(),sn=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const FF=q?F.filter(f=>sn(f.fornecedor).includes(sn(q))||f.materiais.some(m=>sn(m.descricao).includes(sn(q)))):F;
+  $('#paneRec').innerHTML=`
+  <div class="kpis" style="margin:0 0 12px">
+    <div class="kpi"><span>Fornecedores</span><strong>${N(t.fornecedores)}</strong><small>com recebimento no período</small></div>
+    <div class="kpi"><span>PCs recebidos</span><strong>${N(t.pcs)}</strong><small>${N(t.recebimentos)} recebimento(s) · ${N(t.linhas_material)} linhas de material</small></div>
+    <div class="kpi ${t.fornecedores_repetidos?'warn':'ok'}"><span>Fornecedores repetidos</span><strong>${N(t.fornecedores_repetidos)}</strong><small>recebemos em 2 ou mais dias diferentes</small></div>
+    <div class="kpi"><span>Fomos buscar</span><strong>${N(o.coleta)}</strong><small>${pct(o.coleta)}% dos PCs (coleta Drilling)</small></div>
+    <div class="kpi ok"><span>Fornecedor entregou</span><strong>${N(o.entrega)}</strong><small>${pct(o.entrega)}% dos PCs${o.nao_informado?` · ${N(o.nao_informado)} sem origem informada`:''}</small></div>
+    <div class="kpi"><span>Valor das NFs</span><strong>${R(t.valor)}</strong><small>${N(t.dias_com_recebimento)} dia(s) com recebimento</small></div>
+  </div>
+  <details class="how"><summary>Como isto é contado</summary><ul><li>Recebimento = cada entrega confirmada pelo conferente (a data é a da confirmação). Entrega parcial + saldo depois contam como 2.</li><li>Dia = dia em que houve recebimento daquele fornecedor; “vezes no mesmo dia” = PCs do mesmo fornecedor no mesmo dia.</li><li>Semana começa na segunda-feira. Fornecedores com grafias diferentes (LTDA, abreviações) são unidos pelo CNPJ ou pelo nome.</li><li>“Fomos buscar” vem da origem marcada no pedido (coleta Drilling) ou de coleta registrada; “entregou” é a marcação do conferente.</li></ul></details>
+  <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 8px"><h3 style="margin:0;font-size:14px">PCs recebidos por período</h3>
+    <div class="seg" id="recVis"><button data-v="dia" class="${cf.vis==='dia'?'on':''}">Por dia</button><button data-v="sem" class="${cf.vis==='sem'?'on':''}">Por semana</button><button data-v="mes" class="${cf.vis==='mes'?'on':''}">Por mês</button></div></div>
+  <div class="scroll" style="max-height:260px;margin-bottom:16px"><table><tr><th>${cf.vis==='dia'?'Dia':cf.vis==='sem'?'Semana':'Mês'}</th><th style="width:40%">PCs</th><th class="num">PCs</th><th class="num">Fornecedores</th>${cf.vis!=='dia'?'<th class="num">Dias</th>':''}</tr>
+   ${serie.map(([l,x])=>`<tr><td>${H(l)}</td><td><div class="track"><i class="c1" style="width:${Math.max(2,x.pcs/sMax*100)}%"></i></div></td><td class="num"><b>${N(x.pcs)}</b></td><td class="num">${N(x.fornecedores)}</td>${cf.vis!=='dia'?`<td class="num">${N(x.dias)}</td>`:''}</tr>`).join('')||'<tr><td colspan="5" class="empty">Sem recebimentos no período.</td></tr>'}</table></div>
+  <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 8px"><h3 style="margin:0;font-size:14px">Por fornecedor <span class="kmt">(${N(FF.length)} de ${N(F.length)})</span></h3><input class="find" id="recBusca" placeholder="Buscar fornecedor ou material…" value="${H(cf.busca)}"></div>
+  <div class="scroll" style="max-height:none"><table><tr><th>Fornecedor</th><th class="num">PCs</th><th class="num">Dias</th><th class="num hm">Semanas</th><th class="num">Máx. no dia</th><th>Origem</th><th class="num hm">Valor NF</th><th class="num hm">Materiais</th><th></th></tr>
+  ${FF.map((f,i)=>{const k=f.fornecedor+'|'+f.cnpj,ab=cf.rAberto[k],oo=f.origem,tot=Math.max(1,oo.coleta+oo.entrega+oo.nao_informado);
+   return `<tr class="cf-row" data-k="${H(k)}"><td><b>${H(f.fornecedor)}</b>${f.dias>1?`<span class="rec">${f.dias} dias</span>`:''}<br><small style="color:#6f8199">${f.cnpj?H(f.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5')):''}</small></td>
+   <td class="num"><b>${N(f.pcs)}</b></td><td class="num">${N(f.dias)}</td><td class="num hm">${N(f.semanas)}</td><td class="num">${f.max_no_dia>1?`<span class="pill warn">${f.max_no_dia} PCs</span>`:'1'}</td>
+   <td><div class="split" title="Buscamos ${oo.coleta} · Entregou ${oo.entrega}${oo.nao_informado?' · Sem origem '+oo.nao_informado:''}"><i class="c2" style="width:${oo.coleta/tot*100}%"></i><i class="cok" style="width:${oo.entrega/tot*100}%"></i><i style="width:${oo.nao_informado/tot*100}%;background:#3b4f72"></i></div><span class="kmt">${oo.coleta?`buscamos ${oo.coleta}`:''}${oo.coleta&&oo.entrega?' · ':''}${oo.entrega?`entregou ${oo.entrega}`:''}</span></td>
+   <td class="num hm">${R(f.valor)}</td><td class="num hm">${N(f.materiais_total)}</td><td class="num">${ab?'▲':'▼'}</td></tr>
+   ${ab?`<tr class="cf-det"><td colspan="9"><div class="cf-cols"><div><h4>Material recebido (somado no período)</h4><table><tr><th>Material</th><th class="num">Quantidade</th><th class="num">Vezes</th><th>Datas</th></tr>${f.materiais.map(m=>`<tr><td>${H(m.descricao)}</td><td class="num">${Q(m.quantidade)} ${H(m.unidade)}</td><td class="num"><b>${m.vezes}</b></td><td><small>${m.datas.map(D).join(', ')}</small></td></tr>`).join('')}${f.materiais_total>f.materiais.length?`<tr><td colspan="4" class="note">+ ${f.materiais_total-f.materiais.length} material(is) — veja o Excel detalhado</td></tr>`:''}</table></div>
+   <div><h4>Dia a dia</h4><table><tr><th>Dia</th><th>PCs</th><th>Origem</th></tr>${f.dias_lista.map(x=>`<tr><td>${DSEM(x.data)}</td><td>${x.pcs.map(n=>'PC '+n).join(', ')}</td><td><small>${{coleta:'buscamos',entrega:'entregou',nao_informado:'—'}[x.origem]}</small></td></tr>`).join('')}</table></div></div></td></tr>`:''}`;}).join('')||'<tr><td colspan="9" class="empty">Nenhum fornecedor encontrado.</td></tr>'}</table></div>`;
+  document.querySelectorAll('#recVis button').forEach(b=>b.onclick=()=>{cf.vis=b.dataset.v;recRender();});
+  document.querySelectorAll('#paneRec .cf-row').forEach(r=>r.onclick=()=>{cf.rAberto[r.dataset.k]=!cf.rAberto[r.dataset.k];recRender();});
+  const bi=$('#recBusca');bi.oninput=()=>{cf.busca=bi.value;const pos=bi.selectionStart;recRender();const n=$('#recBusca');n.focus();n.setSelectionRange(pos,pos);};
+}
+/* ---------- Aba Economia ---------- */
+const eco={custoKm:'',custoH:''};try{Object.assign(eco,JSON.parse(localStorage.getItem('rdEco')||'{}'));}catch(e){}
+const HORAS=(km,idas)=>(km||0)/40+idas*0.5;
+function ecoRender(){
+  const d=cf.d;if(!d)return;const t=d.totais,F=d.fornecedores,ck=parseFloat(String(eco.custoKm).replace(',','.'))||0,ch=parseFloat(String(eco.custoH).replace(',','.'))||0;
+  const dinheiro=(km,idas)=>ck||ch?R(km*ck+HORAS(km,idas)*ch):'—';
+  const kmB=t.km_a_menos,idB=t.idas_a_menos;
+  const cand=F.filter(f=>f.km!==null).sort((a,b)=>b.km-a.km);
+  const semLoc=F.filter(f=>f.km===null),longas=F.filter(f=>f.alerta_distancia),inc=d.inconsistencias||[];
+  $('#paneEco').innerHTML=`
+  <p class="sub" style="margin-top:0">O que teria sido economizado no período (${D(d.de)} a ${D(d.ate)}) em duas hipóteses. Km = ida e volta a partir da Matriz; é um <b>mínimo</b> quando há fornecedor sem localização.</p>
+  <div class="filt" style="margin:0 0 12px"><label class="inp">Custo por km (R$)<input id="ecoKm" inputmode="decimal" value="${H(eco.custoKm)}" placeholder="0,00"></label><label class="inp">Hora do motorista (R$)<input id="ecoH" inputmode="decimal" value="${H(eco.custoH)}" placeholder="0,00"></label><span class="kmt">Preencha para ver em reais. Tempo estimado: 40 km/h + 30 min por parada.</span></div>
+  <div class="sc">
+    <div><h4>① Se TODOS os fornecedores entregassem</h4><div class="big">${N(t.idas)} idas</div><p><b>${N(Math.round(t.km))} km</b> · ≈ ${N(Math.round(HORAS(t.km,t.idas)))} h de motorista${ck||ch?` · <b>${dinheiro(t.km,t.idas)}</b>`:''}</p><p>Seriam ${N(t.pcs)} PCs recebidos sem sair da Matriz.</p></div>
+    <div><h4>② Se agrupássemos: 1 ida por fornecedor por semana</h4><div class="big">${N(idB)} idas a menos</div><p><b>≈ ${N(kmB)} km</b> · ${N(Math.round(HORAS(kmB,idB)))} h${ck||ch?` · <b>${dinheiro(kmB,idB)}</b>`:''}</p><p>${N(t.fornecedores_repetidos)} fornecedor(es) com mais de uma ida no período.</p></div>
+  </div>
+  ${inc.length?`<div class="alert bad"><b>${inc.length} coleta(s) desconsiderada(s)</b> — o recebimento foi marcado como “fornecedor entregou” mas há coleta registrada (não entram nos km): ${inc.map(x=>`PC ${x.pc} (${H(x.fornecedor)}, ${H(x.coleta)})`).join('; ')}. Corrija o cadastro de um dos dois.</div>`:''}
+  ${longas.length?`<div class="alert"><b>${longas.length} viagem(ns) muito longa(s)</b>: ${longas.map(f=>`${H(f.fornecedor)} (${H(f.cidade||'—')}, ${N(Math.round(f.km_por_ida))} km)`).join('; ')}. Se veio por transportadora, os km estão inflados — registre o km real na coleta ou marque “fornecedor entregou”.</div>`:''}
+  ${semLoc.length?`<div class="alert"><b>${semLoc.length} fornecedor(es) sem localização</b>: o km deles não entrou na conta. Use “📍 Localizar fornecedores” ou preencha o endereço numa coleta: ${semLoc.slice(0,12).map(f=>H(f.fornecedor)).join('; ')}${semLoc.length>12?'…':''}.</div>`:''}
+  <h3 style="margin:14px 0 6px;font-size:14px">Quem mais pesa nos km — candidatos a pedir entrega</h3>
+  <div class="scroll" style="max-height:none"><table><tr><th>Fornecedor</th><th>Cidade</th><th class="num">Idas</th><th class="num">Semanas</th><th class="num">Km (total)</th><th class="num">Km/ida</th><th class="num">② idas a menos</th><th class="num">② km a menos</th><th class="num">① horas</th></tr>
+  ${cand.map(f=>`<tr><td><b>${H(f.fornecedor)}</b>${f.alerta_distancia?' <span class="pill bad" title="'+H(f.alerta_distancia)+'">longa</span>':''}<br><span class="kmt">${H(f.km_tipo)}</span></td><td>${H(f.cidade||'—')}</td><td class="num">${N(f.idas)}</td><td class="num">${N(f.semanas)}</td><td class="num"><b>${N(Math.round(f.km))}</b></td><td class="num">${N(Math.round(f.km_por_ida||0))}</td><td class="num">${f.sugestao?N(f.sugestao.idas_a_menos):'—'}</td><td class="num">${f.sugestao&&f.sugestao.km_a_menos!==null?N(f.sugestao.km_a_menos):'—'}</td><td class="num">${N(Math.round(HORAS(f.km,f.idas)))} h</td></tr>`).join('')||'<tr><td colspan="9" class="empty">Nenhum fornecedor com km calculado no período.</td></tr>'}</table></div>
+  <p class="note">① assume que o fornecedor passa a entregar toda a compra (some toda ida). ② assume que as compras do mesmo fornecedor na mesma semana poderiam vir numa única ida (a ida de menor km fica; o rateio do km do dia entre fornecedores é proporcional à distância de cada um). Não inclui custo de frete que o fornecedor possa cobrar.</p>`;
+  $('#ecoKm').onchange=$('#ecoH').onchange=()=>{eco.custoKm=$('#ecoKm').value;eco.custoH=$('#ecoH').value;try{localStorage.setItem('rdEco',JSON.stringify(eco));}catch(e){}ecoRender();};
 }
 function cdRender(){
   const d=cf.d,M=d.meses||[],Dd=d.dias_resumo||[];
@@ -148,16 +264,16 @@ function cdRender(){
   const tk=M.reduce((a,x)=>a+x.km,0);
   $('#cdBox').innerHTML=`<h3 style="margin:6px 0 4px">Km por mês · coletas e fornecedores por dia</h3>
   <div class="scroll" style="max-height:none"><table><tr><th>Mês</th><th class="num">Dias com coleta</th><th class="num">Coletas</th><th class="num">Coletas/dia</th><th class="num">Fornecedores/dia</th><th class="num">Km no mês</th><th class="num">Km/dia</th></tr>
-  ${M.map(x=>`<tr><td><b>${MN(x.mes)}</b></td><td class="num">${N(x.dias)}</td><td class="num">${N(x.coletas)}</td><td class="num">${N(x.coletas_dia)}</td><td class="num">${N(x.fornecedores_dia)}</td><td class="num"><b>${N(Math.round(x.km))} km</b>${x.dias_sem_km?`<br><span class="kmt">${x.dias_sem_km} dia(s) sem endereço</span>`:''}</td><td class="num">${x.km_medio_dia!==null?N(Math.round(x.km_medio_dia))+' km':'—'}</td></tr>`).join('')}
+  ${M.map(x=>`<tr><td><b>${MN(x.mes)}</b></td><td class="num">${N(x.dias)}</td><td class="num">${N(x.coletas)}</td><td class="num">${N(x.coletas_dia)}</td><td class="num">${N(x.fornecedores_dia)}</td><td class="num"><b>${x.dias_km_parcial||x.dias_sem_km?'≥ ':''}${N(Math.round(x.km))} km</b>${x.dias_km_parcial?`<br><span class="kmt">${x.dias_km_parcial} dia(s) com fornecedor sem localização</span>`:''}${x.dias_sem_km?`<br><span class="kmt">${x.dias_sem_km} dia(s) sem endereço</span>`:''}</td><td class="num">${x.km_medio_dia!==null?N(Math.round(x.km_medio_dia))+' km':'—'}</td></tr>`).join('')}
   <tr><td><b>Total</b></td><td class="num">${N(Dd.length)}</td><td class="num">${N(M.reduce((a,x)=>a+x.coletas,0))}</td><td></td><td></td><td class="num"><b>${N(Math.round(tk))} km</b></td><td></td></tr></table></div>
   <details style="margin-top:8px"><summary style="cursor:pointer">Ver dia a dia (${Dd.length} dias)</summary><div class="scroll" style="max-height:340px"><table><tr><th>Dia</th><th class="num">Coletas</th><th class="num">Fornecedores</th><th class="num">Km rodados</th></tr>
-  ${Dd.map(x=>`<tr><td>${D(x.data)}</td><td class="num">${N(x.coletas)}</td><td class="num">${N(x.fornecedores)}</td><td class="num">${x.km!==null?N(Math.round(x.km))+' km':'—'} <span class="kmt">${x.km_tipo}</span></td></tr>`).join('')}</table></div></details>`;
+  ${Dd.map(x=>`<tr><td>${D(x.data)}</td><td class="num">${N(x.coletas)}</td><td class="num">${N(x.fornecedores)}</td><td class="num">${x.km!==null?(x.fornecedores_sem_local?'≥ ':'')+N(Math.round(x.km))+' km':'—'} <span class="kmt">${x.km_tipo}${x.fornecedores_sem_local?` · ${x.fornecedores_sem_local} sem localização`:''}</span></td></tr>`).join('')}</table></div></details>`;
 }
 function cfRender(){
   const d=cf.d,t=d.totais;
   $('#cfSub').textContent=`De ${D(d.de)} a ${D(d.ate)} · km = ida e volta a partir de ${d.origem} (estimado pela distância × ${d.fator_estrada.toLocaleString('pt-BR')}, ou o km real informado na coleta) · data da coleta = dia útil anterior ao recebimento pelo conferente (não usa a data em que o PC foi criado)`;
-  $('#cfKpis').innerHTML=[['Fornecedores',N(t.fornecedores),'com coleta no período'],['Idas',N(t.idas),'dias × fornecedor visitado'],['Compras coletadas',N(t.pcs),'PCs'],['Km rodados',N(Math.round(t.km))+' km',t.sem_endereco?`${t.sem_endereco} fornecedor(es) sem endereço`:'todos com endereço'],
-    ['Valor coletado',R(t.valor),'soma das NFs'],['Economia possível',t.idas_a_menos?`${N(t.idas_a_menos)} idas`:'—',t.km_a_menos?`≈ ${N(t.km_a_menos)} km a menos juntando compras`:'sem recorrência relevante']]
+  $('#cfKpis').innerHTML=[['Fornecedores',N(t.fornecedores),'com coleta no período'],['Idas',N(t.idas),'dias × fornecedor visitado'],['Compras coletadas',N(t.pcs),'PCs'],['Km rodados',(t.sem_endereco?'≥ ':'')+N(Math.round(t.km))+' km',t.sem_endereco?`${t.sem_endereco} fornecedor(es) sem localização (km é um mínimo)`:(t.km_estimado_cidade?`${t.km_estimado_cidade} estimados pela cidade`:'todos localizados')],
+    ['Valor coletado',R(t.valor),'soma das NFs'],['Economia possível',t.idas_a_menos?`${N(t.idas_a_menos)} idas`:'—',t.km_a_menos?`≈ ${N(t.km_a_menos)} km a menos (1 ida por semana) — veja a aba Economia`:'sem fornecedor repetido na semana']]
     .map(([a,b,c],i)=>`<div class="kpi ${i===5&&t.idas_a_menos?'warn':''}"><span>${a}</span><strong>${b}</strong><small>${c}</small></div>`).join('');
   cdRender();
   const F=d.fornecedores;
@@ -171,7 +287,7 @@ function cfRender(){
 function cfDet(f){
   const s=f.sugestao;
   return `<tr class="cf-det"><td colspan="8">
-    ${s?`<div class="sug">💡 ${N(f.idas)} idas em ${cf.dias} dias com ${N(s.insumos_recorrentes)} insumo(s) comprado(s) 3 vezes ou mais. Concentrando as compras em 1 ida por mês seriam <b>${N(s.idas_possiveis)} ida(s)</b> — <b>${N(s.idas_a_menos)} a menos</b>${s.km_a_menos!==null?` (≈ ${N(s.km_a_menos)} km)`:''}.</div>`:''}
+    ${s?`<div class="sug">💡 ${N(f.idas)} idas no período ${s.insumos_recorrentes?`com ${N(s.insumos_recorrentes)} insumo(s) comprado(s) 3 vezes ou mais`:'com mais de uma ida na mesma semana'}. Concentrando as compras em 1 ida por semana seriam <b>${N(s.idas_possiveis)} ida(s)</b> — <b>${N(s.idas_a_menos)} a menos</b>${s.km_a_menos!==null?` (≈ ${N(s.km_a_menos)} km)`:''}.</div>`:''}
     ${f.km===null?'<p class="note">Sem endereço localizado para este fornecedor: cadastre o endereço numa coleta dele (módulo Coletas) para calcular os km.</p>':''}
     <div class="cf-cols"><div><h4>Insumos coletados (somados)</h4><table><tr><th>Insumo</th><th class="num">Quantidade</th><th class="num">Compras</th><th class="num">A cada</th><th>Datas</th></tr>
       ${f.insumos.map(x=>`<tr><td>${H(x.descricao)}${x.recorrente?'<span class="rec">recorrente</span>':''}<br><small style="color:#6f8199">${H(x.sku)}</small></td><td class="num">${Q(x.quantidade)} ${H(x.unidade)}</td><td class="num"><b>${x.compras}</b></td><td class="num">${x.intervalo_medio_dias?x.intervalo_medio_dias.toLocaleString('pt-BR')+' d':'—'}</td><td><small>${x.datas.map(D).join(', ')}</small></td></tr>`).join('')}
@@ -231,6 +347,14 @@ $('#btnXlsx').onclick=async()=>{
     add('Ranking fornecedores',(d.fornecedores||[]).map(f=>({Classe:f.classe,Fornecedor:f.fornecedor,Nota:f.nota,'PCs recebidos':f.finalizados,'% no prazo':f.pct_prazo,'% completos':f.pct_completo,'Coletas atrasadas':f.coletas_atrasadas,'Devoluções (R$)':f.devolucoes})));
     add('Coletas por fornecedor',c.fornecedores.map(f=>({Fornecedor:f.fornecedor,CNPJ:f.cnpj,Idas:f.idas,'Compras (PCs)':f.pcs,Km:f.km,'Tipo km':f.km_tipo,'Valor (R$)':f.valor,'Insumos diferentes':f.insumos_total,'Última ida':f.ultima_ida,'Idas a menos (sugestão)':f.sugestao?f.sugestao.idas_a_menos:'','Km a menos (sugestão)':f.sugestao?f.sugestao.km_a_menos:''})));
     const ins=[];c.fornecedores.forEach(f=>f.insumos.forEach(x=>ins.push({Fornecedor:f.fornecedor,Insumo:x.descricao,SKU:x.sku,Quantidade:x.quantidade,Unidade:x.unidade,'Vezes comprado':x.compras,'Intervalo médio (dias)':x.intervalo_medio_dias??'',Recorrente:x.recorrente?'sim':'',Datas:x.datas.map(D).join(', ')})));
+    const rr=cf.r||{fornecedores:[],dias:[],semanas:[],meses:[],totais:{}};
+    add('Receb. por fornecedor',rr.fornecedores.map(f=>({Fornecedor:f.fornecedor,CNPJ:f.cnpj,PCs:f.pcs,Recebimentos:f.recebimentos,'Dias distintos':f.dias,Semanas:f.semanas,'Máx. PCs no mesmo dia':f.max_no_dia,'Buscamos (PCs)':f.origem.coleta,'Fornecedor entregou (PCs)':f.origem.entrega,'Sem origem':f.origem.nao_informado,'Valor NF (R$)':f.valor,'Materiais diferentes':f.materiais_total})));
+    add('Receb. por dia',rr.dias.map(x=>({Dia:D(x.data),PCs:x.pcs,Fornecedores:x.fornecedores})));
+    add('Receb. por semana',rr.semanas.map(x=>({'Semana (segunda)':D(x.semana),Dias:x.dias,PCs:x.pcs,Fornecedores:x.fornecedores})));
+    add('Receb. por mês',rr.meses.map(x=>({Mês:x.mes,Dias:x.dias,PCs:x.pcs,Fornecedores:x.fornecedores})));
+    const mat=[];rr.fornecedores.forEach(f=>f.materiais.forEach(m=>mat.push({Fornecedor:f.fornecedor,Material:m.descricao,Quantidade:m.quantidade,Unidade:m.unidade,'Vezes recebido':m.vezes,Datas:m.datas.map(D).join(', ')})));
+    add('Receb. - materiais',mat);
+    add('Economia (km e idas)',c.fornecedores.map(f=>({Fornecedor:f.fornecedor,Cidade:f.cidade,Idas:f.idas,Semanas:f.semanas,'Km total':f.km,'Tipo km':f.km_tipo,'Km por ida':f.km_por_ida,'Idas a menos se agrupar (1/semana)':f.sugestao?f.sugestao.idas_a_menos:0,'Km a menos se agrupar':f.sugestao?f.sugestao.km_a_menos:'',Alerta:f.alerta_distancia})));
     add('Coletas - insumos',ins);
     const cp=[];c.fornecedores.forEach(f=>f.compras.forEach(x=>cp.push({Fornecedor:f.fornecedor,Data:D(x.data),PC:x.pc||'',NF:x.nf||'','Valor (R$)':x.valor||'',Observação:x.obs||''})));
     add('Coletas - compras',cp);

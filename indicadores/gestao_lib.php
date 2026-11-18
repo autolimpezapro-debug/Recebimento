@@ -17,6 +17,7 @@ require_once $ROOTG . '/locacoes_lib.php';
 require_once $ROOTG . '/ferramentas_lib.php';
 require_once $ROOTG . '/rd_obras.php';
 require_once $ROOTG . '/coletas_lib.php';
+require_once __DIR__ . '/gestao_forn_lib.php';
 
 function kg_chave(string $s): string {
     $s = mb_strtoupper(trim($s));
@@ -150,10 +151,11 @@ function kpi_gestao(string $mes, string $periodo): array {
     foreach ((array)($col['coletas'] ?? []) as $c) if ((int)($c['pc'] ?? 0) && ($c['status'] ?? '') !== 'CANCELADA') $colPorPc[(int)$c['pc']] = $c;
     foreach ($pedidos as $p) {
         $pc = (int)($p['pc'] ?? 0);
-        $f = mb_strtoupper(trim((string)($p['fornecedor'] ?? ''))) ?: 'NÃO INFORMADO';
-        $criado = substr((string)($p['importacao_em'] ?? $p['novo_pedido_em'] ?? ''), 0, 10);
+        $f = kg_forn_nome((string)($p['fornecedor'] ?? ''), (string)($p['cnpjEmitente'] ?? ''));   // v3.52.0: une grafias do mesmo fornecedor
+        // v3.52.0: PCs antigos sem data de importação usavam '' e sumiam da contagem do mês; cai para a data do pedido
+        $criado = substr((string)(($p['importacao_em'] ?? null) ?: ($p['novo_pedido_em'] ?? null) ?: ($p['data'] ?? '')), 0, 10);
         $fin = substr((string)($p['primeira_confirmacao_em'] ?? $p['entregas'][0]['confirmado_em'] ?? $p['recebimento_finalizado_em'] ?? ''), 0, 10);
-        $forn[$f] = $forn[$f] ?? ['fornecedor' => $f, 'pcs' => 0, 'finalizados' => 0, 'no_prazo' => 0, 'completos' => 0, 'divergencias' => 0, 'coletas_atrasadas' => 0, 'devolucoes' => 0.0, 'urgentes' => 0];
+        $forn[$f] = $forn[$f] ?? ['fornecedor' => $f, 'pcs' => 0, 'finalizados' => 0, 'no_prazo' => 0, 'prazo_base' => 0, 'completos' => 0, 'divergencias' => 0, 'coletas_atrasadas' => 0, 'devolucoes' => 0.0, 'urgentes' => 0];
         if (kg_mes_ok($criado, $mes, $periodo)) {
             $nPc++; $forn[$f]['pcs']++;
             $s = trim((string)($p['solicitante'] ?? '')) ?: 'Não informado';
@@ -183,7 +185,8 @@ function kpi_gestao(string $mes, string $periodo): array {
             } else $forn[$f]['completos']++;
             $c = $colPorPc[$pc] ?? null;
             $due = $c && !empty($c['agendada_data']) ? $c['agendada_data'] : null;
-            if (!$due || $fin <= $due) $forn[$f]['no_prazo']++;
+            // v3.52.0: só mede prazo quando existe data combinada (coleta agendada). Antes, sem data, contava como "no prazo" e a nota virava 100.
+            if ($due) { $forn[$f]['prazo_base']++; if ($fin <= $due) $forn[$f]['no_prazo']++; }
         }
         $c = $colPorPc[$pc] ?? null;
         if ($c && !empty($c['agendada_data']) && kg_mes_ok($c['agendada_data'], $mes, $periodo)) {
@@ -200,10 +203,11 @@ function kpi_gestao(string $mes, string $periodo): array {
     $rank = [];
     foreach ($forn as $r) {
         if ($r['finalizados'] < 1) continue;
-        $prazo = $r['no_prazo'] / $r['finalizados'] * 100; $compl = $r['completos'] / $r['finalizados'] * 100;
+        $prazo = $r['prazo_base'] > 0 ? $r['no_prazo'] / $r['prazo_base'] * 100 : null; $compl = $r['completos'] / $r['finalizados'] * 100;
         $pen = min(20, $r['coletas_atrasadas'] * 5) + ($r['devolucoes'] > 0 ? min(15, 5 + $r['devolucoes'] / 1000) : 0);
-        $nota = max(0, round(0.5 * $prazo + 0.5 * $compl - $pen, 1));
-        $rank[] = $r + ['pct_prazo' => round($prazo, 1), 'pct_completo' => round($compl, 1), 'nota' => $nota,
+        $base = $prazo === null ? $compl : 0.5 * $prazo + 0.5 * $compl;
+        $nota = max(0, round($base - $pen, 1));
+        $rank[] = $r + ['pct_prazo' => $prazo === null ? null : round($prazo, 1), 'pct_completo' => round($compl, 1), 'nota' => $nota,
             'classe' => $nota >= 90 ? 'A' : ($nota >= 75 ? 'B' : ($nota >= 60 ? 'C' : 'D'))];
     }
     usort($rank, fn($a, $b) => [$b['nota'], $b['finalizados']] <=> [$a['nota'], $a['finalizados']]);
@@ -280,53 +284,63 @@ function kpi_coletas_fornecedor(int $dias, ?string $de = null, ?string $ate = nu
     // v3.20.2: origem SEMPRE a Drilling do Brasil (São José da Lapa), independente da configuração do mapa
     $origem = defined('COL_ORIGEM_PADRAO') ? COL_ORIGEM_PADRAO : ['lat' => -19.6986, 'lng' => -43.9586, 'nome' => 'Drilling do Brasil — Depósito (São José da Lapa)'];
 
-    // coordenadas conhecidas por CNPJ / nome (de qualquer coleta)
-    $geo = [];
-    foreach ((array)($col['coletas'] ?? []) as $c) if (isset($c['lat'], $c['lng']) && $c['lat'] !== null) {
-        $geo[kg_forn_chave((string)($c['cnpj'] ?? ''), (string)$c['fornecedor'])] = ['lat' => $c['lat'], 'lng' => $c['lng']];
-        $geo['N' . kg_chave((string)$c['fornecedor'])] = ['lat' => $c['lat'], 'lng' => $c['lng']];
+    // coordenadas conhecidas (mapa) e cidade conhecida de cada fornecedor — chave única do fornecedor (v3.52.0)
+    $geo = []; $cidade = [];
+    foreach ((array)($col['coletas'] ?? []) as $c) {
+        [$gk] = kg_forn_resolve((string)($c['fornecedor'] ?? ''), (string)($c['cnpj'] ?? ''));
+        if (isset($c['lat'], $c['lng']) && $c['lat'] !== null) $geo[$gk] = ['lat' => $c['lat'], 'lng' => $c['lng']];
+        if (!empty($c['cidade'])) $cidade[$gk] = [(string)$c['cidade'], (string)($c['uf'] ?? '')];
     }
-    foreach ((array)($col['fornecedores'] ?? []) as $cn => $x) if (!empty($x['lat'])) $geo['C' . $cn] ??= ['lat' => $x['lat'], 'lng' => $x['lng']];
+    foreach ((array)($col['fornecedores'] ?? []) as $cn => $x) {
+        [$gk] = kg_forn_resolve((string)($x['nome'] ?? ''), (string)$cn);
+        if (!empty($x['lat'])) $geo[$gk] ??= ['lat' => $x['lat'], 'lng' => $x['lng']];
+        if (!empty($x['cidade'])) $cidade[$gk] ??= [(string)$x['cidade'], (string)($x['uf'] ?? '')];
+    }
+    foreach ((array)($col['cnpjcache'] ?? []) as $cn => $x) if (is_array($x) && !empty($x['cidade'])) {
+        [$gk] = kg_forn_resolve('', (string)$cn);
+        $cidade[$gk] ??= [(string)$x['cidade'], (string)($x['uf'] ?? '')];
+    }
     // eventos de coleta realizados no período
-    $ev = []; $comRegistro = [];
+    $ev = []; $comRegistro = []; $incons = []; $vistoPc = [];
     foreach ((array)($col['coletas'] ?? []) as $c) {
         if (!in_array($c['status'] ?? '', ['COLETADO', 'TRANSPORTE', 'CHEGOU'], true)) continue;
         $pc = (int)($c['pc'] ?? 0); if ($pc) $comRegistro[$pc] = true;
+        $p = $pc ? ($pedidos[$pc] ?? null) : null;
+        // v3.52.0: o conferente marcou "o fornecedor entregou" — não houve ida nossa; a coleta registrada é inconsistente (ex.: PC 5027)
+        if ($p && ($p['origem_entrega'] ?? '') === 'ENTREGA_FORNECEDOR') { $incons[] = ['pc' => $pc, 'coleta' => $c['id'], 'fornecedor' => (string)$c['fornecedor'], 'motivo' => 'Recebimento marcado como entrega do fornecedor, mas existe coleta registrada']; continue; }
+        if ($pc && isset($vistoPc[$pc])) continue;   // v3.52.0: coleta duplicada do mesmo PC não conta duas vezes
         $quando = $c['coletado_em'] ?? null;
         if (!$quando) foreach ((array)($c['historico'] ?? []) as $h) if (($h['acao'] ?? '') === 'status' && in_array($h['para'] ?? '', ['Coletado', 'Em transporte', 'Chegou ao almoxarifado'], true)) { $quando = $h['em']; break; }
-        [$quando, $fonteData] = kg_data_coleta($pc ? ($pedidos[$pc] ?? null) : null, $quando ?: ($c['atualizado_em'] ?? null));
+        [$quando, $fonteData] = kg_data_coleta($p, $quando ?: ($c['atualizado_em'] ?? null));
         if ($quando < $de || $quando > $ate) continue;
+        if ($pc) $vistoPc[$pc] = true;
         $ev[] = ['data' => $quando, 'pc' => $pc, 'fornecedor' => (string)$c['fornecedor'], 'cnpj' => (string)($c['cnpj'] ?? ''), 'coleta' => $c['id'],
             'km_real' => isset($c['km_real']) ? (float)$c['km_real'] : null, 'geo' => (isset($c['lat']) && $c['lat'] !== null) ? ['lat' => $c['lat'], 'lng' => $c['lng']] : null, 'obs' => (string)($c['observacao'] ?? '')];
     }
     // PCs marcados "coleta Drilling" sem registro no módulo Coletas
     foreach ($pedidos as $pc => $p) {
-        if (($p['origem_entrega'] ?? '') !== 'COLETA_DRILLING' || isset($comRegistro[$pc])) continue;
+        if (($p['origem_entrega'] ?? '') !== 'COLETA_DRILLING' || isset($comRegistro[$pc]) || isset($vistoPc[$pc])) continue;
         [$quando, $fonteData] = kg_data_coleta($p, null);
         if ($quando === '' || $quando < $de || $quando > $ate) continue;
         $ev[] = ['data' => $quando, 'pc' => $pc, 'fornecedor' => (string)$p['fornecedor'], 'cnpj' => (string)($p['cnpjEmitente'] ?? ''), 'coleta' => null, 'km_real' => null, 'geo' => null, 'obs' => ''];
     }
-    // agrupa por fornecedor (CNPJ; sem CNPJ, pelo nome — usando o CNPJ já visto para o mesmo nome)
-    $cnpjPorNome = [];
-    foreach ($ev as $i => $e) {
-        $p = $pedidos[$e['pc']] ?? null;
-        if ($e['cnpj'] === '' && $p) $ev[$i]['cnpj'] = $e['cnpj'] = (string)($p['cnpjEmitente'] ?? '');
-        $c = preg_replace('/\D/', '', $e['cnpj']);
-        if (strlen($c) === 14) $cnpjPorNome[kg_chave($e['fornecedor'])] = $c;
-    }
-    foreach ((array)($col['coletas'] ?? []) as $c) { $cc = preg_replace('/\D/', '', (string)($c['cnpj'] ?? '')); if (strlen($cc) === 14) $cnpjPorNome[kg_chave((string)$c['fornecedor'])] ??= $cc; }
+    // agrupa por fornecedor (unificando grafias)
     $F = [];
     foreach ($ev as $e) {
-        $pc = $e['pc'];
-        if (strlen(preg_replace('/\D/', '', $e['cnpj'])) !== 14) $e['cnpj'] = $cnpjPorNome[kg_chave($e['fornecedor'])] ?? '';
-        $k = kg_forn_chave($e['cnpj'], $e['fornecedor']);
-        if (!$e['geo']) $e['geo'] = $geo[$k] ?? $geo['N' . kg_chave($e['fornecedor'])] ?? null;
-        $F[$k] = $F[$k] ?? ['chave' => $k, 'fornecedor' => $e['fornecedor'], 'cnpj' => preg_replace('/\D/', '', $e['cnpj']), 'geo' => $e['geo'], 'eventos' => [], 'pcs' => [], 'dias' => []];
+        $pc = $e['pc']; $p = $pedidos[$pc] ?? null;
+        $cnpjBruto = $e['cnpj'] !== '' ? $e['cnpj'] : (string)($p['cnpjEmitente'] ?? '');
+        [$k, $nome, $cn] = kg_forn_resolve($e['fornecedor'], $cnpjBruto);
+        $aprox = false;
+        if (!$e['geo']) $e['geo'] = $geo[$k] ?? null;
+        $F[$k] = $F[$k] ?? ['chave' => $k, 'fornecedor' => $nome, 'cnpj' => $cn, 'geo' => $e['geo'], 'aprox' => false, 'cidade' => $cidade[$k] ?? null, 'eventos' => [], 'pcs' => [], 'dias' => []];
         if (!$F[$k]['geo'] && $e['geo']) $F[$k]['geo'] = $e['geo'];
         $F[$k]['eventos'][] = $e;
         if ($pc) $F[$k]['pcs'][$pc] = $e['data'];
         $F[$k]['dias'][$e['data']][] = $e;
     }
+    // v3.52.0: sem coordenadas no mapa, estima pelo centro da cidade (cadastro/CNPJ) — marcado como "estimado pela cidade"
+    foreach ($F as $k => &$f) if (!$f['geo'] && $f['cidade']) { $g = kg_cidade_geo($f['cidade'][0], $f['cidade'][1]); if ($g) { $f['geo'] = $g; $f['aprox'] = true; } }
+    unset($f);
     // km por dia: rota do dia (Matriz → fornecedores → Matriz). Km real informado vale para a viagem do dia.
     $porDia = [];
     foreach ($F as $k => $f) foreach ($f['dias'] as $d => $_) $porDia[$d][] = $k;
@@ -346,18 +360,21 @@ function kpi_coletas_fornecedor(int $dias, ?string $de = null, ?string $ate = nu
             $rota = ($rota + col_distancia_km($atual, $origem)) * KG_FATOR_ESTRADA;
         }
         $total = $real ?? $rota;
-        $nCol = 0; foreach ($chaves as $k) $nCol += count($F[$k]['dias'][$d]);   // v3.43.0: resumo do dia
+        $nCol = 0; foreach ($chaves as $k) $nCol += count($F[$k]['dias'][$d]);
+        $semLoc = count($chaves) - count($pts);   // fornecedores do dia sem como estimar → o km do dia é MÍNIMO
+        $aproxDia = (bool)array_filter($pts, fn($k) => $F[$k]['aprox']);
         $diaRes[$d] = ['data' => $d, 'coletas' => $nCol, 'fornecedores' => count($chaves), 'km' => $total !== null ? round($total, 1) : null,
-            'km_tipo' => $total === null ? 'sem endereço' : ($real !== null ? 'real' : 'estimado')];
+            'km_tipo' => $total === null ? 'sem endereço' : ($real !== null ? 'real' : ($aproxDia ? 'estimado pela cidade' : 'estimado')),
+            'fornecedores_sem_local' => $real !== null ? 0 : $semLoc];
         $soma = array_sum(array_filter($ida, fn($v) => $v !== null));
         foreach ($chaves as $k) {
             if ($total === null || $ida[$k] === null) { if ($real !== null && count($chaves) === 1) { $kmF[$k][$d] = $real; $kmTipo[$k]['real'] = true; } continue; }
             $kmF[$k][$d] = $soma > 0 ? $total * $ida[$k] / $soma : $total / count($chaves);
-            $kmTipo[$k][$real !== null ? 'real' : 'estimado'] = true;
+            $kmTipo[$k][$real !== null ? 'real' : ($F[$k]['aprox'] ? 'cidade' : 'estimado')] = true;
         }
     }
     // monta saída
-    $out = []; $totIdas = 0; $totPcs = 0; $totKm = 0.0; $totValor = 0.0;
+    $out = []; $totIdas = 0; $totPcs = 0; $totKm = 0.0; $totValor = 0.0; $totSem = 0;
     foreach ($F as $k => $f) {
         $idas = count($f['dias']); $pcs = array_keys($f['pcs']);
         $valor = 0.0; $ins = []; $lista = [];
@@ -374,10 +391,8 @@ function kpi_coletas_fornecedor(int $dias, ?string $de = null, ?string $ate = nu
                 $ins[$ch]['quantidade'] += $q; $ins[$ch]['pcs'][$pc] = true; $ins[$ch]['compras'] = count($ins[$ch]['pcs']); $ins[$ch]['datas'][] = $data;
             }
         }
-        // coletas sem PC: usa a observação
         foreach ($f['eventos'] as $e) if (!$e['pc'] && $e['obs'] !== '') $lista[] = ['pc' => null, 'data' => $e['data'], 'valor' => 0, 'nf' => '', 'itens' => 0, 'obs' => mb_substr($e['obs'], 0, 200)];
         usort($lista, fn($a, $b) => strcmp($b['data'], $a['data']));
-        // v3.21.1: cada ida (dia) com os PCs, os insumos coletados naquele dia e os km daquela ida
         $idasL = [];
         foreach ($f['dias'] as $dia => $evs) {
             $its = []; $pcsDia = []; $vDia = 0.0;
@@ -406,26 +421,37 @@ function kpi_coletas_fornecedor(int $dias, ?string $de = null, ?string $ate = nu
         usort($insL, fn($a, $b) => [$b['compras'], $b['quantidade']] <=> [$a['compras'], $a['quantidade']]);
         $km = isset($kmF[$k]) ? array_sum($kmF[$k]) : null;
         $kmIda = $km !== null && $idas ? $km / $idas : null;
-        // sugestão: juntar compras — 1 ida a cada 30 dias seria suficiente para os recorrentes?
-        $periodoDias = max(1, (strtotime($ate) - strtotime($de)) / 86400);
-        $idasIdeais = max(1, (int)ceil($periodoDias / 30));
+        // v3.52.0 — ECONOMIA. (1) se o fornecedor ENTREGASSE: some toda ida e todo km. (2) se AGRUPÁSSEMOS: no máximo 1 ida por semana.
+        $semanas = []; foreach (array_keys($f['dias']) as $d) $semanas[kg_semana($d)] = true;
+        $idasAgrup = count($semanas);
         $sug = null;
-        $rec = count(array_filter($insL, fn($i) => $i['recorrente']));
-        if ($idas > $idasIdeais && $rec) $sug = ['idas_possiveis' => $idasIdeais, 'idas_a_menos' => $idas - $idasIdeais,
-            'km_a_menos' => $kmIda !== null ? round(($idas - $idasIdeais) * $kmIda) : null, 'insumos_recorrentes' => $rec];
+        if ($idas > $idasAgrup) $sug = ['idas_possiveis' => $idasAgrup, 'idas_a_menos' => $idas - $idasAgrup,
+            'km_a_menos' => $kmIda !== null ? round(($idas - $idasAgrup) * $kmIda) : null,
+            'insumos_recorrentes' => count(array_filter($insL, fn($i) => $i['recorrente']))];
+        $tipo = isset($kmTipo[$k]['real']) ? ((isset($kmTipo[$k]['estimado']) || isset($kmTipo[$k]['cidade'])) ? 'misto' : 'real')
+            : (isset($kmTipo[$k]['cidade']) ? 'estimado pela cidade' : ($km !== null ? 'estimado' : 'sem endereço'));
         $out[] = ['fornecedor' => $f['fornecedor'], 'cnpj' => $f['cnpj'], 'idas' => $idas, 'pcs' => count($pcs), 'valor' => round($valor, 2),
-            'km' => $km !== null ? round($km, 1) : null, 'km_tipo' => isset($kmTipo[$k]['real']) ? (isset($kmTipo[$k]['estimado']) ? 'misto' : 'real') : ($km !== null ? 'estimado' : 'sem endereço'),
-            'km_por_ida' => $kmIda !== null ? round($kmIda, 1) : null, 'ultima_ida' => max(array_keys($f['dias'])),
-            'insumos' => array_slice($insL, 0, 80), 'idas_lista' => $idasL, 'insumos_total' => count($insL), 'compras' => $lista, 'sugestao' => $sug];
+            'km' => $km !== null ? round($km, 1) : null, 'km_tipo' => $tipo,
+            'km_por_ida' => $kmIda !== null ? round($kmIda, 1) : null, 'ultima_ida' => max(array_keys($f['dias'])), 'semanas' => $idasAgrup,
+            'alerta_distancia' => $kmIda !== null && $kmIda > 300 ? 'Ida e volta de ' . round($kmIda) . ' km: confirme se foi viagem nossa (pode ter vindo por transportadora e inflar o km).' : '',
+            'cidade' => $f['cidade'] ? trim($f['cidade'][0] . ($f['cidade'][1] ? '/' . $f['cidade'][1] : '')) : '',
+            'insumos' => array_slice($insL, 0, 80), 'idas_lista' => $idasL, 'insumos_total' => count($insL), 'compras' => $lista, 'sugestao' => $sug,
+            'economia_entrega' => ['idas' => $idas, 'km' => $km !== null ? round($km, 1) : null]];
         $totIdas += $idas; $totPcs += count($pcs); $totKm += $km ?? 0; $totValor += $valor;
     }
     usort($out, fn($a, $b) => [$b['idas'], $b['pcs']] <=> [$a['idas'], $a['pcs']]);
+    $res = kg_resumo_dias($diaRes);
     return ['de' => $de, 'ate' => $ate, 'fator_estrada' => KG_FATOR_ESTRADA, 'origem' => $origem['nome'] ?? 'Matriz',
         'totais' => ['fornecedores' => count($out), 'idas' => $totIdas, 'pcs' => $totPcs, 'km' => round($totKm, 1), 'valor' => round($totValor, 2),
             'sem_endereco' => count(array_filter($out, fn($f) => $f['km'] === null)),
+            'km_estimado_cidade' => count(array_filter($out, fn($f) => $f['km_tipo'] === 'estimado pela cidade')),
             'km_a_menos' => array_sum(array_map(fn($f) => (int)($f['sugestao']['km_a_menos'] ?? 0), $out)),
-            'idas_a_menos' => array_sum(array_map(fn($f) => (int)($f['sugestao']['idas_a_menos'] ?? 0), $out))],
-        'fornecedores' => $out, 'dias_resumo' => kg_resumo_dias($diaRes)['dias'], 'meses' => kg_resumo_dias($diaRes)['meses']];
+            'idas_a_menos' => array_sum(array_map(fn($f) => (int)($f['sugestao']['idas_a_menos'] ?? 0), $out)),
+            'entrega_idas' => $totIdas, 'entrega_km' => round($totKm, 1),
+            'fornecedores_repetidos' => count(array_filter($out, fn($f) => $f['idas'] > 1)),
+            'viagens_longas' => count(array_filter($out, fn($f) => $f['alerta_distancia'] !== ''))],
+        'inconsistencias' => $incons,
+        'fornecedores' => $out, 'dias_resumo' => $res['dias'], 'semanas' => $res['semanas'], 'meses' => $res['meses']];
 }
 
 /** v3.43.0: coletas, fornecedores e km por dia + totais por mês (km = rota do dia: depósito → fornecedores → depósito). */
@@ -433,12 +459,23 @@ function kg_resumo_dias(array $dia): array {
     krsort($dia); $m = [];
     foreach ($dia as $d => $x) {
         $k = substr($d, 0, 7);
-        $m[$k] = $m[$k] ?? ['mes' => $k, 'dias' => 0, 'coletas' => 0, 'fornecedores_idas' => 0, 'km' => 0.0, 'dias_sem_km' => 0];
+        $m[$k] = $m[$k] ?? ['mes' => $k, 'dias' => 0, 'coletas' => 0, 'fornecedores_idas' => 0, 'km' => 0.0, 'dias_sem_km' => 0, 'dias_km_parcial' => 0];
+        if (($x['fornecedores_sem_local'] ?? 0) > 0 && $x['km'] !== null) $m[$k]['dias_km_parcial']++;
         $m[$k]['dias']++; $m[$k]['coletas'] += $x['coletas']; $m[$k]['fornecedores_idas'] += $x['fornecedores'];
         if ($x['km'] === null) $m[$k]['dias_sem_km']++; else $m[$k]['km'] += $x['km'];
     }
+    $w = [];
+    foreach ($dia as $d => $x) {
+        $k = kg_semana($d);
+        $w[$k] = $w[$k] ?? ['semana' => $k, 'dias' => 0, 'coletas' => 0, 'fornecedores_idas' => 0, 'km' => 0.0, 'dias_sem_km' => 0, 'dias_km_parcial' => 0];
+        if (($x['fornecedores_sem_local'] ?? 0) > 0 && $x['km'] !== null) $w[$k]['dias_km_parcial']++;
+        $w[$k]['dias']++; $w[$k]['coletas'] += $x['coletas']; $w[$k]['fornecedores_idas'] += $x['fornecedores'];
+        if ($x['km'] === null) $w[$k]['dias_sem_km']++; else $w[$k]['km'] += $x['km'];
+    }
+    foreach ($w as &$r) $r['km'] = round($r['km'], 1);
+    unset($r);
     foreach ($m as &$r) { $r['km'] = round($r['km'], 1); $n = $r['dias'] - $r['dias_sem_km'];
         $r['km_medio_dia'] = $n > 0 ? round($r['km'] / $n, 1) : null; $r['coletas_dia'] = round($r['coletas'] / max(1, $r['dias']), 1); $r['fornecedores_dia'] = round($r['fornecedores_idas'] / max(1, $r['dias']), 1); }
     unset($r);
-    return ['dias' => array_values($dia), 'meses' => array_values($m)];
+    return ['dias' => array_values($dia), 'semanas' => array_values($w), 'meses' => array_values($m)];
 }

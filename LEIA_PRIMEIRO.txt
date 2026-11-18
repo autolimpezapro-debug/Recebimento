@@ -1,3 +1,17 @@
+v3.52.0 — Auditoria dos Indicadores de gestão + novo visual
+CORREÇÕES (achadas comparando os números com os dados reais do servidor):
+- FORNECEDORES DUPLICADOS: a mesma empresa aparecia como 2-3 fornecedores por grafia (ex.: "TRIÂNGULO PEÇAS", "TRIANGULO PECAS E FILTROS LTDA", "TRIÂNGULO PEÇAS E FILTROS"; "MPA" / "MPA HIDRÁULICA"). Agora são unidos pelo CNPJ ou pelo nome (sem LTDA/COMERCIO etc.; nome que é começo de outro só une quando há um único candidato).
+- KM: 37 de 38 fornecedores estavam "sem endereço" e o único km somado (1.952 km) era uma coleta de PC marcado "fornecedor entregou". Agora: (1) coleta registrada em PC marcado "entregou" é desconsiderada e listada como inconsistência (PC 5027 e 5053); (2) sem coordenadas, o km é estimado pelo CENTRO DA CIDADE do cadastro/CNPJ (marcado "estimado pela cidade"); (3) dia com fornecedor sem localização mostra "≥" (km mínimo); (4) viagem de ida e volta acima de 300 km recebe alerta (pode ter vindo por transportadora).
+- COLETA DUPLICADA do mesmo PC não conta duas vezes.
+- PCs NO PERÍODO: 15 PCs antigos sem data de importação ficavam fora (77 → 92 em novembro); agora cai para a data do pedido.
+- CAPITAL PARADO dava sempre R$ 0: a carga de inventário SAP contava como "movimento" dos 422 itens. Agora só entrada/saída real conta. Itens sem custo cadastrado entram com R$ 0 (aparecem na lista).
+- RANKING DE FORNECEDORES: sem data combinada contava como "no prazo", então todo mundo tirava 100. Agora o prazo só é medido quando há data combinada; sem ela a nota usa só "completo" e mostra "—".
+- Mês atual no filtro virava para o mês seguinte depois das 21h do último dia (usava UTC).
+NOVO — aba "Recebimentos" (Fornecedores): quantos PCs/recebimentos por fornecedor, em quantos dias diferentes, máximo de PCs no mesmo dia, quanto "fomos buscar" x "fornecedor entregou", material recebido (somado, com datas) e tabela por dia / semana (segunda a domingo) / mês. Busca por fornecedor ou material.
+NOVO — aba "Economia possível": (1) se todos entregassem: idas, km, horas; (2) se agrupássemos 1 ida por fornecedor por semana: idas e km a menos. Campos "custo por km" e "hora do motorista" mostram em R$. Lista de candidatos a pedir entrega, viagens longas, fornecedores sem localização.
+VISUAL: navegação por seções, KPIs com explicação de como são calculados (passe o mouse), abas, tabelas melhores no celular. Excel detalhado ganhou abas de recebimentos e economia. Indicadores "premium" (painel Diretoria) NÃO foram alterados.
+OBS: o km por cidade é aproximado. Para km exato, use "📍 Localizar fornecedores" (precisa de internet no servidor) ou informe o km real na coleta.
+
 v3.51.5 — Coletas: o mesmo pedido não pode ter duas coletas/rotas
 - Não dá mais para criar uma coleta para um PC que já tem coleta aberta, em rota, ou já coletada/em transporte/chegou. Única exceção: a coleta anterior já foi concluída E o pedido chegou PARCIAL (falta saldo) — aí uma nova coleta é permitida.
 - Ao iniciar uma rota, o sistema recusa o mesmo PC duas vezes na rota ou em duas rotas (mostra as duas coletas para cancelar a duplicada).

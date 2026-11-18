@@ -2163,7 +2163,8 @@ function est_dashboard_analise(array $db, $dias = 90) {
         $custo = (float)($itens[$c]['custo_medio'] ?? 0);
         $q = abs((float)($m['quantidade'] ?? 0)); $val = $q * $custo;
         $tipo = (string)($m['tipo'] ?? '');
-        if ($t && (!isset($ultimoMov[$c]) || $t > $ultimoMov[$c])) $ultimoMov[$c] = $t;
+        // v3.52.0: carga/ajuste de inventário NÃO é movimento do item — antes toda importação SAP "mexia" nos 422 itens e o capital parado dava sempre 0.
+        if ($t && !in_array($tipo, ['INVENTARIO_SAP', 'AJUSTE_INVENTARIO'], true) && (!isset($ultimoMov[$c]) || $t > $ultimoMov[$c])) $ultimoMov[$c] = $t;
         $mk = $t ? date('Y-m', $t) : '';
         if (isset($meses[$mk])) {
             $meses[$mk]['qtd_mov']++;
