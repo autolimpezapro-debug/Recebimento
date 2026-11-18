@@ -1176,3 +1176,35 @@ async function funConfirmar() {
     estEl('funPrevia').innerHTML = ''; estToast('Lista de funcionários importada.'); funCarregar();
   } catch (e) { estToast(e.message, true); }
 }
+
+
+/* v3.51.3 — busca de item pelo nome, sempre visível no topo do Estoque */
+let EST_GB = null, EST_GB_SEQ = 0;
+function estGBuscaDigitou() {
+  clearTimeout(EST_GB);
+  const q = estEl('estGBusca').value.trim(), box = estEl('estGRes');
+  if (q.length < 2) { box.hidden = true; return; }
+  EST_GB = setTimeout(async () => {
+    const seq = ++EST_GB_SEQ;
+    try {
+      const r = await estApi('estoque_itens', { query: { q, limite: 8 } });
+      if (seq !== EST_GB_SEQ) return;
+      box.hidden = false;
+      box.innerHTML = r.itens.length
+        ? r.itens.map(i => `<button type="button" class="est-gitem" onclick="estGBuscaAbrir('${estHtml(i.codigo)}')"><span><strong>${estHtml(i.descricao)}</strong><small>${estHtml(i.codigo)}${i.localizacao ? ' · ' + estHtml(i.localizacao) : ''}</small></span>
+            <span class="est-gsaldo"><b>${estNum(i.saldo)}</b> ${estHtml(i.unidade)}<small class="est-badge ${i.status === 'SEM ESTOQUE' ? 'danger' : i.status === 'CRÍTICO' ? 'warn' : i.status === 'ATENÇÃO' ? 'info' : 'ok'}">${estHtml(i.status)}</small></span></button>`).join('')
+          + (r.total > r.itens.length ? `<button type="button" class="est-gmais" onclick="estGBuscaLista()">Ver os ${estNum(r.total)} itens encontrados →</button>` : '')
+        : '<div class="est-gvazio">Nenhum item com esse nome. Tente menos palavras.</div>';
+    } catch (e) { box.hidden = false; box.innerHTML = `<div class="est-gvazio">${estHtml(e.message)}</div>`; }
+  }, 250);
+}
+function estGBuscaAbrir(codigo) { estEl('estGRes').hidden = true; estVerItem(codigo); }
+function estGBuscaLista() {
+  const q = estEl('estGBusca').value.trim(); estEl('estGRes').hidden = true;
+  EST.filtro.q = q; estEl('estQ').value = q; estGo('itens');
+}
+function estGBuscaTecla(ev) {
+  if (ev.key === 'Enter') { ev.preventDefault(); estGBuscaLista(); }
+  if (ev.key === 'Escape') estEl('estGRes').hidden = true;
+}
+document.addEventListener('click', ev => { const b = document.getElementById('estGBuscaBox'); if (b && !b.contains(ev.target)) { const r = document.getElementById('estGRes'); if (r) r.hidden = true; } });

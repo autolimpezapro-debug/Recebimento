@@ -192,3 +192,18 @@
 .est-foto-opc{width:54px;height:42px;padding:0;border:2px solid transparent;border-radius:8px;overflow:hidden;cursor:pointer;background:none}
 .est-foto-opc img{width:100%;height:100%;object-fit:cover;display:block}
 .est-foto-opc.on{border-color:var(--rd-success,#3fb68b)}
+
+/* v3.51.3 — busca de item no topo do Estoque */
+.est-gbusca { position: relative; margin: 0 0 12px; max-width: 720px; }
+.est-gbusca .searchbox { width: 100%; }
+.est-gres { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 30; border: 1px solid var(--border, #253550); border-radius: 12px; background: var(--card, #111e32); box-shadow: 0 14px 40px #03081699; overflow: hidden; max-height: 70vh; overflow-y: auto; }
+.est-gitem, .est-gmais { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; padding: 10px 14px; border: 0; border-bottom: 1px solid var(--border, #253550); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.est-gitem:hover, .est-gmais:hover { background: #ffffff10; }
+.est-gitem strong { display: block; }
+.est-gitem small { display: block; color: var(--muted, #92a3bb); font-size: 11.5px; }
+.est-gsaldo { text-align: right; white-space: nowrap; }
+.est-gsaldo .est-badge { display: block; margin-top: 2px; }
+.est-gmais { justify-content: center; color: #6ea8ff; font-weight: 700; }
+.est-gvazio { padding: 12px 14px; color: var(--muted, #92a3bb); }
+.est-gbusca .searchbox { display: flex; align-items: center; gap: 8px; width: 100%; padding: 0 12px; min-height: 48px; }
+.est-gbusca .searchbox input { flex: 1; min-width: 0; width: 100%; font-size: 15px; }

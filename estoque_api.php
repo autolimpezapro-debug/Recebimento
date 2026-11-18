@@ -73,7 +73,8 @@ function est_list_itens(array $db, array $q) {
         if ($status !== '' && $v['status'] !== $status) continue;
         if ($search !== '') {
             $hay = est_norm_key($v['descricao'] . ' ' . $code . ' ' . implode(' ', $v['aliases'] ?? []) . ' ' . ($v['categoria'] ?? ''));
-            if (mb_strpos($hay, $search) === false) continue;
+            // v3.51.3: todas as palavras digitadas precisam existir, em qualquer ordem (antes tinha de ser a frase exata)
+            foreach (preg_split('/\s+/', $search, -1, PREG_SPLIT_NO_EMPTY) as $w) if (mb_strpos($hay, $w) === false) continue 2;
         }
         // Lista enxuta (v3.10.1): só os campos da tabela/edição. A ficha completa vem de estoque_item.
         $rows[] = array_intersect_key($v, array_flip(['codigo', 'descricao', 'categoria', 'localizacao', 'unidade', 'saldo', 'reservado',
@@ -91,7 +92,9 @@ function est_list_itens(array $db, array $q) {
     });
     $cats = [];
     foreach ($db['itens'] as $it) if (!empty($it['categoria'])) $cats[$it['categoria']] = true;
-    return ['itens' => $rows, 'categorias' => array_keys($cats), 'total' => count($rows)];
+    $total = count($rows);
+    if (($lim = (int)($q['limite'] ?? 0)) > 0) $rows = array_slice($rows, 0, min($lim, 50));
+    return ['itens' => $rows, 'categorias' => array_keys($cats), 'total' => $total];
 }
 
 function est_item_detail(array $db, $codigo) {

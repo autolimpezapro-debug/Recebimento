@@ -1,3 +1,5 @@
+v3.51.3 — Estoque: barra "Procurar item pelo nome, código ou apelido" sempre visível no topo do módulo (em qualquer aba): ao digitar aparecem os itens com saldo e situação; clicar abre a ficha; Enter abre a lista completa filtrada. A busca agora aceita as palavras em qualquer ordem (antes a frase tinha de ser exata: "pastilha estaca" não achava "PASTILHAS (BITS) ESTACA SECANTE").
+
 v3.51.2 — Coletas: em "Rotas realizadas" (seletor de mês) há a tabela "Coletas por fornecedor no mês": quantas coletas cada fornecedor teve, quantas já coletadas/em aberto, os PCs e a marca "repetido" (2 ou mais). Agrupa pelo CNPJ (ou pelo nome sem acento/maiúsculas); canceladas não contam; a data é a da coleta (ou a agendada, se ainda aberta). Exporta em Excel. Obs.: a tela "Indicadores" (Diretoria) é um aplicativo compilado e não foi alterada.
 
 v3.51.1 — Fila de chegadas: no sino de Avisos, as chegadas para conferir ficam no topo, numeradas, do pedido mais antigo para o mais novo; depois os outros avisos novos e por fim os já lidos. Em Pedidos, o filtro "Novos" também lista do mais antigo para o mais novo.
