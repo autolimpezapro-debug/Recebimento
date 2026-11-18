@@ -370,6 +370,17 @@ function estAbrirNovaEntrada() {
   estEl('estNovaPc').focus();
 }
 
+/** v3.51.4: PC já finalizado sem entrada no estoque → gera a entrada pendente e leva à conferência. */
+async function estGerarEntradaDaSaida(pc) {
+  try {
+    await estPost('estoque_entrada_from_pedido', { pc });
+    estToast('Entrada do PC ' + pc + ' gerada. Confira e confirme o recebimento para liberar a saída.');
+    if (typeof estGo === 'function') estGo('entradas');
+    await estLoadEntradas();
+    estAbrirEntrada(pc);
+  } catch (e) { estToast('Não foi possível gerar a entrada: ' + e.message, true); }
+}
+
 async function estGerarEntradaPedido() {
   const pc = Number(estEl('estNovaPc').value);
   if (!pc) return estToast('Informe o número do PC', true);
@@ -617,7 +628,7 @@ function estBuscaRender(r) {
   const box = estEl('estSaidaBuscaRes'); let h = '';
   const ped = r.pc;
   if (ped) {
-    if (ped.status !== 'ok') h += `<div class="est-pc-card aviso"><strong>PC ${estHtml(ped.pc)}</strong> — ${estHtml(ped.mensagem || 'sem material disponível')}</div>`;
+    if (ped.status !== 'ok') h += `<div class="est-pc-card aviso"><strong>PC ${estHtml(ped.pc)}</strong> — ${estHtml(ped.mensagem || 'sem material disponível')}${ped.pode_gerar_entrada ? `<div style="margin-top:8px"><button type="button" class="button small" onclick="estGerarEntradaDaSaida(${Number(ped.pc)})">Gerar entrada deste PC agora</button></div>` : ''}</div>`;
     else {
       const dest = ped.destino || {};
       h += `<div class="est-pc-card"><div class="est-pc-head"><span class="est-pc-tit"><strong>PC ${estHtml(ped.pc)}</strong>${ped.fornecedor ? ` — ${estHtml(ped.fornecedor)}` : ''}${ped.urgente ? ' <span class="est-badge warn">urgente</span>' : ''}</span>
@@ -823,6 +834,9 @@ async function estLoadIntegridade() {
         <tr><th>Hash no momento da instalação</th><td><code>${estHtml(i.hash_instalacao || '—')}</code></td></tr>
         <tr><th>Cópia de segurança gerada</th><td><code>${estHtml(i.copia_seguranca || '—')}</code></td></tr>
       </tbody></table>
+      ${(i.finalizados_sem_entrada || []).length ? `<div class="est-integrity mudou"><strong>${i.finalizados_sem_entrada.length} PC(s) finalizado(s) sem entrada no estoque</strong>
+        <span>Recebimento concluído, mas o material não aparece no estoque (nem para saída). Gere a entrada de cada um, confira e confirme.</span></div>
+        <table class="orders-table"><thead><tr><th>PC</th><th>Fornecedor</th><th>Finalizado em</th><th></th></tr></thead><tbody>${i.finalizados_sem_entrada.map(x => `<tr><td data-label="PC">${estHtml(x.pc)}</td><td data-label="Fornecedor">${estHtml(x.fornecedor)}</td><td data-label="Finalizado em">${estHtml(String(x.finalizado_em || '').slice(0, 10))}</td><td><button class="button ghost small" onclick="estGerarEntradaDaSaida(${Number(x.pc)})">Gerar entrada</button></td></tr>`).join('')}</tbody></table>` : ''}
       <p class="est-hint">${estHtml(i.protecao || '')}</p>`;
   } catch (e) { estEl('estIntegridadeBody').innerHTML = `<div class="est-erro">${estHtml(e.message)}</div>`; }
 }

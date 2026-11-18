@@ -490,8 +490,21 @@ function est_check_pedidos_integridade(array $db) {
         'copia_seguranca' => $info['copia_pedidos'] ?? null,
         'alterado_desde_instalacao' => $atual !== null && ($info['hash_pedidos_instalacao'] ?? null) !== null
             ? $atual !== $info['hash_pedidos_instalacao'] : null,
+        'finalizados_sem_entrada' => est_finalizados_sem_entrada($db, $pedidos),
         'protecao' => 'O módulo de estoque apenas lê os pedidos. Nenhuma conferência, foto, NF ou histórico é alterado por ele.',
     ];
+}
+
+/** v3.51.4: PCs com recebimento finalizado e insumos, mas sem entrada no estoque. */
+function est_finalizados_sem_entrada(array $db, array $pedidos): array {
+    $r = [];
+    foreach ($pedidos as $p) {
+        if (($p['recebimento_estado'] ?? '') !== 'finalizado' || empty($p['insumos'])) continue;
+        if (isset($db['recebimentos']['PC-' . (int)$p['pc']])) continue;
+        $r[] = ['pc' => (int)$p['pc'], 'fornecedor' => (string)($p['fornecedor'] ?? ''), 'finalizado_em' => (string)($p['recebimento_finalizado_em'] ?? ''), 'insumos' => count($p['insumos'])];
+    }
+    usort($r, fn($a, $b) => $a['pc'] <=> $b['pc']);
+    return $r;
 }
 
 function est_num($n) {
@@ -2306,7 +2319,8 @@ function est_pedidos_idx(): array {
         $idx[(int)$p['pc']] = ['fotos' => $fotos, 'fornecedor' => (string)($p['fornecedor'] ?? ''), 'solicitante' => (string)($p['solicitante'] ?? ''),
             'urgente' => ($p['urgente'] ?? '') === '1', 'destino_setor' => (string)($p['destino_setor'] ?? ''), 'obra_id' => (string)($p['obra_id'] ?? ''),
             'obra' => (string)($p['obra'] ?? ''), 'numero_nf' => (string)($p['numeroNF'] ?? ''), 'situacao' => (string)($p['situacao'] ?? ''),
-            'os' => (string)($p['os_pc'] ?? ''), 'equipamento' => (string)($p['equipamento_pc'] ?? ''), 'os_origem' => (string)($p['os_origem'] ?? '')];
+            'os' => (string)($p['os_pc'] ?? ''), 'equipamento' => (string)($p['equipamento_pc'] ?? ''), 'os_origem' => (string)($p['os_origem'] ?? ''),
+            'finalizado' => (($p['recebimento_estado'] ?? '') === 'finalizado'), 'n_insumos' => count((array)($p['insumos'] ?? []))];
     }
     return $idx;
 }
@@ -2375,7 +2389,19 @@ function est_pc_saida_info(array $db, int $pc): array {
         'destino' => ['setor_codigo' => $ped['destino_setor'], 'obra_id' => $ped['obra_id'], 'obra' => $ped['obra']],
         'os' => $ped['os'], 'equipamento' => $ped['equipamento'], 'os_origem' => $ped['os_origem']];   // v3.32.0: OS lida do pedido (se houver)
     if (!$doc) {
-        if ($ped) { $out['status'] = 'sem_entrada'; $out['mensagem'] = 'O PC ' . $pc . ' (' . $ped['fornecedor'] . ') existe, mas ainda não tem material recebido no estoque. Finalize o recebimento primeiro.'; }
+        if ($ped) {
+            $out['status'] = 'sem_entrada';
+            if (!empty($ped['finalizado']) && (int)($ped['n_insumos'] ?? 0) > 0) {
+                // v3.51.4: recebimento JÁ finalizado, mas a entrada no estoque nunca foi gerada
+                // (ex.: PC finalizado antes da integração). Não mande "finalizar" de novo.
+                $out['pode_gerar_entrada'] = true;
+                $out['mensagem'] = 'O PC ' . $pc . ' (' . $ped['fornecedor'] . ') já teve o recebimento finalizado, mas a entrada no estoque ainda não foi gerada. Gere a entrada, confira e confirme o recebimento para liberar a saída.';
+            } elseif (!empty($ped['finalizado'])) {
+                $out['mensagem'] = 'O PC ' . $pc . ' (' . $ped['fornecedor'] . ') foi finalizado sem insumos detalhados. Cadastre os insumos no pedido ou lance uma Entrada manual no estoque.';
+            } else {
+                $out['mensagem'] = 'O PC ' . $pc . ' (' . $ped['fornecedor'] . ') existe, mas o recebimento ainda não foi finalizado. Finalize o recebimento primeiro.';
+            }
+        }
         return $out;
     }
     $out['fornecedor'] = $out['fornecedor'] ?? (string)($doc['fornecedor'] ?? '');

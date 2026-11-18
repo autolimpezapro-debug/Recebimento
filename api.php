@@ -47,7 +47,7 @@ define('MAX_PRODUCT_PHOTOS', 3);
 define('MAX_UPLOAD_BYTES', 4 * 1024 * 1024);
 define('EVENTS_FILE', DATA_DIR . '/events.json');
 define('XML_DIR', DATA_DIR . '/xml');
-define('APP_VERSION', '3.51.3');
+define('APP_VERSION', '3.51.4');
 
 if (!is_dir(DATA_DIR)) mkdir(DATA_DIR, 0755, true);
 if (!is_dir(PHOTOS_DIR)) mkdir(PHOTOS_DIR, 0755, true);
@@ -1166,6 +1166,21 @@ if ($action === 'save' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             'novo'=>'Cadastro'];
         $safe = array_map(function($f) use ($labels) {return $labels[$f] ?? 'Campo';}, $changed);
         append_event($pc, 'edicao', 'Atualização: '.implode(', ', $safe));
+        // v3.51.4: fornecedor/NF corrigidos no pedido valem também para a entrada do estoque (cópia).
+        if (in_array('fornecedor', $changed, true) || in_array('numeroNF', $changed, true)) {
+            try {
+                require_once __DIR__.'/estoque_lib.php';
+                $novoForn = (string)($items[$idx]['fornecedor'] ?? ''); $novoNf = (string)($items[$idx]['numeroNF'] ?? '');
+                est_with_lock(function () use ($pc, $novoForn, $novoNf) {
+                    $db = est_read(); $k = 'PC-'.(int)$pc;
+                    if (isset($db['recebimentos'][$k])) {
+                        if ($novoForn !== '') $db['recebimentos'][$k]['fornecedor'] = $novoForn;
+                        if ($novoNf !== '') $db['recebimentos'][$k]['numero_nf'] = $novoNf;
+                        est_write($db);
+                    }
+                });
+            } catch (Throwable $e) { error_log('Fornecedor atualizado no pedido; estoque nao sincronizado: '.$e->getMessage()); }
+        }
     }
     $idx = find_index($items, $pc);
     respond(['ok' => true, 'item' => normalize_item($items[$idx])]);
