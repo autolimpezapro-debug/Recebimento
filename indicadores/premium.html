@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Painel Premium · Recebimento Drilling</title>
+<link rel="icon" href="/indicadores/favicon.ico?v=3150" type="image/x-icon">
+<style>
+:root{--bg:#07101f;--card:#0f1b2e;--line:#22314a;--tx:#e6edf7;--tx2:#9fb0c8;--tx3:#6f8199;--ac:#e8b746;--blue:#4f86d6;--ok:#3fb68b;--warn:#e0a43b;--bad:#e5534b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.bar{position:sticky;top:0;z-index:5;display:flex;gap:12px;align-items:center;justify-content:space-between;padding:8px 18px;background:#0b1424;border-bottom:1px solid var(--line);font-size:12px;color:var(--tx2)}
+.bar a{color:var(--ac);font-weight:600;text-decoration:none}
+main{max-width:1380px;margin:0 auto;padding:18px}
+.head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+h1{margin:0;font-size:22px}.head p{margin:3px 0 0;color:var(--tx3);font-size:12px}
+.filt{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+select,button{background:var(--card);color:var(--tx);border:1px solid var(--line);border-radius:9px;padding:7px 10px;font:inherit;font-size:13px}
+button{cursor:pointer}.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}.seg button{border:0;border-radius:0}.seg button.on{background:#1d3150;color:var(--ac);font-weight:650}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.kpi span{font-size:11px;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em}.kpi strong{display:block;font-size:21px;margin:3px 0}.kpi small{color:var(--tx2);font-size:11.5px}
+.kpi.bad strong{color:var(--bad)}.kpi.warn strong{color:var(--warn)}.kpi.ok strong{color:var(--ok)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;min-width:0}
+.card.wide{grid-column:1/-1}
+.card h2{margin:0;font-size:15px}.card .sub{margin:2px 0 12px;color:var(--tx3);font-size:12px}
+.card .tag{float:right;font-size:11px;color:var(--tx3);border:1px solid var(--line);border-radius:999px;padding:2px 8px}
+.bars{display:grid;gap:9px}.b-l{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;margin-bottom:3px}.b-l span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx2)}.b-l b{white-space:nowrap}.b-l small{color:var(--tx3);font-weight:400;margin-left:5px}
+.track{height:8px;border-radius:9px;background:#18263d;display:flex;overflow:hidden}.track i{display:block;height:100%}
+.c1{background:var(--blue)}.c2{background:var(--ac)}.c3{background:#a37bea}.cok{background:var(--ok)}.cbad{background:var(--bad)}
+.leg{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--tx3);margin-bottom:10px}.leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}th{text-align:left;color:var(--tx3);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:7px 8px;border-bottom:1px solid #18263d;vertical-align:top}tr:last-child td{border-bottom:0}.num{text-align:right;white-space:nowrap}
+.cls{display:inline-block;width:24px;height:24px;line-height:24px;text-align:center;border-radius:7px;font-weight:800}
+.cA{background:#14382c;color:var(--ok)}.cB{background:#1d3150;color:#7aa6ff}.cC{background:#3b2f14;color:var(--warn)}.cD{background:#3d1d1f;color:var(--bad)}
+.empty{color:var(--tx3);font-size:12.5px;padding:8px 0}.note{font-size:11.5px;color:var(--tx3);margin-top:10px}
+.scroll{overflow:auto;max-height:420px}
+.cols{display:flex;align-items:flex-end;gap:5px;height:140px}.cols div{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px}.cols i{width:100%;max-width:24px;border-radius:5px 5px 2px 2px;background:var(--blue)}.cols small{font-size:10px;color:var(--tx3)}
+.cf-row{cursor:pointer}.cf-row:hover td{background:#13213a}.cf-det td{background:#0b1526;padding:12px 14px}
+.cf-det h4{margin:6px 0 6px;font-size:12.5px;color:var(--tx2)}.rec{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:999px;background:#3b2f14;color:var(--warn);margin-left:6px}
+.sug{border:1px solid #3b2f14;background:#1c1709;color:#f3d38a;border-radius:10px;padding:8px 12px;font-size:12.5px;margin-bottom:10px}.kmt{font-size:10.5px;color:var(--tx3)}
+.cf-cols{display:grid;grid-template-columns:2fr 1fr;gap:14px}@media(max-width:900px){.cf-cols{grid-template-columns:1fr}}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+@media print{.bar,.filt,#cfGeo,#cfCsv{display:none!important}body{background:#fff;color:#000;font-size:11px}.card,.kpi{border-color:#ccc;background:#fff;break-inside:avoid}.kpi strong,.card h2{color:#000}.kpi span,.kpi small,.sub,th,.note,.kmt{color:#444}td{border-color:#ddd}.cf-det td{background:#f6f8fb}.track{background:#e8edf3}.scroll{max-height:none!important;overflow:visible}.grid{grid-template-columns:1fr 1fr}main{max-width:none;padding:0}.sug{background:#fff8e6;color:#5a4300;border-color:#e8c46a}tr.cf-det{break-inside:auto}#cf,.card.wide{break-inside:auto!important}h1{color:#000}@page{size:A4;margin:12mm}}
+
+/* v3.52.0 — visual refeito: navegação por seções, abas, tabelas legíveis, celular */
+html{scroll-behavior:smooth;scroll-padding-top:104px}
+.subnav{position:sticky;top:37px;z-index:4;display:flex;gap:6px;overflow-x:auto;padding:8px 0 10px;margin:-6px 0 12px;background:var(--bg);border-bottom:1px solid #16233a;scrollbar-width:none}
+.subnav::-webkit-scrollbar{display:none}
+.subnav a{flex:none;color:var(--tx2);text-decoration:none;font-size:12.5px;font-weight:600;padding:6px 13px;border-radius:999px;border:1px solid var(--line);background:var(--card)}
+.subnav a:hover{color:var(--ac);border-color:#3b4f72}
+.sec{grid-column:1/-1;margin:14px 0 -2px;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--ac);font-weight:700;display:flex;align-items:center;gap:10px}
+.sec::after{content:"";flex:1;height:1px;background:var(--line)}
+.kpi{position:relative;transition:border-color .15s,transform .15s}.kpi:hover{border-color:#3b4f72;transform:translateY(-1px)}
+.kpi[title]{cursor:help}
+.kpi.bad{border-left:3px solid var(--bad)}.kpi.warn{border-left:3px solid var(--warn)}.kpi.ok{border-left:3px solid var(--ok)}
+.card{box-shadow:0 1px 0 #ffffff08 inset}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:6px 0 14px;overflow-x:auto}
+.tabs button{border:0;border-radius:9px 9px 0 0;background:transparent;color:var(--tx2);padding:9px 16px;font-weight:600;border-bottom:2px solid transparent;white-space:nowrap}
+.tabs button.on{color:var(--ac);border-bottom-color:var(--ac);background:#13213a}
+.pane{display:none}.pane.on{display:block}
+th{position:sticky;top:0;background:var(--card);z-index:1}
+tbody tr:hover td,table tr:hover>td{background:#12203600}
+.cf-row:hover td{background:#13213a}
+.pill{display:inline-block;font-size:10.5px;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--tx2);margin-right:4px;white-space:nowrap}
+.pill.ok{color:var(--ok);border-color:#1f5a47}.pill.warn{color:var(--warn);border-color:#5b4614}.pill.bad{color:var(--bad);border-color:#6a2b2b}
+.split{display:flex;height:8px;border-radius:9px;overflow:hidden;background:#18263d;min-width:90px}.split i{display:block;height:100%}
+.alert{border:1px solid #5b4614;background:#1c1709;color:#f3d38a;border-radius:10px;padding:8px 12px;font-size:12.5px;margin:0 0 10px}
+.alert.bad{border-color:#6a2b2b;background:#1c0d0d;color:#f3b0ab}
+.how{margin:0 0 12px;font-size:12px;color:var(--tx3)}.how summary{cursor:pointer;color:var(--tx2);font-weight:600}.how ul{margin:6px 0 0 18px;padding:0}.how li{margin:2px 0}
+.inp{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--tx2)}.inp input{width:84px;background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit}
+.find{min-width:210px;background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:9px;padding:7px 10px;font:inherit;font-size:13px}
+.big{font-size:26px;font-weight:750;letter-spacing:-.01em}
+.sc{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin:0 0 12px}
+.sc>div{background:#0b1526;border:1px solid var(--line);border-radius:12px;padding:12px 14px}.sc h4{margin:0 0 6px;font-size:12.5px;color:var(--tx2)}.sc p{margin:3px 0 0;font-size:12px;color:var(--tx3)}
+@media(max-width:700px){.hm{display:none}main{padding:12px}.head{align-items:flex-start}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi strong{font-size:18px}.filt{width:100%}.filt select,.filt button,.find{flex:1 1 140px}.card{padding:12px}table{font-size:12px}td,th{padding:6px 5px}.subnav{top:34px}.bar{flex-direction:column;align-items:flex-start;gap:4px}}
+@media print{.pane{display:block!important}.tabs,.subnav,.find,.inp{display:none!important}.sec{color:#000}}
+
+/* v3.53.0 — Painel Premium (página nova, mesma lógica de kpi_dados) */
+.dl{font-size:11.5px;margin-left:6px}.dl.up{color:var(--ok)}.dl.dn{color:var(--bad)}.dl.eq{color:var(--tx3)}
+.meta{font-size:11px;color:var(--tx3)}.nd{color:var(--tx3)}
+.trend{width:100%;height:170px}.trend text{fill:#9fb0c8;font-size:10px}
+.mbtn{background:transparent;border:1px solid var(--line);color:var(--tx2);border-radius:8px;padding:3px 9px;font-size:12px}
+.flow{display:grid;gap:8px}.flow .r{display:grid;grid-template-columns:150px 1fr 70px;gap:10px;align-items:center;font-size:12.5px}
+.badge{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:999px;background:#18263d;color:var(--tx2)}
+.badge.urg{background:#3d1d1f;color:var(--bad)}
+.inl{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin:6px 0 12px}.inl label{font-size:11.5px;color:var(--tx3);display:grid;gap:3px}
+input[type=date],input[type=search]{background:var(--card);color:var(--tx);border:1px solid var(--line);border-radius:9px;padding:7px 10px;font:inherit;font-size:13px}
+</style>
+</head>
+<body>
+<div class="bar"><span id="barTx">Painel Premium · calculado automaticamente pelo Recebimento Drilling</span><span style="display:flex;gap:16px"><a href="/indicadores/gestao.html">📊 Indicadores de gestão</a><a href="/indicadores/" id="lkClassico">Painel clássico (remessas/obras)</a><a href="/">← Voltar ao sistema</a></span></div>
+<main>
+<div class="head"><div><h1>Painel Premium</h1><p>Mesmos números do painel de diretoria, em página editável, com o relatório gerencial de saídas por OS.</p></div>
+<div class="filt"><select id="mes" aria-label="Mês"></select><button id="btnMetas" hidden>⚙ Metas</button><button onclick="window.print()">🖨 Imprimir</button></div></div>
+<div class="tabs" id="tabs"><button class="on" data-t="vis">Visão geral</button><button data-t="col">Coletas e recebimento</button><button data-t="est">Estoque e itens críticos</button><button data-t="rel" id="tabRel">Relatório gerencial (saídas e OS)</button></div>
+<div class="pane on" id="p-vis"></div><div class="pane" id="p-col"></div><div class="pane" id="p-est"></div><div class="pane" id="p-rel"></div>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const H=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const R=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+const R2=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const N=(n,d=0)=>Number(n||0).toLocaleString('pt-BR',{maximumFractionDigits:d});
+const MES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+const mlabel=m=>MES[+m.slice(5)-1]+'/'+m.slice(2,4);
+let TK='';try{const q=new URLSearchParams(location.search).get('p');if(q)sessionStorage.setItem('rdKpiLink',q);TK=sessionStorage.getItem('rdKpiLink')||'';}catch(e){}
+const P={d:null,mes:'',csrf:'',publico:false,pode:false,rel:null,relTab:'saidas',relQ:''};
+/* indicador: key, rótulo, formato, melhor (up|down), grupo, dica */
+const IND=[
+ ['totalValue','Valor em estoque',R,'up','est','Saldo × custo médio no fim do mês.'],
+ ['deadStockValue','Capital parado',R,'down','est','Itens sem saída há 90+ dias × custo.'],
+ ['inventoryLossValue','Perdas de inventário',R,'down','est','Ajustes negativos e divergências de inventário.'],
+ ['accuracy','Acuracidade (IRA)',v=>N(v,1)+'%','up','est','% de itens conferidos sem divergência. Sem inventário no mês = sem dado.'],
+ ['criticalItemsCount','Itens críticos',N,'down','est','Itens zerados ou abaixo do mínimo/ponto de pedido.'],
+ ['stockouts','Rupturas',N,'down','est','Saídas que zeraram o saldo no mês.'],
+ ['otif','OTIF recebimento',v=>N(v,1)+'%','up','col','Pedidos finalizados completos e no prazo.'],
+ ['avgFulfillmentMinutes','Tempo de conferência',v=>v>=120?N(v/60,1)+' h':N(v)+' min','down','col','Da chegada à finalização do recebimento.'],
+ ['collectionsRequested','Coletas a atender',N,'','col','Abertas no início do mês + solicitadas no mês.'],
+ ['collectionsCompleted','Coletas realizadas',N,'up','col','Coletadas/em transporte/chegaram no mês.'],
+ ['collectionsOnTime','Coletas no prazo',N,'up','col','Realizadas até a data agendada.'],
+ ['collectionsPending','Coletas pendentes',N,'down','col','Ainda abertas no fim do mês.'],
+ ['collectionsLate','Coletas atrasadas',N,'down','col','Pendentes depois da data agendada.'],
+ ['collectionsAvgHours','Tempo médio de coleta',v=>N(v,1)+' h','down','col','Do pedido de coleta até a coleta feita.'],
+ ['collectionsUrgent','Coletas urgentes',N,'','col','Prioridade alta/urgente.'],
+ ['emergencyPurchases','Compras urgentes',N,'down','col','PCs marcados como urgentes no mês.'],
+ ['returnsCount','Devoluções',N,'down','col','Devoluções a fornecedor no mês.'],
+ ['returnsValue','Valor devolvido',R,'down','col','Soma das devoluções.']];
+const semDado=(r,k)=>(k==='accuracy'&&!r[k])||(k==='otif'&&!r.otif&&!r.avgFulfillmentMinutes)||(k==='avgFulfillmentMinutes'&&!r[k])||(k==='collectionsAvgHours'&&!r[k]&&!r.collectionsCompleted);
+function cls(k,v,meta,best,r){if(semDado(r,k)||!best||meta==null)return'';const ok=best==='up'?v>=meta:v<=meta;if(ok)return'ok';const gap=best==='up'?(meta?(meta-v)/meta:1):(meta?(v-meta)/meta:1);return gap>.25?'bad':'warn';}
+function kpi(r,prev,x){const [k,t,f,best,,tip]=x,v=r[k],meta=P.d.targets[k],nd=semDado(r,k);
+  let dl='';if(prev&&!nd&&!semDado(prev,k)){const a=v-prev[k];if(Math.abs(a)>1e-9){const up=a>0,bom=!best?null:(best==='up')===up;dl=`<span class="dl ${bom==null?'eq':bom?'up':'dn'}">${up?'▲':'▼'} ${f(Math.abs(a))}</span>`;}}
+  return `<div class="kpi ${cls(k,v,meta,best,r)}" title="${H(tip)}"><span>${t}</span><strong>${nd?'<span class="nd">sem dado</span>':f(v)}${dl}</strong><small>${meta!=null&&best&&!nd?'meta '+(best==='up'?'≥ ':'≤ ')+f(meta):'&nbsp;'}</small></div>`;}
+function trend(k){const rs=P.d.records.slice(-12),f=IND.find(x=>x[0]===k)[2];const vals=rs.map(r=>semDado(r,k)?null:r[k]);const mx=Math.max(1e-9,...vals.filter(v=>v!=null));const W=640,Hh=150,pw=W/rs.length;
+  const meta=P.d.targets[k];
+  return `<svg class="trend" viewBox="0 0 ${W} ${Hh+22}" role="img" aria-label="Evolução mensal">`+rs.map((r,i)=>{const v=vals[i],h=v==null?0:Math.max(2,v/mx*(Hh-18)),x=i*pw+pw*.2;return `<g><rect x="${x}" y="${Hh-h}" width="${pw*.6}" height="${h}" rx="3" fill="${r.month===P.mes?'#e8b746':'#4f86d6'}"><title>${mlabel(r.month)}: ${v==null?'sem dado':f(v)}</title></rect>${v!=null?`<text x="${x+pw*.3}" y="${Hh-h-4}" text-anchor="middle">${f(v)}</text>`:''}<text x="${x+pw*.3}" y="${Hh+14}" text-anchor="middle">${mlabel(r.month)}</text></g>`;}).join('')
+  +(meta?`<line x1="0" x2="${W}" y1="${Hh-meta/mx*(Hh-18)}" y2="${Hh-meta/mx*(Hh-18)}" stroke="#e5534b" stroke-dasharray="4 4" opacity="${meta/mx>1.05?0:.8}"/>`:'')+'</svg>';}
+function render(){
+  const rs=P.d.records,i=rs.findIndex(r=>r.month===P.mes),r=rs[i]||rs[rs.length-1],prev=rs[i-1];
+  const gr=g=>IND.filter(x=>x[4]===g).map(x=>kpi(r,prev,x)).join('');
+  $('#p-vis').innerHTML=`<p class="note" style="margin:0 0 10px">Mês de <b>${mlabel(r.month)}</b>${prev?' · setas comparam com '+mlabel(prev.month):''} · verde = dentro da meta, amarelo = perto, vermelho = longe.</p>
+   <h3 class="sec">Estoque</h3><div class="kpis">${gr('est')}</div><h3 class="sec">Recebimento, coletas e compras</h3><div class="kpis">${gr('col')}</div>
+   <section class="card wide"><h2>Evolução mensal</h2><p class="sub">Escolha o indicador. Linha vermelha tracejada = meta. Barra dourada = mês selecionado.</p><div class="inl"><select id="trk">${IND.map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('')}</select></div><div id="trc"></div></section>`;
+  const sl=$('#trk');sl.onchange=()=>$('#trc').innerHTML=trend(sl.value);sl.onchange();
+  const st=P.d.stages,mxs=Math.max(1,...st.map(s=>s.hours)),dr=P.d.delayReasons,mxd=Math.max(1,...dr.map(s=>s.count));
+  $('#p-col').innerHTML=`<div class="grid"><section class="card"><h2>Fluxo da coleta</h2><p class="sub">Horas médias em cada etapa (últimos 90 dias).</p><div class="flow">${st.map(s=>`<div class="r"><span>${H(s.label)}</span><div class="track"><i class="c1" style="width:${s.hours/mxs*100}%"></i></div><b>${N(s.hours,1)} h</b></div>`).join('')}</div></section>
+   <section class="card"><h2>Motivos de atraso</h2><p class="sub">Registrados nas coletas.</p><div class="flow">${dr.map(s=>`<div class="r"><span>${H(s.label)}</span><div class="track"><i class="c2" style="width:${s.count/mxd*100}%"></i></div><b>${s.count}</b></div>`).join('')}</div></section>
+   <section class="card wide"><h2>Pedidos de compra do mês</h2><p class="sub">${H(mlabel(r.month))} · ${P.d.purchaseOrders.filter(o=>o.month===r.month).length} pedido(s)</p><div class="scroll"><table><thead><tr><th>PC</th><th>Fornecedor</th><th>Data</th><th>Solicitante</th><th></th></tr></thead><tbody>${P.d.purchaseOrders.filter(o=>o.month===r.month).map(o=>`<tr><td><b>${H(o.number)}</b></td><td>${H(o.supplier)}</td><td>${H(o.date.split('-').reverse().join('/'))}</td><td>${H(o.sender)}</td><td>${o.urgent?'<span class="badge urg">urgente</span>':''}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">Sem pedidos no mês.</td></tr>'}</tbody></table></div></section></div>`;
+  const kind={abaixo_minimo:'Abaixo do mínimo',divergencia:'Divergência de inventário'};
+  $('#p-est').innerHTML=`<section class="card"><h2>Itens críticos</h2><p class="sub">${P.d.criticalItems.length} item(ns) · valor = quanto falta para o mínimo (ou valor da divergência).</p><div class="scroll"><table><thead><tr><th>Código</th><th>Item</th><th>Motivo</th><th class="num">Qtd.</th><th class="num">Valor</th></tr></thead><tbody>${P.d.criticalItems.map(c=>`<tr><td>${H(c.code)}</td><td>${H(c.name)}</td><td>${H(kind[c.kind]||c.kind)}</td><td class="num">${N(c.qty,2)}</td><td class="num">${c.value?R2(c.value):'—'}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">Nenhum item crítico.</td></tr>'}</tbody></table></div></section>`;
+}
+/* ---- Relatório gerencial (saídas com OS) ---- */
+function relIni(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01';}
+function relFim(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+async function relCarregar(){
+  const el=$('#p-rel');
+  if(!$('#rgI')){el.innerHTML=`<div class="inl"><label>De<input type="date" id="rgI" value="${relIni()}"></label><label>Até<input type="date" id="rgF" value="${relFim()}"></label><button onclick="relCarregar()">Aplicar</button><button id="rgCsv">⇩ Excel (CSV)</button></div><div id="rgOut"></div>`;$('#rgCsv').onclick=()=>location.href=`/api.php?action=relger_csv&ini=${$('#rgI').value}&fim=${$('#rgF').value}`;}
+  $('#rgOut').innerHTML='<div class="empty">Carregando…</div>';
+  try{const r=await fetch(`/api.php?action=relger_dados&ini=${$('#rgI').value}&fim=${$('#rgF').value}`,{credentials:'same-origin',cache:'no-store'});P.rel=await r.json();if(!P.rel.ok)throw new Error(P.rel.error||'Erro');}
+  catch(e){$('#rgOut').innerHTML=`<div class="empty">${H(e.message)}</div>`;return;}
+  relRender();
+}
+function relRender(){
+  const d=P.rel,r=d.resumo,k=(t,v,c='')=>`<div class="kpi ${c}"><span>${t}</span><strong>${v}</strong></div>`;
+  const q=P.relQ.trim().toLowerCase(),L=d.saidas.filter(s=>!q||[s.descricao,s.sku,s.os,s.obra,s.setor,s.equipamento,s.recebedor,s.solicitante].join(' ').toLowerCase().includes(q));
+  $('#rgOut').innerHTML=`<div class="kpis">${k('Saídas',r.saidas_mov)}${k('OS atendidas',r.os_distintas)}${k('Valor saído (custo)',R(r.saidas_valor))}${k('Saídas sem OS',r.saidas_sem_os,r.saidas_sem_os?'warn':'')}${k('PCs recebidos',r.pcs_recebidos)}${k('Sem custo cadastrado',r.saidas_sem_custo,r.saidas_sem_custo?'warn':'')}</div>
+   <p class="note" style="margin:0 0 10px">${H(d.nota)}</p>
+   <div class="grid"><section class="card wide"><h2>Resumo por OS</h2><p class="sub">Clique para ver os materiais que saíram em cada OS.</p><div class="scroll"><table><thead><tr><th>OS</th><th class="num">Movim.</th><th class="num">Valor</th><th>Materiais que saíram</th></tr></thead><tbody>${d.por_os.map(x=>`<tr><td><b>${H(x.chave)}</b>${x.equipamentos.length?'<br><span class="meta">'+H(x.equipamentos.join(', '))+'</span>':''}</td><td class="num">${x.movimentos}</td><td class="num">${R2(x.valor)}</td><td><details><summary>${x.materiais.length} material(is)</summary>${x.materiais.map(m=>`<div>${H(m.sku?m.sku+' · ':'')}${H(m.descricao)} — <b>${N(m.quantidade,3)} ${H(m.unidade)}</b></div>`).join('')}</details></td></tr>`).join('')}</tbody></table></div></section>
+   <section class="card wide"><h2>Materiais que saíram</h2><p class="sub">${L.length} de ${d.saidas.length} saídas</p><div class="inl"><input type="search" id="rgQ" placeholder="Buscar material, SKU, OS, obra…" value="${H(P.relQ)}"></div><div class="scroll"><table><thead><tr><th>Data</th><th>OS</th><th>SKU</th><th>Material</th><th class="num">Qtd.</th><th>Obra / setor</th><th>Solicitante</th><th class="num">Valor</th></tr></thead><tbody>${L.map(s=>`<tr><td>${H(s.dia.split('-').reverse().join('/'))}</td><td>${s.os?'<b>'+H(s.os)+'</b>':'<span class="rec">sem OS</span>'}</td><td>${H(s.sku)||'—'}</td><td>${H(s.descricao)}</td><td class="num">${N(s.quantidade,3)} ${H(s.unidade)}</td><td>${H([s.obra,s.setor].filter(Boolean).join(' / '))}</td><td>${H(s.recebedor||s.solicitante)}</td><td class="num">${s.valor?R2(s.valor):'—'}</td></tr>`).join('')||'<tr><td colspan="8" class="empty">Nenhuma saída.</td></tr>'}</tbody></table></div></section></div>`;
+  const qi=$('#rgQ');qi.oninput=e=>{P.relQ=e.target.value;const p=e.target.selectionStart;relRender();const n=$('#rgQ');n.focus();n.setSelectionRange(p,p);};
+}
+/* ---- metas (admin) ---- */
+function metasDlg(){
+  const bg=document.createElement('div');bg.style.cssText='position:fixed;inset:0;background:#000a;z-index:20;display:grid;place-items:center;padding:14px';
+  bg.innerHTML=`<div class="card" style="width:min(520px,100%);max-height:90vh;overflow:auto"><h2>Metas dos indicadores</h2><p class="sub">Mesmas metas do painel clássico.</p>${IND.filter(x=>x[3]).map(x=>`<label style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin:6px 0">${x[1]}<input data-k="${x[0]}" type="number" step="any" value="${P.d.targets[x[0]]??''}" style="width:130px;background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:6px"></label>`).join('')}<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button data-x>Cancelar</button><button data-ok class="on" style="background:#1d3150;color:var(--ac)">Salvar</button></div></div>`;
+  document.body.appendChild(bg);bg.querySelector('[data-x]').onclick=()=>bg.remove();
+  bg.querySelector('[data-ok]').onclick=async()=>{const t={...P.d.targets};bg.querySelectorAll('[data-k]').forEach(i=>{if(i.value!=='')t[i.dataset.k]=+i.value;});
+    try{const r=await fetch('api.php',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-Requested-With':'kpi-sync','X-CSRF-Token':P.csrf},body:JSON.stringify({op:'salvar_metas',dados:{targets:t}})});const j=await r.json();if(!j.ok)throw new Error(j.erro||'Erro');bg.remove();load();}catch(e){alert(e.message);}};
+}
+async function load(){
+  let j;try{const r=await fetch('api.php',{credentials:'same-origin',cache:'no-store',headers:TK?{'X-KPI-Link':TK}:{}});j=await r.json();if(!j.ok)throw new Error(j.erro||'Erro');}
+  catch(e){$('#p-vis').innerHTML=`<div class="empty">${H(e.message)} — <a href="/" style="color:#e8b746">entre no sistema</a></div>`;return;}
+  P.d=j.dados;P.csrf=j.csrf||'';P.publico=!!j.publico;P.pode=!!j.link_publico;
+  if(!P.d.records.length){$('#p-vis').innerHTML='<div class="empty">Ainda não há dados.</div>';return;}
+  const ms=P.d.records.map(r=>r.month).reverse();if(!P.mes||!ms.includes(P.mes))P.mes=ms[0];
+  $('#mes').innerHTML=ms.map(m=>`<option value="${m}" ${m===P.mes?'selected':''}>${mlabel(m)}</option>`).join('');
+  if(P.publico){$('#tabRel').remove();$('#barTx').textContent='Painel Premium · visualização pública, somente leitura';$('#lkClassico').href='/indicadores/?p='+encodeURIComponent(TK);}
+  if(j.link_publico)$('#btnMetas').hidden=false;
+  render();
+}
+$('#mes').onchange=e=>{P.mes=e.target.value;render();};
+$('#btnMetas').onclick=metasDlg;
+$('#tabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.id==='p-'+b.dataset.t));if(b.dataset.t==='rel'&&!P.rel)relCarregar();};
+load();
+</script>
+</body></html>

@@ -7,3 +7,7 @@
 @media(max-width:460px){.ter-grid{grid-template-columns:1fr}}
 
 .ter-alt{margin:4px 0 6px 6px;padding-left:16px;font-size:12px;color:var(--muted)}.ter-alt s{opacity:.7}
+
+/* v3.53.0 — filtros de período (Relatório gerencial) */
+#page-relger .filterrow{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin:10px 0}
+#page-relger .filterrow .button{width:auto}

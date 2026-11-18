@@ -102,11 +102,11 @@
   },true);
   document.addEventListener('DOMContentLoaded',function(){
     var bar=document.createElement('div');bar.className='rd-kpi-bar';
-    bar.innerHTML='<span>Indicadores calculados automaticamente pelo Recebimento Drilling · atualizados a cada abertura</span><span style="display:flex;gap:16px"><a href="/indicadores/gestao.html">📊 Indicadores de gestão</a><a href="#" id="rdLinkBtn" style="display:none">🔗 Link público</a><a href="#" id="rdMetasBtn" style="display:none">⚙ Metas</a><a href="../">← Voltar ao sistema</a></span>';
+    bar.innerHTML='<span>Indicadores calculados automaticamente pelo Recebimento Drilling · atualizados a cada abertura</span><span style="display:flex;gap:16px"><a href="/indicadores/premium.html">✨ Painel Premium</a><a href="/indicadores/gestao.html">📊 Indicadores de gestão</a><a href="#" id="rdLinkBtn" style="display:none">🔗 Link público</a><a href="#" id="rdMetasBtn" style="display:none">⚙ Metas</a><a href="../">← Voltar ao sistema</a></span>';
     fetch('api.php',{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(d){
       if(!d.ok){if(d.erro){var m=document.createElement('div');m.className='rd-kpi-bar';m.style.background='#4a2130';m.style.color='#ffd0d6';m.innerHTML=d.erro+' <a href="../">Entrar</a>';document.body.insertBefore(m,bar.nextSibling);}return;}
       window.rdKpiCsrf=d.csrf;
-      if(d.publico){document.documentElement.classList.add('rd-publico');bar.innerHTML='<span>Indicadores Drilling do Brasil · visualização pública, somente leitura · atualizados a cada abertura</span><span><a href="/indicadores/gestao.html">📊 Indicadores de gestão</a></span>';
+      if(d.publico){document.documentElement.classList.add('rd-publico');bar.innerHTML='<span>Indicadores Drilling do Brasil · visualização pública, somente leitura · atualizados a cada abertura</span><span style="display:flex;gap:16px"><a href="/indicadores/premium.html">✨ Painel Premium</a><a href="/indicadores/gestao.html">📊 Indicadores de gestão</a></span>';
         document.querySelectorAll('a[href*="/admin"],button').forEach(function(){});}
       if(d.link_publico){var lb=document.getElementById('rdLinkBtn');if(lb){lb.style.display='';lb.onclick=function(e){e.preventDefault();rdLinkPublico(d);};}}
       if(d.usuario&&d.usuario.papel==='gestor'){var b=document.getElementById('rdMetasBtn');b.style.display='';b.onclick=function(e){e.preventDefault();rdMetas(d);};}
