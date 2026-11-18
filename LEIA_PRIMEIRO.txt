@@ -1,3 +1,5 @@
+v3.51.1 — Fila de chegadas: no sino de Avisos, as chegadas para conferir ficam no topo, numeradas, do pedido mais antigo para o mais novo; depois os outros avisos novos e por fim os já lidos. Em Pedidos, o filtro "Novos" também lista do mais antigo para o mais novo.
+
 v3.51.0 — Várias rotas, pendências do dia, busca no Estoque e menu para celular/tablet
 - COLETAS: até 10 rotas em andamento ao mesmo tempo (abas "🚚 Motorista 2/5" + "＋ Nova rota"). Cada motorista tem o seu link (até 10) e vê só a rota com o nome dele (escreva o nome no campo "Motorista" ao iniciar a rota). Uma coleta não entra em duas rotas. Rotas já concluídas (ou paradas há 36 h) fecham sozinhas. Rota antiga em andamento é migrada sozinha.
 - COLETAS: ao montar a rota, avisos automáticos (parada sem localização/divergente, baixa confiança, parada muito longe); ao iniciar, pede confirmação se houver aviso grave.

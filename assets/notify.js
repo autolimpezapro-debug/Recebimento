@@ -225,15 +225,25 @@ function ntRenderLista() {
     host.innerHTML = '<div class="nt-empty">Nenhuma notificação ainda. Toda conferência finalizada aparecerá aqui.</div>';
     return;
   }
-  host.innerHTML = NT.itens.map(n => `
+  // v3.51.1: chegadas pendentes (não lidas) primeiro, do pedido mais antigo para o mais novo; depois os outros avisos não lidos; por fim os já lidos.
+  const chegada = n => (n.tipo === 'recebimento' || n.tipo === 'parcial') && !n.lido;
+  const emMs = n => new Date(n.em).getTime() || 0;
+  const g1 = NT.itens.filter(chegada).sort((a, b) => emMs(a) - emMs(b) || (Number(a.pc) || 0) - (Number(b.pc) || 0));
+  const g2 = NT.itens.filter(n => !n.lido && !chegada(n)).sort((a, b) => emMs(b) - emMs(a));
+  const g3 = NT.itens.filter(n => n.lido).sort((a, b) => emMs(b) - emMs(a));
+  const item = (n, pos) => `
     <button class="nt-item ${n.lido ? '' : 'unread'}" onclick="ntAbrir(${n.id})">
-      <span class="nt-item-icon">${NT_ICONE[n.tipo] || '🔔'}</span>
+      <span class="nt-item-icon">${pos ? `<b class="nt-pos">${pos}</b>` : (NT_ICONE[n.tipo] || '🔔')}</span>
       <span class="nt-item-body">
         <strong>${ntEsc(n.titulo)}</strong>
         <small>${ntEsc(n.texto)}</small>
         <em>${ntHora(n.em)}${n.autor ? ' · ' + ntEsc(n.autor) : ''}</em>
       </span>
-    </button>`).join('');
+    </button>`;
+  const cab = (t) => `<div class="nt-grupo">${t}</div>`;
+  host.innerHTML = (g1.length ? cab(`📦 Chegadas para conferir · ${g1.length} · mais antigas primeiro`) + g1.map((n, i) => item(n, i + 1)).join('') : '')
+    + (g2.length ? cab('Outros avisos novos') + g2.map(n => item(n)).join('') : '')
+    + (g3.length ? cab('Já lidos') + g3.map(n => item(n)).join('') : '');
 }
 
 async function ntCarregarHistorico() {
