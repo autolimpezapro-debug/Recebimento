@@ -52,7 +52,9 @@ function pwaRegistrar(){
 function pwaAbrirPaginaDoLink(){
  const p=new URLSearchParams(location.search).get('page');if(!p||!/^[a-z]+$/.test(p))return;
  let t=0;const tenta=()=>{const el=document.getElementById('page-'+p);
-  if(el&&typeof goPage==='function'){try{goPage(p)}catch{}history.replaceState(null,'',location.pathname);}
+  if(el&&typeof goPage==='function'){(async()=>{try{if(window.rdAuthReady)await window.rdAuthReady}catch{}
+    if(typeof RDA!=='undefined'&&RDA.exigir&&!RDA.logado){try{sessionStorage.setItem('rd_page_pendente',p)}catch{}return;}   // vai para a página depois do login
+    try{goPage(p)}catch{}history.replaceState(null,'',location.pathname);})();}
   else if(++t<40)setTimeout(tenta,250);};
  setTimeout(tenta,300);
 }
@@ -61,6 +63,7 @@ window.addEventListener('DOMContentLoaded',()=>{
  const b=document.getElementById('installPwa');if(b)b.addEventListener('click',installDrilling);
  if(pwaInstalado()){document.documentElement.classList.add('pwa-instalado');pwaPersistir();}
  pwaRegistrar();pwaAbrirPaginaDoLink();
+ try{const pend=sessionStorage.getItem('rd_page_pendente');if(pend&&!new URLSearchParams(location.search).get('page')){sessionStorage.removeItem('rd_page_pendente');history.replaceState(null,'','?page='+encodeURIComponent(pend));pwaAbrirPaginaDoLink();}}catch{}
 });
-window.addEventListener('online',()=>{updateNetworkState();if(typeof load==='function')load();});
+window.addEventListener('online',()=>{updateNetworkState();if(typeof rdWhenLogged==='function'&&typeof load==='function')rdWhenLogged(load);else if(typeof load==='function')load();});
 window.addEventListener('offline',updateNetworkState);

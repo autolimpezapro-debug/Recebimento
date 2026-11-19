@@ -1,3 +1,17 @@
+v3.55.1 — Auditoria do Inventário e do PWA (correções)
+Revisão completa (lint PHP/JS/JSON, verificação de tipos e 3 revisões independentes: backend, front/PWA e teste ponta a ponta). Corrigido:
+- Botão "Folha" (impressão) dava erro 500.
+- Celular: a tela de contagem não rolava e cortava as colunas "Contado" e "Situação"; agora a tabela rola dentro do quadro. Enter passa ao próximo item sem perder o foco.
+- Dois inventários abertos com o mesmo item (ajustaria o saldo duas vezes): o sistema agora não deixa o item entrar em duas contagens abertas.
+- Movimentação feita no mesmo segundo da criação da contagem agora é descontada corretamente.
+- Contagem cancelada não mostra mais o saldo do sistema a quem não é gestor; só o criador ou o gestor cancela.
+- Quantidades: "1.500" (ambíguo), notação científica e valores absurdos são recusados com mensagem; vírgula decimal continua valendo.
+- Reenvio de contagem offline não duplica nem sobrepõe digitação mais nova; um item recusado não trava os demais.
+- Item que sumiu do estoque não trava mais o encerramento; saldo que ficaria negativo é ajustado a zero com aviso no histórico.
+- Plano cíclico ignora itens zerados e contagens canceladas; códigos numéricos (EAN) funcionam nos escopos por lista.
+- Configuração valida os números; escopo inválido é recusado.
+- PWA: atalhos (?page=) esperam o login; notificações push respeitam subpasta; contagens locais enviadas/limpas ao sair; cache offline de contagens encerradas é limpo.
+
 v3.55.0 — Inventário e Acuracidade + PWA completo
 NOVO menu "Inventário e Acuracidade" (a aba antiga Estoque > Inventário continua funcionando).
 - Inventário geral (balanço) e Contagem cíclica no mesmo motor. Escopo: todos os itens, curva ABC, categoria, endereço ou lista de códigos.

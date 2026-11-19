@@ -1,7 +1,7 @@
-/* Recebimento Drilling — PWA completo (v3.55.0): shell offline, página offline, atualização controlada, Background Sync (aviso à página) e Web Push.
+/* Recebimento Drilling — PWA completo (v3.55.1): shell offline, página offline, atualização controlada, Background Sync (aviso à página) e Web Push.
    Dados operacionais (API, fotos, PDFs) NUNCA entram no cache: só a interface. Funciona na raiz do domínio ou em subpasta (usa o escopo do SW). */
 'use strict';
-const CACHE='recebimento-drilling-shell-v3.55.0.20261119r1';
+const CACHE='recebimento-drilling-shell-v3.55.1.20261119r2';
 const SCOPE=new URL(self.registration.scope);
 const BASE=SCOPE.pathname;                       // "/" ou "/subpasta/"
 const abs=p=>new URL(p,SCOPE).href;
@@ -73,7 +73,7 @@ self.addEventListener('push',event=>{
   const pc=Number(data.pc);
   const validPC=Number.isSafeInteger(pc)&&pc>0;
   const sentUrl=(typeof data.url==='string'&&data.url[0]==='/'&&data.url[1]!=='/')?data.url:'';
-  const target=validPC?'/?pc='+encodeURIComponent(pc):(sentUrl||'/');
+  const target=validPC?abs('./?pc='+encodeURIComponent(pc)):(sentUrl?new URL(sentUrl,self.location.origin).href:abs('./'));
   await self.registration.showNotification(data.title||'Recebimento Drilling',{
    body:data.body||(validPC?'Recebimento conferido. Toque para visualizar o pedido.':'Toque para abrir o sistema.'),
    icon:abs('assets/icons/icon-192.png'),badge:abs('assets/icons/notification.svg'),
@@ -85,7 +85,7 @@ self.addEventListener('push',event=>{
 self.addEventListener('notificationclick',event=>{
  event.notification.close();
  event.waitUntil((async()=>{
-  const target=new URL(event.notification.data?.url||'/',self.location.origin);
+  const target=new URL(event.notification.data?.url||abs('./'),self.location.origin);
   if(target.origin!==self.location.origin)return;
   const tabs=await self.clients.matchAll({type:'window',includeUncontrolled:true});
   for(const tab of tabs){

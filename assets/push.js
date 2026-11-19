@@ -17,7 +17,7 @@ function renderPushButton(){
   Notification.permission==='denied'?'Notificações bloqueadas no navegador. Ajuste a permissão nas configurações do site.':'Opcional: autorize as notificações neste dispositivo.';
 }
 async function pushRegistration(){
- const reg=await navigator.serviceWorker.register('sw.js',{scope:'/',updateViaCache:'none'});
+ const reg=await navigator.serviceWorker.register('sw.js',{scope:'./',updateViaCache:'none'});
  await navigator.serviceWorker.ready;
  return reg;
 }

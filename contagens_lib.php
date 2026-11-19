@@ -46,10 +46,12 @@ function cnt_abc(array $db): array {
     return $out;
 }
 /** Variação líquida do item por movimentações no intervalo (t0, t1]. */
-function cnt_delta(array $db, string $cod, int $t0, int $t1): float {
+function cnt_delta(array $db, string $cod, int $t0, int $t1, ?int $base = null): float {
     $s = 0.0;
     foreach ($db['movimentos'] ?? [] as $m) {
-        if (($m['codigo'] ?? '') !== $cod) continue; $t = cnt_ts($m['em'] ?? ''); if ($t <= $t0 || $t > $t1) continue;
+        if ((string)($m['codigo'] ?? '') !== $cod) continue; $t = cnt_ts($m['em'] ?? '');
+        if ($base !== null) { if ((int)substr((string)($m['id'] ?? ''), 4) <= $base || $t > $t1) continue; }   // depois do congelamento, pela sequência (vale no mesmo segundo)
+        elseif ($t <= $t0 || $t > $t1) continue;
         if (isset($m['saldo_posterior'], $m['saldo_anterior'])) $s += (float)$m['saldo_posterior'] - (float)$m['saldo_anterior'];
     }
     return round($s, 4);
@@ -72,8 +74,8 @@ function cnt_view(array $c, bool $cego = true): array {
     $cont = array_count_values(array_column($v['itens'], 'status'));
     $v['resumo'] = ['total' => count($v['itens']), 'pendente' => $cont['PENDENTE'] ?? 0, 'recontar' => $cont['RECONTAR'] ?? 0, 'aprovacao' => $cont['APROVACAO'] ?? 0,
         'ok' => ($cont['OK'] ?? 0) + ($cont['OK_RECONTAGEM'] ?? 0) + ($cont['APROVADO'] ?? 0) + ($cont['AJUSTADO'] ?? 0)];
-    $v['resumo']['contados'] = $v['resumo']['total'] - $v['resumo']['pendente'];
-    if ($cego && ($c['status'] ?? '') === 'CONTANDO') foreach ($v['itens'] as &$l) {
+    $v['resumo']['contados'] = $v['resumo']['total'] - $v['resumo']['pendente'] - ($cont['NAO_CONTADO'] ?? 0);
+    if ($cego && ($c['status'] ?? '') !== 'APLICADA') foreach ($v['itens'] as &$l) {
         unset($l['saldo_congelado'], $l['diferenca'], $l['contado'], $l['valor_dif']);
         $l['rodadas'] = array_map(fn($r) => ['em' => $r['em'], 'por' => $r['por']], $l['rodadas'] ?? []); $l['n_rodadas'] = count($l['rodadas']);
     } unset($l);
@@ -83,7 +85,7 @@ function &cnt_get(array &$d, string $id) { if (!isset($d['contagens'][$id])) prt
 
 function cnt_ultima_contagem(array $d): array {
     $u = [];
-    foreach ($d['contagens'] as $c) foreach ($c['itens'] as $cod => $l) foreach ($l['rodadas'] ?? [] as $r) { $t = substr((string)$r['em'], 0, 10); if (!isset($u[$cod]) || $t > $u[$cod]['data']) $u[$cod] = ['data' => $t, 'div' => ($l['diferenca'] ?? 0) != 0]; }
+    foreach ($d['contagens'] as $c) if (($c['status'] ?? '') === 'APLICADA') foreach ($c['itens'] as $cod => $l) foreach ($l['rodadas'] ?? [] as $r) { $t = substr((string)$r['em'], 0, 10); if (!isset($u[$cod]) || $t > $u[$cod]['data']) $u[$cod] = ['data' => $t, 'div' => ($l['diferenca'] ?? 0) != 0]; }
     return $u;
 }
 /** Plano cíclico: itens vencidos segundo a frequência da classe (A/B/C), os nunca contados primeiro dentro da classe. */
@@ -92,7 +94,7 @@ function cnt_sugestao(array $d, array $db, int $n): array {
     foreach ($d['contagens'] as $c) if (($c['status'] ?? '') === 'CONTANDO') foreach ($c['itens'] as $cod => $_) $emAberto[$cod] = true;
     foreach ($db['itens'] as $cod => $it) {
         if (isset($emAberto[$cod])) continue;
-        if ((float)$it['saldo'] <= 0 && empty($it['ultimo_mov'])) { /* item zerado: só entra se nunca contado e com histórico */ }
+        if ((float)$it['saldo'] <= 0) continue;   // item zerado não entra no plano cíclico
         $cl = $abc[$cod] ?? 'C'; $freq = (int)($cfg['freq_dias'][$cl] ?? 180); $dt = $ult[$cod]['data'] ?? null;
         $dias = $dt ? (int)floor(($hoje - strtotime($dt)) / 86400) : 9999;
         if ($dias < $freq) continue;
@@ -104,45 +106,62 @@ function cnt_sugestao(array $d, array $db, int $n): array {
     return ['vencidos' => $venc, 'total_vencidos' => array_sum($venc), 'sugeridos' => array_slice($lista, 0, max(1, min(200, $n)))];
 }
 function cnt_criar(array &$d, array $db, array $in, string $user): array {
-    $tipo = ($in['tipo'] ?? '') === 'CICLICA' ? 'CICLICA' : 'GERAL'; $esc = (string)($in['escopo'] ?? 'TODOS'); $filtro = prt_str($in['filtro'] ?? '', 200);
+    $tipo = ($in['tipo'] ?? '') === 'CICLICA' ? 'CICLICA' : 'GERAL'; $esc = (string)($in['escopo'] ?? 'TODOS');
+    if (!in_array($esc, ['TODOS', 'ABC', 'CATEGORIA', 'LOCALIZACAO', 'ITENS', 'LISTA'], true)) prt_fail('Escopo inválido.');
+    if (isset($in['filtro']) && !is_scalar($in['filtro'])) prt_fail('Filtro inválido.');
+    $filtro = prt_str($in['filtro'] ?? '', $esc === 'ITENS' ? 4000 : 200);
     $abc = cnt_abc($db); $sel = [];
-    $lista = array_filter(array_map('trim', preg_split('/[,;\n]+/', $filtro)));
+    $lista = array_map('strval', array_filter(array_map('trim', preg_split('/[,;\n]+/', $filtro))));
+    $emAberto = [];
+    foreach ($d['contagens'] as $o) if (($o['status'] ?? '') === 'CONTANDO') foreach ($o['itens'] as $k => $_) $emAberto[(string)$k] = $o['id'];
+    $pulados = 0; $codigosLista = array_map('strval', (array)($in['codigos'] ?? []));
     foreach ($db['itens'] as $cod => $it) {
         if ($esc === 'CATEGORIA' && ($it['categoria'] ?? '') !== $filtro) continue;
         if ($esc === 'LOCALIZACAO' && mb_strtoupper((string)($it['localizacao'] ?? '')) !== mb_strtoupper($filtro)) continue;
         if ($esc === 'ABC' && ($abc[$cod] ?? 'C') !== strtoupper($filtro)) continue;
-        if ($esc === 'ITENS' && !in_array($cod, $lista, true)) continue;
-        if ($esc === 'LISTA' && !in_array($cod, (array)($in['codigos'] ?? []), true)) continue;
+        if ($esc === 'ITENS' && !in_array((string)$cod, $lista, true)) continue;
+        if ($esc === 'LISTA' && !in_array((string)$cod, $codigosLista, true)) continue;
         if (!empty($in['so_com_saldo']) && (float)$it['saldo'] <= 0) continue;
+        if (isset($emAberto[(string)$cod])) { $pulados++; continue; }   // item já está em outra contagem aberta: evita ajustar duas vezes
         $sel[$cod] = $it;
     }
-    if (!$sel) prt_fail('Nenhum item atende ao escopo escolhido.');
+    if (!$sel) prt_fail($pulados ? 'Todos os itens desse escopo já estão em outra contagem em andamento. Encerre ou cancele a outra primeiro.' : 'Nenhum item atende ao escopo escolhido.');
     $d['seq']++; $id = 'CNT-' . date('Y') . '-' . str_pad((string)$d['seq'], 4, '0', STR_PAD_LEFT); $t0 = date('c'); $itens = [];
     foreach ($sel as $cod => $it) $itens[$cod] = ['codigo' => $cod, 'sku' => preg_match('/^EST-/', $cod) ? '' : $cod, 'descricao' => $it['descricao'], 'unidade' => $it['unidade'] ?? 'UN', 'localizacao' => $it['localizacao'] ?? '', 'categoria' => $it['categoria'] ?? '',
         'abc' => $abc[$cod] ?? 'C', 'custo' => round((float)($it['custo_medio'] ?? 0), 4), 'saldo_congelado' => round((float)$it['saldo'], 4), 'rodadas' => [], 'status' => 'PENDENTE', 'diferenca' => null];
     uasort($itens, fn($a, $b) => strcmp($a['localizacao'], $b['localizacao']) ?: strcmp($a['descricao'], $b['descricao']));
     $d['contagens'][$id] = ['id' => $id, 'tipo' => $tipo, 'nome' => prt_str($in['nome'] ?? '', 100) ?: ($tipo === 'CICLICA' ? 'Contagem cíclica ' . date('d/m') : 'Inventário geral ' . date('d/m/Y')), 'escopo' => $esc, 'filtro' => $filtro, 'status' => 'CONTANDO',
-        'criado_em' => $t0, 'criado_por' => $user, 'congelado_em' => $t0, 'cega' => (bool)$d['config']['cega'], 'itens' => $itens, 'historico' => [['em' => $t0, 'por' => $user, 'acao' => 'Contagem criada (' . count($itens) . ' itens)']]];
+        'criado_em' => $t0, 'criado_por' => $user, 'congelado_em' => $t0, 'cega' => (bool)$d['config']['cega'], 'mov_base' => (int)($db['sequencia']['mov'] ?? 0), 'itens' => $itens, 'historico' => [['em' => $t0, 'por' => $user, 'acao' => 'Contagem criada (' . count($itens) . ' itens' . ($pulados ? '; ' . $pulados . ' ficaram de fora por estarem em outra contagem aberta' : '') . ')']]];
     return $d['contagens'][$id];
 }
 /** itens: [{codigo, qtd, em?}] — em = hora em que contou (contagem offline). Idempotente por (codigo, em). */
+/** Aceita 12 | 12,5 | 12.5 ; recusa milhar ambíguo (1.500), notação científica e valores absurdos. */
+function cnt_qtd($q, string $desc): float {
+    $t = trim((string)$q);
+    if (preg_match('/^\d{1,3}(\.\d{3})+$/', $t) || !preg_match('/^\d+([.,]\d+)?$/', $t)) prt_fail('Quantidade inválida em ' . $desc . ': use só números e vírgula para decimais (sem ponto de milhar).');
+    $v = round((float)str_replace(',', '.', $t), 4); if (!is_finite($v) || $v > 1e8) prt_fail('Quantidade fora do limite em ' . $desc);
+    return $v;
+}
 function cnt_contar(array &$d, array $db, string $id, array $itens, string $user): array {
     $c = &cnt_get($d, $id); if ($c['status'] !== 'CONTANDO') prt_fail('Esta contagem já foi encerrada.', 409);
     $t0 = cnt_ts($c['congelado_em']); $agora = time(); $salvos = 0; $dup = 0; $ign = [];
+    usort($itens, fn($a, $b) => cnt_ts((string)($a['em'] ?? '')) <=> cnt_ts((string)($b['em'] ?? '')));   // ordem de digitação, não de chegada
     foreach ($itens as $x) {
         $cod = (string)($x['codigo'] ?? ''); if (!isset($c['itens'][$cod])) { $ign[] = $cod; continue; }
-        $q = $x['qtd'] ?? null; if ($q === null || $q === '') continue; if (!is_numeric(str_replace(',', '.', (string)$q)) || (float)str_replace(',', '.', (string)$q) < 0) prt_fail('Quantidade inválida em ' . $c['itens'][$cod]['descricao']);
-        $q = round((float)str_replace(',', '.', (string)$q), 4);
+        $q = $x['qtd'] ?? null; if ($q === null || $q === '') continue; if (!is_scalar($q)) prt_fail('Quantidade inválida.'); $q = cnt_qtd($q, $c['itens'][$cod]['descricao']);
         $tc = cnt_ts((string)($x['em'] ?? '')) ?: $agora; if ($tc > $agora) $tc = $agora; if ($tc < $t0) $tc = $t0;
         $l = &$c['itens'][$cod]; $em = date('c', $tc);
-        foreach ($l['rodadas'] as $r) if ($r['em'] === $em && abs($r['qtd'] - $q) < 0.00001) { $dup++; continue 2; }
-        $l['saldo_congelado'] ??= 0; $ref = round($l['saldo_congelado'] + cnt_delta($db, $cod, $t0, $tc), 4);
+        $chave = $em . '|' . $q; $l['vistos'] ??= [];
+        if (in_array($chave, $l['vistos'], true) || ($l['rodadas'] && $tc < cnt_ts(end($l['rodadas'])['em']))) { $dup++; continue; }   // reenvio ou digitação antiga
+        $l['vistos'][] = $chave; $l['vistos'] = array_slice($l['vistos'], -20);
+        $l['saldo_congelado'] ??= 0; $ref = round($l['saldo_congelado'] + cnt_delta($db, $cod, $t0, $tc, isset($c['mov_base']) ? (int)$c['mov_base'] : null), 4);
         $rod = ['qtd' => $q, 'ref' => $ref, 'em' => $em, 'por' => $user, 'obs' => prt_str($x['obs'] ?? '', 120)];
         $n = count($l['rodadas']);
         if ($n === 0) $l['rodadas'][] = $rod;
         elseif ($l['status'] === 'RECONTAR' && $n === 1) $l['rodadas'][] = $rod;
         elseif ($n === 1) $l['rodadas'][0] = $rod;                       // ainda OK: permite corrigir a 1ª contagem
         else $l['rodadas'][$n - 1] = $rod;                               // corrige a recontagem
+        if (!empty($l['decisao'])) $c['historico'][] = ['em' => date('c'), 'por' => $user, 'acao' => 'Decisão anterior desfeita por nova contagem — ' . $cod];
         unset($l['decisao']); cnt_status_item($l, $d['config']); $salvos++; unset($l);
     }
     $c['atualizado_em'] = date('c');
@@ -168,15 +187,19 @@ function cnt_aplicar(array &$d, array &$db, string $id, bool $ignorarPendentes, 
     $r = array_count_values(array_column($c['itens'], 'status'));
     if (($r['RECONTAR'] ?? 0) || ($r['APROVACAO'] ?? 0)) prt_fail(($r['RECONTAR'] ?? 0) . ' item(ns) aguardando recontagem e ' . ($r['APROVACAO'] ?? 0) . ' aguardando decisão do gestor. Resolva antes de aplicar.', 422);
     if (($r['PENDENTE'] ?? 0) && !$ignorarPendentes) prt_fail($r['PENDENTE'] . ' item(ns) ainda não contados. Conte, ou aplique ignorando os pendentes.', 422);
-    $ajustes = 0; $movs = []; $agora = time(); $t0 = cnt_ts($c['congelado_em']);
+    $ajustes = 0; $movs = []; $agora = time(); $t0 = cnt_ts($c['congelado_em']); $ja = [];
+    foreach ($db['movimentos'] ?? [] as $m) if (($m['tipo'] ?? '') === 'AJUSTE_INVENTARIO' && ($m['documento'] ?? '') === $id) $ja[(string)$m['codigo']] = $m['id'];   // reaplicação após falha de gravação não duplica
     foreach ($c['itens'] as $cod => &$l) {
         if ($l['status'] === 'PENDENTE') { $l['status'] = 'NAO_CONTADO'; $l['decisao'] = ['acao' => 'ignorado', 'por' => $user, 'em' => date('c'), 'motivo' => 'não contado']; continue; }
         if (!in_array($l['status'], ['OK', 'OK_RECONTAGEM', 'APROVADO'], true)) continue;
         $dif = (float)$l['diferenca'];
+        if (isset($ja[(string)$cod])) { $l['movimento'] = $ja[(string)$cod]; $l['status'] = 'AJUSTADO'; $l['ajustado_em'] = date('c'); continue; }
+        if (!isset($db['itens'][$cod])) { $l['status'] = 'NAO_CONTADO'; $l['decisao'] = ['acao' => 'ignorado', 'por' => $user, 'em' => date('c'), 'motivo' => 'item não existe mais no estoque']; continue; }
         if (abs($dif) >= 0.00001) {
-            $atual = (float)$db['itens'][$cod]['saldo']; $novo = max(0, round($atual + $dif, 4));   // aplica a DIFERENÇA sobre o saldo de hoje (preserva o que se moveu depois da contagem)
+            $atual = (float)$db['itens'][$cod]['saldo']; $bruto = round($atual + $dif, 4); $novo = max(0, $bruto);
+            $aviso = $bruto < 0 ? ' · ATENÇÃO: saldo de hoje (' . est_num($atual) . ') menor que a diferença; ajustado a zero' : ($novo < (float)$db['itens'][$cod]['reservado'] ? ' · ATENÇÃO: saldo ficou abaixo do reservado' : ''); if ($aviso) $l['parcial'] = true;   // aplica a DIFERENÇA sobre o saldo de hoje (preserva o que se moveu depois da contagem)
             $m = est_apply_movement($db, ['tipo' => 'AJUSTE_INVENTARIO', 'codigo' => $cod, 'quantidade' => $novo, 'origem' => 'INVENTARIO', 'documento' => $id, 'usuario' => $user,
-                'observacao' => 'Inventário ' . $id . ': ' . ($dif > 0 ? '+' : '') . est_num($dif) . ' (contado ' . est_num($l['contado']) . ' × sistema ' . est_num($l['rodadas'][count($l['rodadas']) - 1]['ref']) . ')' . (!empty($l['decisao']['motivo']) ? ' · ' . $l['decisao']['motivo'] : '')]);
+                'observacao' => 'Inventário ' . $id . ': ' . ($dif > 0 ? '+' : '') . est_num($dif) . ' (contado ' . est_num($l['contado']) . ' × sistema ' . est_num($l['rodadas'][count($l['rodadas']) - 1]['ref']) . ')' . (!empty($l['decisao']['motivo']) ? ' · ' . $l['decisao']['motivo'] : '') . $aviso]);
             $l['movimento'] = $m['id']; $movs[] = $m['id']; $ajustes++;
         }
         $l['status'] = 'AJUSTADO'; $l['ajustado_em'] = date('c');
@@ -213,7 +236,7 @@ function cnt_csv(array $c): string {
 }
 function cnt_folha_html(array $c): string {
     $e = fn($v) => htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); $linhas = '';
-    foreach ($c['itens'] as $i => $l) $linhas .= '<tr><td>' . ($i + 1) . '</td><td>' . $e($l['localizacao'] ?: '—') . '</td><td>' . $e($l['codigo']) . '</td><td>' . $e($l['descricao']) . '</td><td>' . $e($l['unidade']) . '</td><td class="b"></td><td class="b"></td><td></td></tr>';
+    $n = 0; foreach ($c['itens'] as $l) $linhas .= '<tr><td>' . (++$n) . '</td><td>' . $e($l['localizacao'] ?: '—') . '</td><td>' . $e($l['codigo']) . '</td><td>' . $e($l['descricao']) . '</td><td>' . $e($l['unidade']) . '</td><td class="b"></td><td class="b"></td><td></td></tr>';
     return '<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Folha de contagem ' . $e($c['id']) . '</title><style>body{font:12px Arial;margin:14px}h1{font-size:16px;margin:0}table{width:100%;border-collapse:collapse;margin-top:8px}th,td{border:1px solid #666;padding:5px 6px}th{background:#eee;text-align:left}td.b{width:90px}@media print{button{display:none}tr{page-break-inside:avoid}}</style><button onclick="print()">Imprimir</button>'
         . '<h1>Drilling do Brasil — Folha de contagem ' . $e($c['id']) . '</h1><p>' . $e($c['nome']) . ' · ' . $e(date('d/m/Y H:i', strtotime($c['criado_em']))) . ' · ' . count($c['itens']) . ' itens · Contador: ____________________ Data: ___/___/_____</p>'
         . '<table><thead><tr><th>#</th><th>Endereço</th><th>Código</th><th>Material</th><th>Un.</th><th>1ª contagem</th><th>Recontagem</th><th>Obs.</th></tr></thead><tbody>' . $linhas . '</tbody></table></html>';

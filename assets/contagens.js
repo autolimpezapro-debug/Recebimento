@@ -1,6 +1,7 @@
 /* Recebimento Drilling — Inventário e Acuracidade (v3.55.0): contagem geral/cíclica, cega, com recontagem, aprovação e contagem OFFLINE (IndexedDB). */
 'use strict';
 const CNT = { d: null, aba: 'painel', cur: null, revelar: false, filtro: '', sug: null };
+const cntJ = v => terH(JSON.stringify(String(v)));   // literal JS seguro dentro de atributo HTML
 const cntNum = n => n == null ? '—' : Number(n).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
 const cntMoney = n => Number(n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const cntPct = n => n == null ? '—' : Number(n).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%';
@@ -15,30 +16,43 @@ const cntIdb = (() => {
     r.onupgradeneeded = () => { const d = r.result; d.createObjectStore('fila', { keyPath: 'k', autoIncrement: true }); d.createObjectStore('cache', { keyPath: 'id' }); };
     r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
   }));
-  const tx = async (st, mode, fn) => { const d = await open(); return new Promise((res, rej) => { const t = d.transaction(st, mode), s = t.objectStore(st), q = fn(s); t.oncomplete = () => res(q && q.result); t.onerror = () => rej(t.error); }); };
+  const tx = async (st, mode, fn) => { const d = await open(); return new Promise((res, rej) => { const t = d.transaction(st, mode), s = t.objectStore(st), q = fn(s); t.oncomplete = () => res(q && q.result); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error || new Error('abortado')); }); };
   return { add: (st, v) => tx(st, 'readwrite', s => s.put(v)), all: st => tx(st, 'readonly', s => s.getAll()), get: (st, k) => tx(st, 'readonly', s => s.get(k)), del: (st, k) => tx(st, 'readwrite', s => s.delete(k)) };
 })();
 async function cntFilaTotal() { try { return (await cntIdb.all('fila')).length; } catch { return 0; } }
 async function cntBadgeFila() { const n = await cntFilaTotal(), el = terEl('cntFila'); if (el) el.innerHTML = n ? `<span class="prt-badge warn">⏳ ${n} contagem(ns) aguardando envio</span> <button class="button ghost" onclick="cntSync(true)">Enviar agora</button>` : ''; }
-let cntSyncando = false;
+let cntSyncando = false, cntSyncPedido = false;
 function cntRegistrarSync() { try { navigator.serviceWorker.ready.then(r => r.sync && r.sync.register('rd-flush-contagens')).catch(() => { }); } catch { } }
 async function cntSync(avisar) {
-  if (cntSyncando) return; cntSyncando = true;
+  if (cntSyncando) { cntSyncPedido = true; return; } cntSyncando = true; let mudou = false;
+  const valida = q => /^\d+(\.\d+)?$/.test(String(q)) && !/^\d{1,3}(\.\d{3})+$/.test(String(q));
   try {
-    const fila = await cntIdb.all('fila'); if (!fila.length) { if (avisar) terToast('Nada pendente de envio.'); return; }
-    const por = {}; fila.forEach(f => (por[f.cid] = por[f.cid] || []).push(f));
-    for (const [cid, itens] of Object.entries(por)) {
-      try {
-        await terPost('contagens_contar', { id: cid, itens: itens.map(i => ({ codigo: i.codigo, qtd: i.qtd, em: i.em })) });
-        for (const i of itens) await cntIdb.del('fila', i.k);
-      } catch (e) {
-        if (e instanceof TypeError) { cntRegistrarSync(); if (avisar) terToast('Sem conexão. Fica guardado neste aparelho e envia sozinho quando voltar.', true); break; }
-        if (/encerrada|não encontrada/i.test(e.message)) { for (const i of itens) await cntIdb.del('fila', i.k); terToast(`${cid}: ${e.message} — contagens locais descartadas.`, true); }
-        else { terToast(`${cid}: ${e.message}`, true); }
+    do {
+      cntSyncPedido = false;
+      const fila = await cntIdb.all('fila'); if (!fila.length) { if (avisar) terToast('Nada pendente de envio.'); break; }
+      const por = {}; fila.forEach(f => (por[f.cid] = por[f.cid] || []).push(f));
+      for (const [cid, itens] of Object.entries(por)) {
+        const lote = itens.filter(i => valida(i.qtd));
+        for (const i of itens) if (!valida(i.qtd)) { await cntIdb.del('fila', i.k); mudou = true; }
+        if (!lote.length) continue;
+        try {
+          await terPost('contagens_contar', { id: cid, itens: lote.map(i => ({ codigo: i.codigo, qtd: i.qtd, em: i.em })) });
+          for (const i of lote) await cntIdb.del('fila', i.k); mudou = true;
+        } catch (e) {
+          if (e instanceof TypeError) { cntRegistrarSync(); if (avisar) terToast('Sem conexão. Fica guardado neste aparelho e envia sozinho quando voltar.', true); return; }
+          if (/encerrada|não encontrada/i.test(e.message)) { for (const i of itens) await cntIdb.del('fila', i.k); cntIdb.del('cache', cid).catch(() => { }); mudou = true; terToast(`${cid}: ${e.message} — contagens locais descartadas.`, true); continue; }
+          if (/sess|login|autent|401/i.test(e.message)) { terToast('Entre novamente para enviar as contagens guardadas.', true); return; }
+          // erro de um item não pode travar o resto: reenvia um a um e descarta só o que o servidor recusa
+          for (const i of lote) {
+            try { await terPost('contagens_contar', { id: cid, itens: [{ codigo: i.codigo, qtd: i.qtd, em: i.em }] }); await cntIdb.del('fila', i.k); mudou = true; }
+            catch (e2) { if (e2 instanceof TypeError) return; await cntIdb.del('fila', i.k); mudou = true; terToast(`${i.codigo}: ${e2.message} (contagem desse item descartada)`, true); }
+          }
+        }
       }
-    }
-  } finally { cntSyncando = false; cntBadgeFila(); if (CNT.cur && terEl('cntTela')) cntRecarregarAtual(); }
+    } while (cntSyncPedido);
+  } finally { cntSyncando = false; cntBadgeFila(); if (mudou && CNT.cur && terEl('cntTela')) cntRecarregarAtual(); }
 }
+if (typeof window.rdaLogout === 'function') { const lo = window.rdaLogout; window.rdaLogout = async function () { try { await cntSync(false); await cntIdb.all('cache').then(l => Promise.all(l.map(c => cntIdb.del('cache', c.id)))); } catch { } return lo.apply(this, arguments); }; }
 window.addEventListener('online', () => cntSync(false));
 document.addEventListener('visibilitychange', () => { if (!document.hidden) cntSync(false); });
 setInterval(() => { if (navigator.onLine) cntSync(false); }, 60000);
@@ -47,15 +61,16 @@ navigator.serviceWorker && navigator.serviceWorker.addEventListener('message', e
 /* ---------- página ---------- */
 async function contagensInit() {
   const c = terEl('cntConteudo'); if (!c) return;
-  CNT.cur = null;
-  try { CNT.d = await terApi('contagens_painel'); } catch (e) {
+  CNT.cur = null; CNT.filtro = ''; CNT.soPend = false;
+  try { CNT.d = await terApi('contagens_painel'); cntLimparCache(); } catch (e) {
     c.innerHTML = `<div class="empty">${terH(e.message)}${navigator.onLine ? '' : '<br>Sem conexão. Contagens já baixadas neste aparelho aparecem abaixo.'}</div><div id="cntOffline"></div>`; cntListaOffline(); return;
   }
   cntRender();
 }
+async function cntLimparCache() { try { const abertas = new Set(CNT.d.contagens.filter(c => c.status === 'CONTANDO').map(c => c.id)); for (const c of await cntIdb.all('cache')) if (!abertas.has(c.id)) await cntIdb.del('cache', c.id); } catch { } }
 async function cntListaOffline() {
   const el = terEl('cntOffline'); if (!el) return; let l = []; try { l = await cntIdb.all('cache'); } catch { }
-  el.innerHTML = l.length ? l.map(c => `<article class="panel prt-card"><div class="prt-top"><div><h3>${terH(c.id)} · ${terH(c.nome)}</h3><p class="muted">${c.itens.length} itens baixados neste aparelho</p></div><button class="button primary" onclick="cntAbrir('${terH(c.id)}')">Contar offline</button></div></article>`).join('') : '';
+  el.innerHTML = l.length ? l.map(c => `<article class="panel prt-card"><div class="prt-top"><div><h3>${terH(c.id)} · ${terH(c.nome)}</h3><p class="muted">${c.itens.length} itens baixados neste aparelho</p></div><button class="button primary" onclick="cntAbrir(${cntJ(c.id)})">Contar offline</button></div></article>`).join('') : '';
 }
 function cntRender() {
   const d = CNT.d, k = d.kpis, ab = CNT.aba;
@@ -83,10 +98,10 @@ function cntPainel() {
 function cntContagens() {
   const l = CNT.d.contagens, pode = terPode('criar');
   terEl('cntAba').innerHTML = `<div style="margin:10px 0">${pode ? '<button class="button primary" onclick="cntNova(\'GERAL\')">＋ Novo inventário geral</button> <button class="button ghost" onclick="cntNova(\'CICLICA\')">＋ Nova contagem cíclica</button>' : ''}</div>`
-    + (l.length ? l.map(c => { const [t, cls] = CNT_CS[c.status] || [c.status, '']; const r = c.resumo, e = c.estatisticas;
+    + (l.length ? l.map(c => { const [t, cls] = CNT_CS[c.status] || [terH(c.status), '']; const r = c.resumo, e = c.estatisticas;
       return `<article class="panel prt-card"><div class="prt-top"><div><h3>${terH(c.id)} · ${terH(c.nome)} <span class="prt-badge ${cls}">${t}</span> <span class="prt-badge">${c.tipo === 'CICLICA' ? 'cíclica' : 'geral'}</span></h3>
         <p class="muted">${terD(c.criado_em)} · ${terH(c.criado_por)} · ${r.total} itens · contados ${r.contados}/${r.total}${r.recontar ? ` · <b>${r.recontar} a recontar</b>` : ''}${r.aprovacao ? ` · <b>${r.aprovacao} aguardam gestor</b>` : ''}${e ? ` · acuracidade ${cntPct(e.ira_itens)} · divergência ${cntMoney(e.dif_valor_abs)}` : ''}</p></div>
-        <div class="est-head-actions"><button class="button primary" onclick="cntAbrir('${c.id}')">${c.status === 'CONTANDO' ? 'Contar / conferir' : 'Ver'}</button><button class="button ghost" onclick="window.open('api.php?action=contagens_folha&id=${c.id}','_blank')">🖨 Folha</button>${c.status === 'CONTANDO' ? `<button class="button ghost" onclick="cntBaixar('${c.id}')">📲 Baixar p/ offline</button>` : ''}<button class="button ghost" onclick="location.href='api.php?action=contagens_csv&id=${c.id}'">⇩ CSV</button></div></div></article>`; }).join('')
+        <div class="est-head-actions"><button class="button primary" onclick="cntAbrir(${cntJ(c.id)})">${c.status === 'CONTANDO' ? 'Contar / conferir' : 'Ver'}</button><button class="button ghost" onclick="window.open('api.php?action=contagens_folha&id='+${cntJ(c.id)},'_blank')">🖨 Folha</button>${c.status === 'CONTANDO' ? `<button class="button ghost" onclick="cntBaixar(${cntJ(c.id)})">📲 Baixar p/ offline</button>` : ''}<button class="button ghost" onclick="location.href='api.php?action=contagens_csv&id='+${cntJ(c.id)}">⇩ CSV</button></div></div></article>`; }).join('')
       : '<div class="empty">Nenhuma contagem ainda. Crie um inventário geral (balanço) ou uma contagem cíclica.</div>');
 }
 async function cntCiclica() {
@@ -95,7 +110,7 @@ async function cntCiclica() {
   const s = CNT.sug, f = CNT.d.config.freq_dias;
   box.innerHTML = `<p class="muted" style="margin-top:10px">Curva ABC calculada pelo giro (saídas em 12 meses) e valor em estoque. Frequência: <b>A a cada ${f.A} dias · B a cada ${f.B} · C a cada ${f.C}</b>. Itens nunca contados entram como vencidos. Vencidos agora: A ${s.vencidos.A} · B ${s.vencidos.B} · C ${s.vencidos.C}.</p>
     ${terPode('criar') && s.sugeridos.length ? `<button class="button primary" onclick="cntCriarCiclica()">＋ Criar contagem do dia com estes ${s.sugeridos.length} itens</button>` : ''}
-    ${cntTabela(['ABC', 'Endereço', 'Código', 'Material', 'Última contagem', 'Saldo'].slice(0, CNT.d.gestor ? 6 : 5), s.sugeridos.map(i => [`<span class="prt-badge ${i.abc === 'A' ? 'bad' : i.abc === 'B' ? 'warn' : ''}">${i.abc}</span>`, terH(i.localizacao || '—'), terH(i.codigo), terH(i.descricao) + (i.ultima_divergente ? ' <span class="prt-badge bad">divergiu</span>' : ''), i.dias == null ? 'nunca' : `${i.dias} dia(s)`].concat(CNT.d.gestor ? [cntNum(i.saldo)] : [])))}`;
+    ${cntTabela(['ABC', 'Endereço', 'Código', 'Material', 'Última contagem', 'Saldo'].slice(0, CNT.d.gestor ? 6 : 5), s.sugeridos.map(i => [`<span class="prt-badge ${i.abc === 'A' ? 'bad' : i.abc === 'B' ? 'warn' : ''}">${terH(i.abc)}</span>`, terH(i.localizacao || '—'), terH(i.codigo), terH(i.descricao) + (i.ultima_divergente ? ' <span class="prt-badge bad">divergiu</span>' : ''), i.dias == null ? 'nunca' : `${i.dias} dia(s)`].concat(CNT.d.gestor ? [cntNum(i.saldo)] : [])))}`;
 }
 async function cntCriarCiclica() {
   try { const r = await terPost('contagens_criar', { tipo: 'CICLICA', escopo: 'LISTA', codigos: CNT.sug.sugeridos.map(i => i.codigo) }); terToast('Contagem criada.'); CNT.d = await terApi('contagens_painel'); await cntAbrir(r.id); } catch (e) { terToast(e.message, true); }
@@ -106,13 +121,13 @@ function cntConfig() {
     <label>Tolerância (%)<input type="number" step="0.1" min="0" name="tp" value="${c.tolerancia_pct}" ${g ? '' : 'disabled'}></label><label>Tolerância (unidades)<input type="number" step="0.01" min="0" name="ta" value="${c.tolerancia_abs}" ${g ? '' : 'disabled'}></label>
     <label>Meta de acuracidade (%)<input type="number" step="0.1" name="mt" value="${c.meta_acuracidade}" ${g ? '' : 'disabled'}></label><label>Itens por contagem cíclica do dia<input type="number" min="1" max="200" name="qd" value="${c.qtd_dia}" ${g ? '' : 'disabled'}></label>
     ${['A', 'B', 'C'].map(k => `<label>Contar curva ${k} a cada (dias)<input type="number" min="1" name="f${k}" value="${c.freq_dias[k]}" ${g ? '' : 'disabled'}></label>`).join('')}
-    <label><input type="checkbox" name="cg" ${c.cega ? 'checked' : ''} ${g ? '' : 'disabled'}> Contagem cega (contador não vê o saldo do sistema)</label></div>
+    </div><p class="muted">A contagem é sempre cega: quem conta não vê o saldo do sistema; só o gestor pode revelar.</p>
     <p class="muted">Divergência até a tolerância é ajustada direto. Acima dela: recontagem e, se persistir, aprovação do gestor com motivo. Vale para novas contagens.</p>
     ${g ? '<button class="button primary" onclick="cntSalvarConfig()">Salvar configuração</button>' : '<p class="muted">Somente quem aprova estoque altera a configuração.</p>'}</div>`;
 }
 async function cntSalvarConfig() {
   const q = n => document.querySelector(`#cntAba [name="${n}"]`);
-  try { await terPost('contagens_config', { tolerancia_pct: q('tp').value, tolerancia_abs: q('ta').value, meta_acuracidade: q('mt').value, qtd_dia: q('qd').value, freq_dias: { A: q('fA').value, B: q('fB').value, C: q('fC').value }, cega: q('cg').checked }); terToast('Configuração salva.'); CNT.d = await terApi('contagens_painel'); cntRender(); } catch (e) { terToast(e.message, true); }
+  try { await terPost('contagens_config', { tolerancia_pct: q('tp').value, tolerancia_abs: q('ta').value, meta_acuracidade: q('mt').value, qtd_dia: q('qd').value, freq_dias: { A: q('fA').value, B: q('fB').value, C: q('fC').value } }); terToast('Configuração salva.'); CNT.d = await terApi('contagens_painel'); cntRender(); } catch (e) { terToast(e.message, true); }
 }
 function cntNova(tipo) {
   const bg = terModal(tipo === 'CICLICA' ? 'Nova contagem cíclica' : 'Novo inventário geral', `<div class="rd-ass-campos"><label>Nome (opcional)<input name="nome" placeholder="${tipo === 'CICLICA' ? 'Ex.: Curva A — corredor 3' : 'Ex.: Balanço de dezembro'}"></label>
@@ -130,11 +145,13 @@ async function cntCarregar(id) {
   catch (e) { if (!(e instanceof TypeError)) throw e; const c = await cntIdb.get('cache', id); if (!c) throw new Error('Sem conexão e esta contagem não foi baixada neste aparelho.'); return { contagem: c, gestor: false, offline: true }; }
 }
 async function cntBaixar(id) { try { const r = await terApi(`contagens_detalhe&id=${id}`); await cntIdb.add('cache', r.contagem); if (typeof pwaPersistir === 'function') pwaPersistir(); terToast('Contagem baixada. Pode contar sem internet; envia sozinho ao voltar.'); } catch (e) { terToast(e.message, true); } }
-async function cntRecarregarAtual() { if (CNT.cur) await cntAbrir(CNT.cur.contagem.id, true); }
+async function cntRecarregarAtual(forcar) { if (!CNT.cur) return; const a = document.activeElement; if (!forcar && a && a.classList && a.classList.contains('cnt-in') && a.value !== '') return; await cntAbrir(CNT.cur.contagem.id, true); }
 async function cntAbrir(id, manter) {
+  if (!manter) { CNT.filtro = ''; CNT.soPend = false; CNT.revelar = false; }
   let r; try { r = await cntCarregar(id); } catch (e) { terToast(e.message, true); return; }
   // sobrepõe com o que ainda está na fila local (contado offline, não enviado)
   const fila = (await cntIdb.all('fila').catch(() => [])).filter(f => f.cid === id); r.pend = {}; fila.forEach(f => r.pend[f.codigo] = f.qtd);
+  if (manter && (!CNT.cur || CNT.cur.contagem.id !== id)) return;   // usuário já saiu da tela
   const y = window.scrollY; CNT.cur = r; cntTela(); if (manter) window.scrollTo(0, y);
 }
 function cntTela() {
@@ -142,11 +159,11 @@ function cntTela() {
   const q = CNT.filtro.trim().toLowerCase(), so = CNT.soPend;
   const itens = c.itens.filter(l => (!q || [l.codigo, l.descricao, l.localizacao].join(' ').toLowerCase().includes(q)) && (!so || ['PENDENTE', 'RECONTAR', 'APROVACAO'].includes(l.status) && r.pend[l.codigo] == null));
   const linhas = itens.map(l => {
-    const [t, cls] = CNT_ST[l.status] || [l.status, '']; const loc = r.pend[l.codigo]; const ult = l.rodadas && l.rodadas.length ? l.rodadas[l.rodadas.length - 1] : null; const rec = l.status === 'RECONTAR';
+    const [t, cls] = CNT_ST[l.status] || [terH(l.status), '']; const loc = r.pend[l.codigo]; const ult = l.rodadas && l.rodadas.length ? l.rodadas[l.rodadas.length - 1] : null; const rec = l.status === 'RECONTAR';
     const mostra = !c.cega || r.revelado || !aberto || (CNT.revelar && gest); const dif = l.diferenca;
     let acao = '';
     if (aberto && l.status === 'APROVACAO' && gest) acao = `<button class="button primary" data-dec="aprovar" data-cod="${terH(l.codigo)}">Aprovar ajuste</button> <button class="button ghost" data-dec="rejeitar" data-cod="${terH(l.codigo)}">Manter sistema</button>`;
-    else if (aberto && l.status !== 'APROVACAO') acao = `<input class="cnt-in" inputmode="decimal" data-cod="${terH(l.codigo)}" placeholder="${rec ? 'recontagem' : 'qtd'}" value="${loc != null ? loc : (ult && !rec ? ult.qtd : '')}" style="width:96px;${rec ? 'border:2px solid #d33' : ''}">`;
+    else if (aberto && l.status !== 'APROVACAO' && terPode('editar')) acao = `<input class="cnt-in" inputmode="decimal" data-cod="${terH(l.codigo)}" placeholder="${rec ? 'recontagem' : 'qtd'}" value="${loc != null ? loc : (ult && ult.qtd != null && !rec ? ult.qtd : '')}" style="width:96px;${rec ? 'border:2px solid #d33' : ''}">`;
     else if (ult) acao = cntNum(ult.qtd);
     return `<tr><td>${terH(l.localizacao || '—')}</td><td>${terH(l.codigo)}</td><td>${terH(l.descricao)}</td><td>${terH(l.unidade)}</td>${CNT.revelar && gest || !aberto ? `<td>${cntNum(l.rodadas && l.rodadas.length ? l.rodadas[l.rodadas.length - 1].ref : l.saldo_congelado)}</td>` : ''}<td>${acao}${loc != null ? ' <small title="guardado neste aparelho">⏳</small>' : ''}</td>${(CNT.revelar && gest) || !aberto ? `<td>${dif == null ? '—' : (dif > 0 ? '+' : '') + cntNum(dif)}</td>` : ''}<td><span class="prt-badge ${cls}">${t}</span></td></tr>`;
   }).join('');
@@ -157,22 +174,31 @@ function cntTela() {
     <div class="filterrow"><label class="searchbox"><span>🔎</span><input id="cntBusca" type="search" placeholder="Buscar código, material ou endereço…" value="${terH(CNT.filtro)}"></label><label><input type="checkbox" id="cntSo" ${so ? 'checked' : ''}> só o que falta</label>
       ${gest && aberto ? `<button class="button ghost" onclick="CNT.revelar=!CNT.revelar;cntRecarregarAtual()">${CNT.revelar ? '🙈 Ocultar saldo' : '👁 Ver saldo do sistema (gestor)'}</button>` : ''}
       ${gest && aberto ? '<button class="button primary" onclick="cntAplicar()">✔ Encerrar e atualizar o sistema</button><button class="button ghost" onclick="cntCancelar()">Cancelar contagem</button>' : ''}
-      <button class="button ghost" onclick="window.open('api.php?action=contagens_folha&id=${c.id}','_blank')">🖨 Folha</button></div>
+      <button class="button ghost" onclick="window.open('api.php?action=contagens_folha&id='+${cntJ(c.id)},'_blank')">🖨 Folha</button></div>
     ${aberto && !gest && terPode('aprovar') === false ? '<p class="muted">Você conta; o ajuste no estoque é feito pelo gestor depois da conferência.</p>' : ''}
     <div class="table-wrap"><table class="orders-table"><thead><tr><th>Endereço</th><th>Código</th><th>Material</th><th>Un.</th>${ver ? '<th>Sistema</th>' : ''}<th>Contado</th>${ver ? '<th>Diferença</th>' : ''}<th>Situação</th></tr></thead><tbody>${linhas || '<tr><td colspan="8"><div class="empty">Nada para mostrar.</div></td></tr>'}</tbody></table></div>
     ${c.historico && !aberto ? `<h3 style="margin-top:16px">Histórico</h3><ul>${c.historico.map(h => `<li>${terD(h.em)} · ${terH(h.por)} — ${terH(h.acao)}</li>`).join('')}</ul>` : ''}</div>`;
   terEl('cntBusca').oninput = e => { CNT.filtro = e.target.value; const p = e.target.selectionStart; cntTela(); const b = terEl('cntBusca'); b.focus(); b.setSelectionRange(p, p); };
   terEl('cntSo').onchange = e => { CNT.soPend = e.target.checked; cntTela(); };
-  document.querySelectorAll('#cntTela .cnt-in').forEach(i => { i.onchange = () => cntSalvarItem(i.dataset.cod, i.value); i.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); const all = [...document.querySelectorAll('#cntTela .cnt-in')]; const n = all[all.indexOf(i) + 1]; i.blur(); n && n.focus(); } }; });
+  document.querySelectorAll('#cntTela .cnt-in').forEach(i => { i.onchange = () => cntSalvarItem(i.dataset.cod, i.value); i.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); const all = [...document.querySelectorAll('#cntTela .cnt-in')]; const n = all[all.indexOf(i) + 1]; if (i.value !== '') { CNT.focoCod = n ? n.dataset.cod : null; i.onchange = null; cntSalvarItem(i.dataset.cod, i.value, CNT.focoCod); } else if (n) n.focus(); } }; });
   document.querySelectorAll('#cntTela [data-dec]').forEach(b => b.onclick = () => cntDecidir(b.dataset.cod, b.dataset.dec));
   cntBadgeFila();
+  if (CNT.focoCod) { const f = [...document.querySelectorAll('#cntTela .cnt-in')].find(x => x.dataset.cod === CNT.focoCod); if (f) f.focus(); CNT.focoCod = null; }
 }
-async function cntSalvarItem(cod, v) {
-  v = String(v).trim().replace(',', '.'); if (v === '') return;
-  if (isNaN(Number(v)) || Number(v) < 0) { terToast('Quantidade inválida.', true); return; }
-  const cid = CNT.cur.contagem.id; CNT.cur.pend[cod] = v;
-  await cntIdb.add('fila', { cid, codigo: cod, qtd: v, em: new Date().toISOString() }).catch(() => terToast('Não foi possível guardar no aparelho; contagem não salva.', true));
-  await cntSync(false); await cntRecarregarAtual();
+async function cntSalvarItem(cod, v, proximo) {
+  v = String(v).trim(); if (v === '') return;
+  if (/^\d{1,3}(\.\d{3})+$/.test(v) || !/^\d+([.,]\d+)?$/.test(v)) { terToast('Quantidade inválida: use só números e vírgula para decimais (sem ponto de milhar).', true); return; }
+  v = v.replace(',', '.');
+  const cid = CNT.cur.contagem.id; CNT.cur.pend[cod] = v; CNT.focoCod = proximo || null;
+  const em = new Date().toISOString();
+  try {
+    // só o último valor digitado por item fica na fila (corrigir digitação não vira "recontagem")
+    for (const f of await cntIdb.all('fila')) if (f.cid === cid && f.codigo === cod) await cntIdb.del('fila', f.k);
+    await cntIdb.add('fila', { cid, codigo: cod, qtd: v, em });
+  } catch {
+    try { await terPost('contagens_contar', { id: cid, itens: [{ codigo: cod, qtd: v, em }] }); delete CNT.cur.pend[cod]; } catch (e) { terToast('Não foi possível salvar: ' + e.message, true); return; }
+  }
+  await cntSync(false); await cntRecarregarAtual(true);
 }
 async function cntDecidir(cod, acao) {
   const bg = terModal(acao === 'aprovar' ? 'Aprovar ajuste de estoque' : 'Manter saldo do sistema', `<p class="muted">${terH(cod)} continuou divergente após a recontagem.</p><div class="rd-ass-campos"><label>Motivo (obrigatório para auditoria)<input name="mot" placeholder="Ex.: avaria, saída sem baixa, erro de lançamento"></label></div><div class="est-head-actions"><button class="button primary" data-ok>Confirmar</button></div>`, 480);

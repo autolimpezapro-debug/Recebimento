@@ -11,3 +11,9 @@
 /* v3.53.0 — filtros de período (Relatório gerencial) */
 #page-relger .filterrow{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin:10px 0}
 #page-relger .filterrow .button{width:auto}
+
+/* v3.55.0 — Inventário e Acuracidade: tabelas rolam dentro do próprio quadro (celular) */
+#page-contagens .table-wrap{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}
+#page-contagens .orders-table{min-width:0;width:100%}
+#page-contagens .cnt-in{min-height:40px;font-size:16px}
+@media(max-width:600px){#page-contagens .orders-table th:nth-child(4),#page-contagens .orders-table td:nth-child(4){display:none}#page-contagens .orders-table td,#page-contagens .orders-table th{padding:8px 6px}#page-contagens .est-head-actions{flex-wrap:wrap}}
