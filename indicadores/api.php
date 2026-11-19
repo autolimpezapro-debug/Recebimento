@@ -292,6 +292,17 @@ function kpi_dados(): array {
         if ($tot) $ira[$m] = [($ira[$m][0] ?? 0) + $ok, ($ira[$m][1] ?? 0) + $tot];
     }
 
+    // Contagens do módulo Inventário e Acuracidade (v3.55.0): acerto da 1ª contagem (tolerância configurada).
+    $cntArq = DATA_DIR . '/contagens.json';
+    if (is_file($cntArq)) {
+        $cj = json_decode((string)file_get_contents($cntArq), true);
+        foreach ((array)($cj['contagens'] ?? []) as $c) {
+            if (($c['status'] ?? '') !== 'APLICADA' || empty($c['estatisticas']['contados'])) continue;
+            $m = kpi_mes_de(kpi_ts($c['aplicada_em'] ?? null));
+            $ira[$m] = [($ira[$m][0] ?? 0) + (int)$c['estatisticas']['acertos'], ($ira[$m][1] ?? 0) + (int)$c['estatisticas']['contados']];
+        }
+    }
+
     $records = [];
     $iraAnterior = 0.0;
     foreach ($meses as $mes) {
@@ -461,7 +472,7 @@ try {
         }
         kpi_out(200, ['ok' => true, 'publico' => $publico] + $g);
     }
-    if ($metodo === 'GET' && ($_GET['op'] ?? '') === 'chegadas_nf') {   // v3.54.2
+    if ($metodo === 'GET' && ($_GET['op'] ?? '') === 'chegadas_nf') {   // v3.55.0
         require_once __DIR__ . '/gestao_chegadas_lib.php';
         $c = kpi_chegadas_nf($_GET['de'] ?? null, $_GET['ate'] ?? null);
         if ($publico) { foreach ($c['entradas_sem_pc'] as $i => $e) $c['entradas_sem_pc'][$i]['usuario'] = ''; }

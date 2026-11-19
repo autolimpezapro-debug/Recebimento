@@ -1,3 +1,18 @@
+v3.55.0 — Inventário e Acuracidade + PWA completo
+NOVO menu "Inventário e Acuracidade" (a aba antiga Estoque > Inventário continua funcionando).
+- Inventário geral (balanço) e Contagem cíclica no mesmo motor. Escopo: todos os itens, curva ABC, categoria, endereço ou lista de códigos.
+- Contagem CEGA: quem conta não vê o saldo do sistema. O saldo é congelado ao criar e corrigido automaticamente pelas movimentações feitas durante a contagem.
+- Divergência dentro da tolerância (padrão 2%) = OK. Acima = RECONTAR. Se a recontagem continuar divergente = aguarda o gestor (permissão Estoque > aprovar), que aprova o ajuste ou mantém o sistema, sempre com motivo.
+- "Encerrar e atualizar o sistema" gera ajustes de inventário no Estoque (histórico preservado, nada é apagado, usuário e motivo registrados). Itens não contados ficam como estão.
+- Plano cíclico: curva ABC por giro (saídas em 12 meses) e valor em estoque; frequência A=30, B=90, C=180 dias (configurável); lista do dia com os itens vencidos e botão para criar a contagem.
+- Painel de acuracidade (IRA): meta 98%, por mês, por curva, por endereço, por contador, itens que mais divergem e valor divergente. Os resultados também alimentam o indicador de acuracidade em Indicadores.
+- Folha de contagem para imprimir e CSV (Excel).
+- Dados em data/contagens.json (não entra no zip; seus dados ficam intactos).
+PWA completo
+- Instalável com atalhos na tela inicial (Contagem, Chegadas, Estoque, Pedidos), ícones maskable, página "sem conexão", detecção de nova versão com aviso "Atualizar".
+- Contagem OFFLINE: em Contagens > "Baixar p/ offline" a contagem fica no aparelho (IndexedDB); conte sem internet e ela é enviada sozinha ao voltar o sinal (ou em "Enviar agora"). Pedidos, estoque e demais dados continuam exigindo internet de propósito (não ficam guardados no aparelho).
+- Funciona na raiz do domínio ou em subpasta. Exige HTTPS para instalar.
+
 v3.54.2 — Indicadores de gestão: aba "Chegadas sem NF / sem PC"
 - Em Indicadores > Indicadores de gestão > Fornecedores: nova aba com ocorrências do módulo Chegadas (por tipo, por mês, por fornecedor, abertas por idade, tempo médio para resolver), PCs recebidos sem NF no sistema (com % dos PCs recebidos) e material que entrou sem pedido de compra (chegada sem PC + entrada manual no estoque; a carga da planilha antiga não conta). Respeita o período escolhido (30/90/180 dias, 12 meses ou mês). No link público os nomes de usuários não aparecem.
 

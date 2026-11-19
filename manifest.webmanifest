@@ -1,37 +1,30 @@
 {
   "name": "Recebimento Drilling",
   "short_name": "Receb. Drilling",
-  "description": "Conferência e rastreabilidade de recebimento de materiais da Drilling",
-  "id": "/",
-  "start_url": "/",
-  "scope": "/",
+  "description": "Recebimento, estoque, inventário e rastreabilidade de materiais da Drilling do Brasil",
+  "id": "./",
+  "start_url": "./?origem=pwa",
+  "scope": "./",
   "display": "standalone",
-  "display_override": [
-    "standalone",
-    "minimal-ui"
-  ],
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#09162b",
   "theme_color": "#0a1221",
   "lang": "pt-BR",
+  "dir": "ltr",
   "orientation": "any",
+  "categories": ["business", "productivity", "utilities"],
+  "prefer_related_applications": false,
+  "launch_handler": { "client_mode": "navigate-existing" },
   "icons": [
-    {
-      "src": "/assets/icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/assets/icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/assets/icons/icon-maskable-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
+    { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "assets/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Contagem de inventário", "short_name": "Contagem", "description": "Contar itens (funciona offline)", "url": "./?page=contagens&origem=atalho", "icons": [{ "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Chegadas / NF pendente", "short_name": "Chegadas", "description": "Registrar material ou nota sem par", "url": "./?page=chegadas&origem=atalho", "icons": [{ "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Estoque", "short_name": "Estoque", "description": "Saldo, entrada e saída de material", "url": "./?page=estoque&origem=atalho", "icons": [{ "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Pedidos / Recebimento", "short_name": "Pedidos", "description": "Conferir recebimento de pedidos", "url": "./?page=pedidos&origem=atalho", "icons": [{ "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] }
   ]
 }
