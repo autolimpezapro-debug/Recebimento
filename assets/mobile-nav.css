@@ -47,3 +47,14 @@
   .cards-mobile td small { display: block; }
   .cards-mobile tr[hidden] { display: none; }
 }
+
+/* v3.56.1 — Tablet/celular: a lista do menu agora ROLA com o dedo. (Em telas até 790px — iPad em pé, celular — uma regra antiga
+   deixava o menu com overflow-y:hidden, e os itens de baixo ficavam inalcançáveis.) */
+@media (max-width: 1030px) {
+  .sidebar .nav, .nav { overflow-y: auto !important; overflow-x: hidden !important; max-width: none !important; height: 100vh; height: 100dvh; max-height: 100dvh; -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)) !important; }
+  .nav-head { position: sticky; top: 0; z-index: 2; background: var(--nav); }
+}
+/* Tablet na horizontal (menu fixo na lateral): a barra lateral rola quando a lista é maior que a tela. */
+@media (min-width: 1031px) {
+  .sidebar { height: 100vh; height: 100dvh; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; scrollbar-width: thin; }
+}

@@ -1,3 +1,6 @@
+v3.56.1 — Menu rola no tablet e no celular
+- Causa: em telas de até 790 px (iPad/tablet em pé, celular) uma regra antiga deixava a lista do menu com rolagem vertical desligada; como o menu ganhou novos itens (Chegadas, Espelho de NF, Inventário…), os de baixo ficavam inalcançáveis. Agora o menu lateral/gaveta rola com o dedo em qualquer tamanho de tela, inclusive tablet na horizontal (barra lateral fixa), e respeita a barra inferior do navegador.
+
 v3.56.0 — "Continuar de onde parei"
 - Se você começou um processo e não finalizou (fechou a janela, trocou de tela, a internet caiu ou o navegador fechou), o sistema guarda o que foi preenchido e mostra uma faixa no topo: "Você começou e não finalizou: … [Continuar de onde parei] [Descartar]". Ao continuar, abre a tela certa já com tudo preenchido (inclusive as linhas de material e os pedidos da Saída).
 - Vale para: Saída de material, Entrada manual, Chegada / NF pendente (novo registro), Espelho de NF (novo), Romaneio de terceiros (novo), Empréstimo de ferramentas e Contagem de inventário (volta para a contagem aberta).
