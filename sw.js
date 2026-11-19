@@ -1,7 +1,7 @@
-/* Recebimento Drilling — PWA completo (v3.58.1): shell offline, página offline, atualização controlada, Background Sync (aviso à página) e Web Push.
+/* Recebimento Drilling — PWA completo (v3.58.2): shell offline, página offline, atualização controlada, Background Sync (aviso à página) e Web Push.
    Dados operacionais (API, fotos, PDFs) NUNCA entram no cache: só a interface. Funciona na raiz do domínio ou em subpasta (usa o escopo do SW). */
 'use strict';
-const CACHE='recebimento-drilling-shell-v3.58.1.20261119r10';
+const CACHE='recebimento-drilling-shell-v3.58.2.20261119r11';
 const SCOPE=new URL(self.registration.scope);
 const BASE=SCOPE.pathname;                       // "/" ou "/subpasta/"
 const abs=p=>new URL(p,SCOPE).href;

@@ -1,3 +1,7 @@
+v3.58.2 — E-mail diário das saídas com visual premium
+- Novo layout do e-mail: cabeçalho escuro com data por extenso, 4 indicadores (movimentos, OS, custo total, sem OS), um cartão por OS (maior custo primeiro) com obra/equipamento/solicitante e, em cada material, SKU, hora, aplicação, quantidade e valor; botão "Abrir relatório completo" e CSV em anexo. Funciona no celular, Gmail e Outlook.
+- Observação: "sem custo" aparece nos materiais sem custo médio cadastrado (valor entra como R$ 0,00) — o custo vem do inventário SAP/entradas com valor.
+
 v3.58.1 — Relatório só com OS/OM
 - Relatório gerencial: nova caixa "Somente com OS/OM" ao lado de Aplicar — a tela, o CSV e o PDF passam a trazer só as saídas que têm OS/OM (resumos por OS/obra/setor/material também).
 - Envio diário por e-mail: nova opção "Somente saídas com OS/OM" (já vem marcada); o e-mail e o CSV anexo saem só com elas, e o dia sem saídas com OS não é enviado.

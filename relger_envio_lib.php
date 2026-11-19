@@ -46,25 +46,67 @@ function rge_h($s): string { return htmlspecialchars((string)$s, ENT_QUOTES, 'UT
 function rge_brl(float $v): string { return 'R$ ' . number_format($v, 2, ',', '.'); }
 function rge_aplicacao(array $s): string { return trim(implode(' — ', array_filter([trim((string)$s['equipamento']), trim((string)$s['finalidade'])], fn($x) => $x !== ''))); }
 
-/** Monta [assunto, html, texto, csv, nome_csv] das saídas do dia $dia (Y-m-d). */
+function rge_dia_extenso(string $dia): string {
+    $sem = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+    $mes = ['', 'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+    $t = strtotime($dia . ' 12:00:00'); return $sem[(int)date('w', $t)] . ', ' . (int)date('j', $t) . ' de ' . $mes[(int)date('n', $t)] . ' de ' . date('Y', $t);
+}
+
+/** Monta [assunto, html, texto, csv, nome_csv, resumo] das saídas do dia $dia (Y-m-d). Layout "premium": tabelas + estilos inline (compatível com Gmail/Outlook/celular). */
 function rge_montar(string $dia, bool $soOs = true): array {
     $r = rg_relatorio($dia, $dia, $soOs); $res = $r['resumo']; $dd = substr($dia, 8, 2) . '/' . substr($dia, 5, 2) . '/' . substr($dia, 0, 4);
-    $assunto = "Saídas de material $dd — {$res['saidas_mov']} movimento(s), " . rge_brl((float)$res['saidas_valor']);
-    $max = 300; $lin = ''; $txt = "Saídas de material — $dd\n{$res['saidas_mov']} movimentos · {$res['os_distintas']} OS · " . rge_brl((float)$res['saidas_valor']) . "\n\n";
-    foreach (array_slice($r['saidas'], 0, $max) as $s) {
-        $os = $s['os'] !== '' ? $s['os'] : '(sem OS)'; $ap = rge_aplicacao($s); $q = alt_n($s['quantidade']);
-        $lin .= '<tr><td>' . rge_h(substr($s['em'], 11, 5)) . '</td><td><b>' . rge_h($os) . '</b></td><td>' . rge_h(($s['sku'] ? $s['sku'] . ' · ' : '') . $s['descricao']) . '</td><td align="right">' . rge_h($q . ' ' . $s['unidade'])
-            . '</td><td align="right">' . ($s['valor_fonte'] === 'sem custo' ? '<i>sem custo</i>' : rge_brl((float)$s['valor'])) . '</td><td>' . rge_h($ap !== '' ? $ap : '—') . '</td></tr>';
-        $txt .= "$os | {$s['descricao']} | $q {$s['unidade']} | " . rge_brl((float)$s['valor']) . ($ap !== '' ? " | $ap" : '') . "\n";
+    $assunto = "Saídas de material · $dd · " . $res['saidas_mov'] . ' mov. · ' . rge_brl((float)$res['saidas_valor']);
+    $F = 'font-family:Segoe UI,Helvetica,Arial,sans-serif;';
+    // agrupa por OS (maior valor primeiro); dentro, por horário
+    $g = [];
+    foreach ($r['saidas'] as $s) {
+        $k = $s['os'] !== '' ? $s['os'] : '(sem OS)';
+        $g[$k] ??= ['os' => $k, 'valor' => 0.0, 'obras' => [], 'equip' => [], 'sol' => [], 'itens' => []];
+        $g[$k]['valor'] += (float)$s['valor']; $g[$k]['itens'][] = $s;
+        if ($s['obra'] !== '') $g[$k]['obras'][$s['obra']] = 1; if ($s['equipamento'] !== '') $g[$k]['equip'][$s['equipamento']] = 1; if ($s['solicitante'] !== '') $g[$k]['sol'][$s['solicitante']] = 1;
     }
-    $mais = count($r['saidas']) > $max ? '<p><i>Mostrando as ' . $max . ' primeiras; veja todas no CSV em anexo.</i></p>' : '';
-    $kp = fn($n, $t) => '<td style="padding:8px 14px;background:#f3f6f9;border-radius:6px"><b style="font-size:18px">' . rge_h($n) . '</b><br><span style="color:#555;font-size:12px">' . rge_h($t) . '</span></td><td width="8"></td>';
-    $html = '<div style="font-family:Arial,sans-serif;font-size:13px;color:#111"><h2 style="margin:0 0 4px">Drilling do Brasil — Saídas de material</h2><p style="margin:0 0 12px;color:#555">' . $dd . '</p>'
-        . '<table cellspacing="0" cellpadding="0"><tr>' . $kp($res['saidas_mov'], 'movimentos') . $kp($res['os_distintas'], 'OS atendidas') . $kp(rge_brl((float)$res['saidas_valor']), 'valor (custo)') . $kp($res['saidas_sem_os'], 'sem OS') . '</tr></table>'
-        . ($res['saidas_mov'] ? '<table cellspacing="0" cellpadding="5" border="1" style="border-collapse:collapse;border-color:#d9dee5;margin-top:14px;width:100%"><thead style="background:#eef2f6"><tr><th>Hora</th><th>OS</th><th>Material</th><th>Qtd.</th><th>Valor</th><th>Aplicação</th></tr></thead><tbody>' . $lin . '</tbody></table>' . $mais
-            : '<p>Nenhuma saída de material' . ($soOs ? ' com OS/OM' : '') . ' neste dia.</p>')
-        . ($res['saidas_sem_custo'] ? '<p style="color:#b45309">' . (int)$res['saidas_sem_custo'] . ' saída(s) sem custo cadastrado (valor R$ 0,00).</p>' : '')
-        . '<p style="color:#777;font-size:11px">' . ($soOs ? 'Somente saídas com OS/OM. ' : '') . 'Valor = custo médio do item. Relatório automático do sistema Recebimento Drilling.</p></div>';
+    uasort($g, fn($a, $b) => $b['valor'] <=> $a['valor']);
+    $kpi = fn($n, $t, $cor = '#0b1f3a') => '<td width="25%" valign="top" style="padding:0 4px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#ffffff;border:1px solid #e3e8ef;border-radius:10px"><tr><td align="center" style="padding:14px 6px;' . $F . '"><div style="font-size:20px;font-weight:700;color:' . $cor . ';line-height:1.2">' . rge_h($n) . '</div><div style="font-size:11px;color:#667085;text-transform:uppercase;letter-spacing:.6px;padding-top:4px">' . rge_h($t) . '</div></td></tr></table></td>';
+    $blocos = ''; $txt = "SAÍDAS DE MATERIAL — " . rge_dia_extenso($dia) . "\n{$res['saidas_mov']} movimentos · {$res['os_distintas']} OS · " . rge_brl((float)$res['saidas_valor']) . "\n"; $n = 0; $max = 250; $cortou = false;
+    foreach ($g as $x) {
+        $semOs = $x['os'] === '(sem OS)';
+        $meta = array_filter([$x['obras'] ? implode(', ', array_keys($x['obras'])) : '', $x['equip'] ? 'Equip. ' . implode(', ', array_keys($x['equip'])) : '', $x['sol'] ? 'Solic. ' . implode(', ', array_keys($x['sol'])) : '']);
+        $blocos .= '<tr><td style="padding:0 0 14px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#ffffff;border:1px solid #e3e8ef;border-radius:10px;overflow:hidden">'
+            . '<tr><td bgcolor="' . ($semOs ? '#fff4e5' : '#f4f7fb') . '" style="padding:12px 16px;border-bottom:1px solid #e3e8ef;' . $F . '"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr>'
+            . '<td valign="middle"><span style="display:inline-block;background:' . ($semOs ? '#b54708' : '#0b1f3a') . ';color:#ffffff;font-size:12px;font-weight:700;letter-spacing:.5px;padding:4px 10px;border-radius:12px">' . ($semOs ? 'SEM OS/OM' : 'OS ' . rge_h($x['os'])) . '</span>'
+            . ($meta ? '<div style="font-size:12px;color:#667085;padding-top:6px">' . rge_h(implode('  ·  ', $meta)) . '</div>' : '') . '</td>'
+            . '<td align="right" valign="middle" style="white-space:nowrap"><div style="font-size:11px;color:#667085;text-transform:uppercase;letter-spacing:.6px">Custo</div><div style="font-size:17px;font-weight:700;color:#0b1f3a">' . rge_brl($x['valor']) . '</div></td></tr></table></td></tr>';
+        $txt .= "\n" . ($semOs ? 'SEM OS' : 'OS ' . $x['os']) . ' — ' . rge_brl($x['valor']) . "\n";
+        foreach ($x['itens'] as $i => $s) {
+            if (++$n > $max) { $cortou = true; break; }
+            $ap = rge_aplicacao($s); $q = alt_n(abs($s['quantidade'])) . ' ' . $s['unidade']; $est = $s['quantidade'] < 0;
+            $blocos .= '<tr><td style="padding:10px 16px;' . ($i ? 'border-top:1px solid #eef1f5;' : '') . $F . '"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr>'
+                . '<td valign="top" style="font-size:14px;color:#101828"><b>' . rge_h($s['descricao']) . '</b>' . ($est ? ' <span style="color:#b42318;font-size:11px">(estorno)</span>' : '')
+                . '<div style="font-size:12px;color:#667085;padding-top:3px">' . rge_h(trim(($s['sku'] ?: '') . ($s['sku'] ? '  ·  ' : '') . substr($s['em'], 11, 5))) . ($ap !== '' ? '  ·  ' . rge_h($ap) : '') . '</div></td>'
+                . '<td valign="top" align="right" style="white-space:nowrap;padding-left:12px;font-size:13px;color:#344054"><b style="font-size:14px;color:#101828">' . ($est ? '−' : '') . rge_h($q) . '</b><div style="font-size:12px;color:#667085;padding-top:3px">'
+                . ($s['valor_fonte'] === 'sem custo' ? 'sem custo' : rge_brl(abs((float)$s['valor']))) . '</div></td></tr></table></td></tr>';
+            $txt .= '  • ' . $s['descricao'] . ' — ' . ($est ? '-' : '') . $q . ' — ' . rge_brl((float)$s['valor']) . ($ap !== '' ? ' — ' . $ap : '') . "\n";
+        }
+        $blocos .= '</table></td></tr>';
+        if ($cortou) break;
+    }
+    if (!$res['saidas_mov']) $blocos = '<tr><td align="center" style="padding:30px 16px;background:#ffffff;border:1px solid #e3e8ef;border-radius:10px;' . $F . 'color:#667085;font-size:14px">Nenhuma saída de material' . ($soOs ? ' com OS/OM' : '') . ' neste dia.</td></tr>';
+    $base = isset($_SERVER['HTTP_HOST']) ? 'https://' . preg_replace('/[^a-z0-9.\-:]/i', '', $_SERVER['HTTP_HOST']) : '';
+    $html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' . rge_h($assunto) . '</title></head>'
+        . '<body style="margin:0;padding:0;background:#eef1f5"><div style="display:none;max-height:0;overflow:hidden;opacity:0">' . rge_h($res['saidas_mov'] . ' saídas · ' . $res['os_distintas'] . ' OS · ' . rge_brl((float)$res['saidas_valor']) . ' em custo') . '</div>'
+        . '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#eef1f5"><tr><td align="center" style="padding:22px 10px">'
+        . '<table role="presentation" width="680" cellspacing="0" cellpadding="0" style="width:100%;max-width:680px">'
+        . '<tr><td bgcolor="#0b1f3a" style="background:#0b1f3a;border-radius:12px 12px 0 0;padding:26px 28px 22px;' . $F . '"><div style="font-size:11px;letter-spacing:2px;color:#f5b942;font-weight:700">DRILLING DO BRASIL</div>'
+        . '<div style="font-size:26px;font-weight:700;color:#ffffff;padding-top:6px;line-height:1.2">Saídas de material</div>'
+        . '<div style="font-size:14px;color:#b9c8de;padding-top:6px">' . rge_h(ucfirst(rge_dia_extenso($dia))) . ($soOs ? '  ·  somente com OS/OM' : '') . '</div></td></tr>'
+        . '<tr><td bgcolor="#f5b942" height="4" style="height:4px;line-height:4px;font-size:0">&nbsp;</td></tr>'
+        . '<tr><td style="padding:20px 0 6px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr>' . $kpi($res['saidas_mov'], 'Movimentos') . $kpi($res['os_distintas'], 'OS atendidas') . $kpi(rge_brl((float)$res['saidas_valor']), 'Custo total', '#067647') . $kpi($res['saidas_sem_os'], 'Sem OS', $res['saidas_sem_os'] ? '#b54708' : '#0b1f3a') . '</tr></table></td></tr>'
+        . '<tr><td style="padding:12px 0 0"><table role="presentation" width="100%" cellspacing="0" cellpadding="0">' . $blocos . '</table></td></tr>'
+        . ($cortou ? '<tr><td style="padding:0 0 12px;' . $F . 'font-size:12px;color:#667085">Mostrando as primeiras ' . $max . ' linhas — o CSV em anexo tem todas.</td></tr>' : '')
+        . ($res['saidas_sem_custo'] ? '<tr><td style="padding:0 0 12px;' . $F . 'font-size:12px;color:#b54708">⚠ ' . (int)$res['saidas_sem_custo'] . ' saída(s) sem custo cadastrado (contam R$ 0,00).</td></tr>' : '')
+        . '<tr><td align="center" style="padding:6px 0 0;' . $F . '">' . ($base ? '<a href="' . $base . '/?page=relger" style="display:inline-block;background:#0b1f3a;color:#ffffff;text-decoration:none;font-size:13px;font-weight:700;padding:11px 22px;border-radius:8px">Abrir relatório completo</a>' : '') . '</td></tr>'
+        . '<tr><td align="center" style="padding:18px 10px 4px;' . $F . 'font-size:11px;line-height:1.6;color:#8a94a6">📎 CSV completo em anexo (abre no Excel). Valor = custo médio do item.<br>Relatório automático · Sistema Recebimento Drilling · enviado ' . date('d/m/Y H:i') . '</td></tr>'
+        . '</table></td></tr></table></body></html>';
     return [$assunto, $html, $txt, rg_csv($r), 'Saidas-' . $dia . '.csv', $res];
 }
 
