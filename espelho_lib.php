@@ -189,6 +189,31 @@ function esp_itens_pc(string $q, int $limite = 25): array {
     return $out;
 }
 
+/** Preenchimento automático por SKU: descrição/unidade do cadastro do estoque (ou dos pedidos) + melhor valor unitário conhecido. */
+function esp_sku_info(string $sku): array {
+    require_once __DIR__ . '/estoque_lib.php';
+    $sku = trim($sku); if ($sku === '') return [];
+    $est = est_read(); $chave = esp_nk($sku); $it = null; $cod = '';
+    foreach (($est['itens'] ?? []) as $c => $x) {
+        $sap = function_exists('est_sap_code') ? (string)est_sap_code((string)$c) : '';
+        if (esp_nk((string)$c) === $chave || ($sap !== '' && esp_nk($sap) === $chave)) { $it = $x; $cod = (string)$c; break; }
+    }
+    $r = ['sku' => $sku, 'descricao' => '', 'unidade' => '', 'valor_unit' => 0.0, 'valor_fonte' => '', 'saldo' => null, 'pcs' => []];
+    if ($it) {
+        $r['descricao'] = trim((string)($it['descricao'] ?? '')); $r['unidade'] = mb_strtoupper((string)($it['unidade'] ?? '')); $r['saldo'] = $it['saldo'] ?? null;
+        if ((float)($it['custo_medio'] ?? 0) > 0) { $r['valor_unit'] = round((float)$it['custo_medio'], 4); $r['valor_fonte'] = 'custo médio do estoque'; }
+    }
+    foreach (esp_itens_pc($sku, 8) as $p) foreach ($p['linhas'] as $l) {
+        if (esp_nk($l['sku']) !== $chave) continue;
+        $r['pcs'][] = ['pc' => $p['pc'], 'fornecedor' => $p['fornecedor'], 'recebido_em' => $p['recebido_em'], 'qtd' => $l['qtd_recebida']];
+        if ($r['descricao'] === '') $r['descricao'] = $l['descricao'];
+        if ($r['unidade'] === '') $r['unidade'] = $l['unidade'];
+        if ($l['valor_unit'] > 0 && $r['valor_fonte'] !== 'custo médio do estoque' && $r['valor_unit'] <= 0) { $r['valor_unit'] = $l['valor_unit']; $r['valor_fonte'] = 'NF do PC ' . $p['pc']; }
+    }
+    $r['achou'] = $r['descricao'] !== '';
+    return $r;
+}
+
 /* ------------------------------------------------------------------ */
 /* Documentos: impressão (2 vias), PDF e CSV                             */
 /* ------------------------------------------------------------------ */

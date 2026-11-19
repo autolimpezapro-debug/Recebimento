@@ -63,6 +63,7 @@ async function espForm(id) {
       <label>Placa<input name="placa" maxlength="12" value="${v('placa')}"></label>
       <label>Frete (R$)<input name="frete" inputmode="decimal" value="${r && r.frete ? terH(String(r.frete).replace('.', ',')) : ''}"></label></div>
     <h4 style="margin:12px 0 6px">Itens <button type="button" class="button ghost" data-pc>📥 Puxar de pedidos recebidos</button></h4>
+    <div class="rd-ass-campos"><label>⚡ Preenchimento rápido — digite o SKU ou o nº do pedido e tecle Enter<input id="espRapido" placeholder="Ex.: UC000491  ou  5027" autocomplete="off"></label></div><small id="espRapidoMsg" class="muted"></small>
     <div class="prt-scroll"><table class="ter-itens"><thead><tr><th>SKU</th><th>Material*</th><th>Un.</th><th>Qtd*</th><th>Vl. unit.</th><th>PC</th><th></th></tr></thead><tbody id="espItens">${((r && r.itens.length) ? r.itens : [{}, {}]).map(espLinha).join('')}</tbody></table></div>
     <button type="button" class="button ghost" data-add>＋ Item manual</button>
     <div class="rd-ass-campos"><label>Observações<input name="obs" maxlength="600" value="${v('obs')}"></label></div>
@@ -71,6 +72,37 @@ async function espForm(id) {
   const ligar = () => tb.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { if (tb.querySelectorAll('.ter-it').length > 1) b.closest('tr').remove(); else b.closest('tr').querySelectorAll('input').forEach(i => i.value = ''); });
   ligar();
   bg.querySelector('[data-add]').onclick = () => { tb.insertAdjacentHTML('beforeend', espLinha()); ligar(); };
+  const msg = t => { bg.querySelector('#espRapidoMsg').textContent = t; };
+  const vazia = tr => ![...tr.querySelectorAll('[data-f="descricao"],[data-f="quantidade"],[data-f="sku"]')].some(i => i.value.trim());
+  const addLinhas = itens => { tb.querySelectorAll('.ter-it').forEach(tr => { if (vazia(tr)) tr.remove(); }); itens.forEach(i => tb.insertAdjacentHTML('beforeend', espLinha(i))); ligar(); };
+  const porPc = async pc => { const ps = (await terApi('espelhos_itens_pc&q=' + encodeURIComponent(pc))).pedidos.filter(p => String(p.pc) === String(pc)); return ps[0] || null; };
+  const linhasDoPc = p => p.linhas.filter(l => l.disponivel > 0).map(l => ({ sku: l.sku, descricao: l.descricao, unidade: l.unidade, quantidade: l.disponivel, valor_unit: l.valor_unit, valor_fonte: l.valor_fonte, pc: p.pc, nf_origem: p.nf, fornecedor: p.fornecedor }));
+  const rapido = async v => {
+    v = v.trim(); if (!v) return;
+    try {
+      if (/^\d{3,6}$/.test(v)) { const p = await porPc(v); if (p) { const l = linhasDoPc(p); if (!l.length) return msg(`PC ${v}: tudo já foi para outros espelhos.`); addLinhas(l); return msg(`PC ${v} (${p.fornecedor}): ${l.length} item(ns) adicionados.`); } }
+      const x = await terApi('espelhos_sku&sku=' + encodeURIComponent(v));
+      if (!x.achou) return msg(`Não achei "${v}" como pedido nem como SKU. Digite o item manualmente.`);
+      addLinhas([{ sku: x.sku, descricao: x.descricao, unidade: x.unidade, quantidade: '', valor_unit: x.valor_unit, valor_fonte: x.valor_fonte, pc: (x.pcs[0] || {}).pc || '', fornecedor: (x.pcs[0] || {}).fornecedor || '' }]);
+      msg(`SKU ${x.sku}: ${x.descricao}${x.valor_unit ? ' · ' + espMoney(x.valor_unit) + ' (' + x.valor_fonte + ')' : ' · sem valor — preencha'}. Informe a quantidade.`);
+      const q = tb.querySelector('.ter-it:last-child [data-f=quantidade]'); if (q) q.focus();
+    } catch (e) { msg(e.message); }
+  };
+  const rap = bg.querySelector('#espRapido'); rap.onkeydown = async e => { if (e.key === 'Enter') { e.preventDefault(); const v = rap.value; rap.value = ''; await rapido(v); rap.focus(); } };
+  // digitou o SKU direto na linha → completa descrição, unidade e valor; digitou o PC na linha → traz os itens do pedido
+  tb.addEventListener('change', async e => {
+    const f = e.target.dataset.f, tr = e.target.closest('.ter-it'); if (!tr) return; const g = k => tr.querySelector(`[data-f="${k}"]`);
+    try {
+      if (f === 'sku' && e.target.value.trim() && !g('descricao').value.trim()) {
+        const x = await terApi('espelhos_sku&sku=' + encodeURIComponent(e.target.value.trim()));
+        if (x.achou) { g('descricao').value = x.descricao; if (!g('unidade').value) g('unidade').value = x.unidade || ''; if (x.valor_unit && !g('valor_unit').value) { g('valor_unit').value = String(x.valor_unit).replace('.', ','); g('valor_unit').title = x.valor_fonte; } if (x.pcs[0] && !g('pc').value) g('pc').value = x.pcs[0].pc; g('quantidade').focus(); msg(`SKU ${x.sku} preenchido.`); }
+        else msg(`SKU "${e.target.value}" não encontrado — digite a descrição.`);
+      } else if (f === 'pc' && /^\d{3,6}$/.test(e.target.value.trim()) && !g('descricao').value.trim()) {
+        const p = await porPc(e.target.value.trim()); if (!p) return msg(`PC ${e.target.value} não encontrado entre os recebidos.`);
+        const l = linhasDoPc(p); tr.remove(); addLinhas(l); msg(`PC ${p.pc} (${p.fornecedor}): ${l.length} item(ns) adicionados.`);
+      }
+    } catch (er) { msg(er.message); }
+  });
   bg.querySelector('[data-pc]').onclick = () => espPicker(itens => {
     tb.querySelectorAll('.ter-it').forEach(tr => { if (![...tr.querySelectorAll('[data-f="descricao"],[data-f="quantidade"]')].some(i => i.value.trim())) tr.remove(); });
     itens.forEach(i => tb.insertAdjacentHTML('beforeend', espLinha(i))); ligar();

@@ -406,7 +406,7 @@ function rd_rota(string $action): ?array {
             'chegadas_painel' => ['estoque', 'listar'], 'chegadas_pcs' => ['estoque', 'listar'], 'chegadas_csv' => ['estoque', 'listar'], 'chegadas_foto' => ['estoque', 'listar'],
             'chegadas_salvar' => ['estoque', 'criar'], 'chegadas_acao' => ['estoque', 'editar'],
             'relger_dados' => ['estoque', 'listar'], 'relger_csv' => ['estoque', 'listar'],
-            'espelhos_painel' => ['estoque', 'listar'], 'espelhos_itens_pc' => ['estoque', 'listar'], 'espelhos_pdf' => ['estoque', 'listar'], 'espelhos_csv' => ['estoque', 'listar'], 'espelhos_imprimir' => ['estoque', 'listar'],
+            'espelhos_painel' => ['estoque', 'listar'], 'espelhos_itens_pc' => ['estoque', 'listar'], 'espelhos_sku' => ['estoque', 'listar'], 'espelhos_pdf' => ['estoque', 'listar'], 'espelhos_csv' => ['estoque', 'listar'], 'espelhos_imprimir' => ['estoque', 'listar'],
             'espelhos_salvar' => ['estoque', 'criar'], 'espelhos_status' => ['estoque', 'editar'],
             'locacoes_painel' => ['estoque', 'listar'], 'locacoes_csv' => ['estoque', 'listar'],
             'locacoes_salvar' => ['estoque', 'editar'], 'locacoes_transferir' => ['estoque', 'criar'], 'locacoes_desfazer_transferencia' => ['estoque', 'editar'],

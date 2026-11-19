@@ -9,6 +9,7 @@ $espMet = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 if ($espMet === 'GET') {
     switch ($action) {
         case 'espelhos_painel': respond(['ok' => true] + esp_painel(esp_read()));
+        case 'espelhos_sku': respond(['ok' => true] + esp_sku_info((string)($_GET['sku'] ?? '')));
         case 'espelhos_itens_pc': respond(['ok' => true, 'pedidos' => esp_itens_pc((string)($_GET['q'] ?? ''))]);
         case 'espelhos_pdf': case 'espelhos_csv': case 'espelhos_imprimir':
             $id = (string)($_GET['id'] ?? '');
