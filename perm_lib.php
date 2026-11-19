@@ -403,6 +403,8 @@ function rd_rota(string $action): ?array {
             'protocolos_criar' => ['pedidos', 'editar'], 'protocolos_status' => ['pedidos', 'editar'], 'protocolos_doc_enviar' => ['pedidos', 'anexar'],
             'romaneios_painel' => ['estoque', 'listar'], 'romaneios_pdf' => ['estoque', 'listar'], 'romaneios_csv' => ['estoque', 'listar'], 'romaneios_imprimir' => ['estoque', 'listar'],
             'romaneios_salvar' => ['estoque', 'criar'], 'romaneios_status' => ['estoque', 'editar'],
+            'chegadas_painel' => ['estoque', 'listar'], 'chegadas_pcs' => ['estoque', 'listar'], 'chegadas_csv' => ['estoque', 'listar'], 'chegadas_foto' => ['estoque', 'listar'],
+            'chegadas_salvar' => ['estoque', 'criar'], 'chegadas_acao' => ['estoque', 'editar'],
             'relger_dados' => ['estoque', 'listar'], 'relger_csv' => ['estoque', 'listar'],
             'espelhos_painel' => ['estoque', 'listar'], 'espelhos_itens_pc' => ['estoque', 'listar'], 'espelhos_pdf' => ['estoque', 'listar'], 'espelhos_csv' => ['estoque', 'listar'], 'espelhos_imprimir' => ['estoque', 'listar'],
             'espelhos_salvar' => ['estoque', 'criar'], 'espelhos_status' => ['estoque', 'editar'],

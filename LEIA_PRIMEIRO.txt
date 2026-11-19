@@ -1,3 +1,6 @@
+v3.54.0 — Chegadas / NF pendente (controle de material × nota fiscal no almoxarifado)
+NOVO menu "Chegadas / NF pendente": registra o que chega incompleto — MATERIAL SEM NF, NF SEM O MATERIAL, COMPRA ONLINE SEM NF e outras divergências. Nada é obrigatório além do tipo (preencha o que souber e complete depois). Cada pendência tem prazo (padrão 5 dias), contador de dias, selo VENCIDA, fotos (câmera do celular), vínculo opcional com o PC (a busca mostra se o pedido já consta como recebido e se já tem NF), botão "Cobrar fornecedor" (gera a mensagem pronta para WhatsApp/e-mail e registra quando e como foi cobrado) e "Resolver" (NF recebida, material localizado, fornecedor confirmou entrega anterior, devolvido, liberado sem NF…). Cartões no topo: abertas, vencidas, por tipo; lista de fornecedores com pendência; exporta Excel (CSV). Dados em data/chegadas.json e fotos em data/chegadas_fotos/. Não altera estoque nem pedidos (é controle de pendências). Permissões: as do módulo Estoque.
+
 v3.53.2 — Foto do material na Saída mais visível
 - Cada linha da Saída de material tem o botão "📷 Foto" (abre a câmera no celular). A foto é opcional, é reduzida no aparelho e vai no comprovante e no histórico da saída. Antes era só um ícone pequeno.
 
