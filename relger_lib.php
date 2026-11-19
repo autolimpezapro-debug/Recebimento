@@ -9,7 +9,7 @@ require_once __DIR__ . '/estoque_lib.php';
 
 function rg_data(string $v, string $padrao): string { $v = substr(trim($v), 0, 10); return preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) ? $v : $padrao; }
 
-function rg_relatorio(string $ini, string $fim): array {
+function rg_relatorio(string $ini, string $fim, bool $soComOs = false): array {   // $soComOs (v3.58.1): só saídas que têm OS/OM
     date_default_timezone_set('America/Sao_Paulo');
     $fim = rg_data($fim, date('Y-m-d')); $ini = rg_data($ini, date('Y-m-01'));
     if ($ini > $fim) [$ini, $fim] = [$fim, $ini];
@@ -22,6 +22,7 @@ function rg_relatorio(string $ini, string $fim): array {
         $t = (string)($m['tipo'] ?? ''); $cod = (string)($m['codigo'] ?? ''); $it = $itens[$cod] ?? [];
         $q = (float)($m['quantidade'] ?? 0);
         if ($t === 'SAIDA' || $t === 'ESTORNO_SAIDA') {
+            if ($soComOs && trim((string)($m['os'] ?? '')) === '') continue;
             $sinal = $t === 'SAIDA' ? 1 : -1;
             $cu = (float)($it['custo_medio'] ?? 0); $fonte = 'custo médio';
             if ($cu <= 0 && isset($custoInv[$cod])) { $cu = $custoInv[$cod]; $fonte = 'inventário SAP'; }
@@ -62,7 +63,7 @@ function rg_relatorio(string $ini, string $fim): array {
     arsort($forn);
     $dias = (int)((strtotime($fim) - strtotime($ini)) / 86400) + 1;
     return [
-        'periodo' => ['ini' => $ini, 'fim' => $fim, 'dias' => $dias],
+        'periodo' => ['ini' => $ini, 'fim' => $fim, 'dias' => $dias, 'so_com_os' => $soComOs],
         'resumo' => ['saidas_mov' => count($saidas), 'saidas_valor' => round(array_sum(array_column($saidas, 'valor')), 2), 'os_distintas' => count(array_filter($porOs, fn($x) => $x['chave'] !== '(sem OS)')),
             'saidas_sem_os' => count($semOsTodas), 'saidas_sem_os_sistema' => count($semOs), 'saidas_sem_custo' => count(array_filter($saidas, fn($s) => $s['valor_fonte'] === 'sem custo')),
             'entradas_mov' => count($entradas), 'pcs_recebidos' => count($pcs), 'fornecedores_recebidos' => count($forn), 'materiais_distintos' => count($porMat)],

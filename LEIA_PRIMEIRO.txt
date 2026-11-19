@@ -1,3 +1,7 @@
+v3.58.1 — Relatório só com OS/OM
+- Relatório gerencial: nova caixa "Somente com OS/OM" ao lado de Aplicar — a tela, o CSV e o PDF passam a trazer só as saídas que têm OS/OM (resumos por OS/obra/setor/material também).
+- Envio diário por e-mail: nova opção "Somente saídas com OS/OM" (já vem marcada); o e-mail e o CSV anexo saem só com elas, e o dia sem saídas com OS não é enviado.
+
 v3.58.0 — Envio diário das saídas de material por e-mail
 - Relatório gerencial > "📧 Envio diário das saídas por e-mail" (só perfis que administram o Estoque): ligue, escolha o horário (padrão 18:00), o conteúdo (saídas do dia até o horário, ou do dia anterior) e os e-mails. Botão "Enviar teste agora".
 - O e-mail traz o resumo (movimentos, OS, valor de custo, sem OS), a tabela (hora, OS, material, quantidade, valor, aplicação = equipamento + finalidade) e o CSV completo em anexo. Sem saídas no dia, não envia (pode marcar "enviar mesmo sem saídas").

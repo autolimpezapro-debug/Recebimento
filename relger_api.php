@@ -15,7 +15,7 @@ if (strncmp((string)$action, 'relger_envio_', 13) === 0) {
     respond(['ok' => false, 'error' => 'Ação inválida'], 400);
 }
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') respond(['ok' => false, 'error' => 'Método não permitido'], 405);
-$rgR = rg_relatorio((string)($_GET['ini'] ?? ''), (string)($_GET['fim'] ?? ''));
+$rgR = rg_relatorio((string)($_GET['ini'] ?? ''), (string)($_GET['fim'] ?? ''), !empty($_GET['so_os']));
 if ($action === 'relger_csv') {
     $c = rg_csv($rgR);
     header('Content-Type: text/csv; charset=utf-8'); header('Cache-Control: no-store');

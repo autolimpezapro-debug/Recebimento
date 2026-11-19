@@ -16,10 +16,11 @@ function relgerPeriodo(tipo) {
 }
 async function relgerCarregar() {
   const c = terEl('rgConteudo'); c.innerHTML = '<div class="empty">Carregando…</div>';
-  try { RG.d = await terApi(`relger_dados&ini=${terEl('rgIni').value}&fim=${terEl('rgFim').value}`); } catch (e) { c.innerHTML = `<div class="empty">${terH(e.message)}</div>`; return; }
+  try { RG.d = await terApi(`relger_dados&ini=${terEl('rgIni').value}&fim=${terEl('rgFim').value}${relgerSoOs()}`); } catch (e) { c.innerHTML = `<div class="empty">${terH(e.message)}</div>`; return; }
   relgerRender();
 }
-function relgerCsv() { location.href = `api.php?action=relger_csv&ini=${terEl('rgIni').value}&fim=${terEl('rgFim').value}`; }
+const relgerSoOs = () => (terEl('rgSoOs') && terEl('rgSoOs').checked ? '&so_os=1' : '');
+function relgerCsv() { location.href = `api.php?action=relger_csv&ini=${terEl('rgIni').value}&fim=${terEl('rgFim').value}${relgerSoOs()}`; }
 function rgQtd(n) { return terQtd(n); }
 function relgerRender() {
   const r = RG.d.resumo, box = (n, t, cls = '') => `<div class="imp-kpi ${cls}"><b>${n}</b><span>${t}</span></div>`;
@@ -68,7 +69,7 @@ async function relgerEnvioCarregar() {
   const d = terEl('rgEnvio'); if (!d) return;
   try {
     const r = await terApi('relger_envio_config'), c = r.config;
-    terEl('rgEnvAtivo').checked = !!c.ativo; terEl('rgEnvHora').value = c.hora; terEl('rgEnvPeriodo').value = c.periodo; terEl('rgEnvVazio').checked = !!c.enviar_vazio; terEl('rgEnvEmails').value = (c.emails || []).join(', ');
+    terEl('rgEnvAtivo').checked = !!c.ativo; terEl('rgEnvHora').value = c.hora; terEl('rgEnvPeriodo').value = c.periodo; terEl('rgEnvVazio').checked = !!c.enviar_vazio; terEl('rgEnvSoOs').checked = !!c.so_com_os; terEl('rgEnvEmails').value = (c.emails || []).join(', ');
     const u = r.ultimo; terEl('rgEnvioRes').textContent = c.ativo ? '· ligado às ' + c.hora + (u ? (u.ok ? ' · último: ' + terD(u.dia) + (u.obs ? ' (sem saídas)' : '') : ' · ⚠ falha no último envio') : '') : '· desligado';
     terEl('rgEnvInfo').dataset.erro = u && !u.ok ? u.erro : '';
     if (u && !u.ok) terEl('rgEnvInfo').textContent = '⚠ Último envio falhou: ' + u.erro + ' — confira o SMTP em Alertas de estoque.';
@@ -77,7 +78,7 @@ async function relgerEnvioCarregar() {
 }
 async function relgerEnvioSalvar() {
   try {
-    await terPost('relger_envio_salvar', { ativo: terEl('rgEnvAtivo').checked, hora: terEl('rgEnvHora').value, periodo: terEl('rgEnvPeriodo').value, enviar_vazio: terEl('rgEnvVazio').checked, emails: terEl('rgEnvEmails').value });
+    await terPost('relger_envio_salvar', { ativo: terEl('rgEnvAtivo').checked, hora: terEl('rgEnvHora').value, periodo: terEl('rgEnvPeriodo').value, enviar_vazio: terEl('rgEnvVazio').checked, so_com_os: terEl('rgEnvSoOs').checked, emails: terEl('rgEnvEmails').value });
     terToast('Envio diário salvo.'); relgerEnvioCarregar();
   } catch (e) { terToast(e.message, true); }
 }

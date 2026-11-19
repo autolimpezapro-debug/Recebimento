@@ -11,7 +11,7 @@ require_once __DIR__ . '/alertas_lib.php';
 const RGE_CONFIG = DATA_DIR . '/relger_envio.json';
 const RGE_ESTADO = DATA_DIR . '/relger_envio_estado.json';
 const RGE_LOCK   = DATA_DIR . '/.relger_envio.lock';
-const RGE_PADRAO = ['ativo' => false, 'hora' => '18:00', 'emails' => [], 'periodo' => 'hoje', 'enviar_vazio' => false];
+const RGE_PADRAO = ['ativo' => false, 'hora' => '18:00', 'emails' => [], 'periodo' => 'hoje', 'enviar_vazio' => false, 'so_com_os' => true];
 
 function rge_config(): array { return alt_json_read(RGE_CONFIG, RGE_PADRAO); }
 function rge_estado(): array { return alt_json_read(RGE_ESTADO, []); }
@@ -34,6 +34,7 @@ function rge_config_salvar(array $in): array {
     if (count($c['emails']) > 20) throw new InvalidArgumentException('No máximo 20 e-mails.');
     $c['periodo'] = ($in['periodo'] ?? '') === 'ontem' ? 'ontem' : 'hoje';
     $c['enviar_vazio'] = !empty($in['enviar_vazio']);
+    $c['so_com_os'] = !empty($in['so_com_os']);
     if ($c['ativo'] && !$c['emails']) throw new InvalidArgumentException('Informe ao menos um e-mail para receber o relatório.');
     alt_json_write(RGE_CONFIG, $c);
     // Ligou agora: começa a valer no PRÓXIMO horário (não dispara retroativo do horário que já passou hoje).
@@ -46,8 +47,8 @@ function rge_brl(float $v): string { return 'R$ ' . number_format($v, 2, ',', '.
 function rge_aplicacao(array $s): string { return trim(implode(' — ', array_filter([trim((string)$s['equipamento']), trim((string)$s['finalidade'])], fn($x) => $x !== ''))); }
 
 /** Monta [assunto, html, texto, csv, nome_csv] das saídas do dia $dia (Y-m-d). */
-function rge_montar(string $dia): array {
-    $r = rg_relatorio($dia, $dia); $res = $r['resumo']; $dd = substr($dia, 8, 2) . '/' . substr($dia, 5, 2) . '/' . substr($dia, 0, 4);
+function rge_montar(string $dia, bool $soOs = true): array {
+    $r = rg_relatorio($dia, $dia, $soOs); $res = $r['resumo']; $dd = substr($dia, 8, 2) . '/' . substr($dia, 5, 2) . '/' . substr($dia, 0, 4);
     $assunto = "Saídas de material $dd — {$res['saidas_mov']} movimento(s), " . rge_brl((float)$res['saidas_valor']);
     $max = 300; $lin = ''; $txt = "Saídas de material — $dd\n{$res['saidas_mov']} movimentos · {$res['os_distintas']} OS · " . rge_brl((float)$res['saidas_valor']) . "\n\n";
     foreach (array_slice($r['saidas'], 0, $max) as $s) {
@@ -61,9 +62,9 @@ function rge_montar(string $dia): array {
     $html = '<div style="font-family:Arial,sans-serif;font-size:13px;color:#111"><h2 style="margin:0 0 4px">Drilling do Brasil — Saídas de material</h2><p style="margin:0 0 12px;color:#555">' . $dd . '</p>'
         . '<table cellspacing="0" cellpadding="0"><tr>' . $kp($res['saidas_mov'], 'movimentos') . $kp($res['os_distintas'], 'OS atendidas') . $kp(rge_brl((float)$res['saidas_valor']), 'valor (custo)') . $kp($res['saidas_sem_os'], 'sem OS') . '</tr></table>'
         . ($res['saidas_mov'] ? '<table cellspacing="0" cellpadding="5" border="1" style="border-collapse:collapse;border-color:#d9dee5;margin-top:14px;width:100%"><thead style="background:#eef2f6"><tr><th>Hora</th><th>OS</th><th>Material</th><th>Qtd.</th><th>Valor</th><th>Aplicação</th></tr></thead><tbody>' . $lin . '</tbody></table>' . $mais
-            : '<p>Nenhuma saída de material neste dia.</p>')
+            : '<p>Nenhuma saída de material' . ($soOs ? ' com OS/OM' : '') . ' neste dia.</p>')
         . ($res['saidas_sem_custo'] ? '<p style="color:#b45309">' . (int)$res['saidas_sem_custo'] . ' saída(s) sem custo cadastrado (valor R$ 0,00).</p>' : '')
-        . '<p style="color:#777;font-size:11px">Valor = custo médio do item. Relatório automático do sistema Recebimento Drilling.</p></div>';
+        . '<p style="color:#777;font-size:11px">' . ($soOs ? 'Somente saídas com OS/OM. ' : '') . 'Valor = custo médio do item. Relatório automático do sistema Recebimento Drilling.</p></div>';
     return [$assunto, $html, $txt, rg_csv($r), 'Saidas-' . $dia . '.csv', $res];
 }
 
@@ -71,7 +72,7 @@ function rge_montar(string $dia): array {
 function rge_enviar(string $dia, ?array $para = null, bool $teste = false): array {
     $cfg = rge_config(); $para = $para ?? $cfg['emails'];
     if (!$para) throw new InvalidArgumentException('Nenhum e-mail configurado.');
-    [$a, $h, $t, $csv, $nome, $res] = rge_montar($dia);
+    [$a, $h, $t, $csv, $nome, $res] = rge_montar($dia, !empty($cfg['so_com_os']));
     alt_email_enviar(alt_config(), ($teste ? '[TESTE] ' : '') . $a, $h, $t, $para, [], [['nome' => $nome, 'mime' => 'text/csv; charset=utf-8', 'dados' => $csv]]);
     return ['enviado_para' => $para, 'dia' => $dia, 'saidas' => (int)$res['saidas_mov'], 'valor' => (float)$res['saidas_valor']];
 }
@@ -90,7 +91,7 @@ function rge_verificar(string $motivo = 'batimento'): array {
     $r = alt_lock(function () use ($cfg, $slot, $motivo) {
         $est = rge_estado(); if (($est['ultimo_slot'] ?? '') >= $slot) return ['ignorado' => 'já enviado'];
         $dia = $cfg['periodo'] === 'ontem' ? date('Y-m-d', strtotime($slot . ' -1 day')) : $slot;
-        $vazio = rg_relatorio($dia, $dia)['resumo']['saidas_mov'] === 0;
+        $vazio = rg_relatorio($dia, $dia, !empty($cfg['so_com_os']))['resumo']['saidas_mov'] === 0;
         try {
             if ($vazio && !$cfg['enviar_vazio']) { $est['ultimo_resultado'] = ['em' => date('c'), 'dia' => $dia, 'ok' => true, 'obs' => 'sem saídas — não enviado', 'motivo' => $motivo]; }
             else { $o = rge_enviar($dia); $est['ultimo_resultado'] = ['em' => date('c'), 'dia' => $dia, 'ok' => true, 'saidas' => $o['saidas'], 'valor' => $o['valor'], 'para' => $o['enviado_para'], 'motivo' => $motivo]; }
