@@ -7,6 +7,7 @@ const rgMes = (off = 0) => { const d = new Date(); d.setDate(1); d.setMonth(d.ge
 async function relgerInit() {
   const c = terEl('rgConteudo'); if (!c) return;
   if (!terEl('rgIni').value) { const [i, f] = rgMes(0); terEl('rgIni').value = i; terEl('rgFim').value = f; }
+  relgerEnvioCarregar();
   await relgerCarregar();
 }
 function relgerPeriodo(tipo) {
@@ -60,4 +61,27 @@ function relgerImprimir() {
   ${tab('Resumo por OS', ['OS', 'Movim.', 'Valor', 'Materiais'], d.por_os.map(x => `<tr><td>${h(x.chave)}</td><td>${x.movimentos}</td><td>${rgMoney(x.valor)}</td><td>${h(x.materiais.map(m => m.descricao + ' (' + rgQtd(m.quantidade) + ' ' + m.unidade + ')').join('; '))}</td></tr>`))}
   <script>setTimeout(()=>print(),300)<\/script>`);
   w.document.close();
+}
+
+/* v3.58.0 — envio diário das saídas por e-mail (só perfis com permissão de administrar Estoque veem a seção) */
+async function relgerEnvioCarregar() {
+  const d = terEl('rgEnvio'); if (!d) return;
+  try {
+    const r = await terApi('relger_envio_config'), c = r.config;
+    terEl('rgEnvAtivo').checked = !!c.ativo; terEl('rgEnvHora').value = c.hora; terEl('rgEnvPeriodo').value = c.periodo; terEl('rgEnvVazio').checked = !!c.enviar_vazio; terEl('rgEnvEmails').value = (c.emails || []).join(', ');
+    const u = r.ultimo; terEl('rgEnvioRes').textContent = c.ativo ? '· ligado às ' + c.hora + (u ? (u.ok ? ' · último: ' + terD(u.dia) + (u.obs ? ' (sem saídas)' : '') : ' · ⚠ falha no último envio') : '') : '· desligado';
+    terEl('rgEnvInfo').dataset.erro = u && !u.ok ? u.erro : '';
+    if (u && !u.ok) terEl('rgEnvInfo').textContent = '⚠ Último envio falhou: ' + u.erro + ' — confira o SMTP em Alertas de estoque.';
+    d.hidden = false;
+  } catch (e) { d.hidden = true; }
+}
+async function relgerEnvioSalvar() {
+  try {
+    await terPost('relger_envio_salvar', { ativo: terEl('rgEnvAtivo').checked, hora: terEl('rgEnvHora').value, periodo: terEl('rgEnvPeriodo').value, enviar_vazio: terEl('rgEnvVazio').checked, emails: terEl('rgEnvEmails').value });
+    terToast('Envio diário salvo.'); relgerEnvioCarregar();
+  } catch (e) { terToast(e.message, true); }
+}
+async function relgerEnvioTestar() {
+  try { await relgerEnvioSalvar(); const r = await terPost('relger_envio_testar', {}); terToast(`Teste enviado para ${r.enviado_para.length} e-mail(s) (${r.saidas} saída(s) de hoje).`); }
+  catch (e) { terToast(e.message, true); }
 }

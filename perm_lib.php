@@ -408,7 +408,7 @@ function rd_rota(string $action): ?array {
             'contagens_painel' => ['estoque', 'listar'], 'contagens_sugestao' => ['estoque', 'listar'], 'contagens_detalhe' => ['estoque', 'listar'], 'contagens_csv' => ['estoque', 'listar'], 'contagens_folha' => ['estoque', 'listar'],
             'contagens_criar' => ['estoque', 'criar'], 'contagens_contar' => ['estoque', 'editar'], 'contagens_cancelar' => ['estoque', 'editar'],
             'contagens_decidir' => ['estoque', 'aprovar'], 'contagens_aplicar' => ['estoque', 'aprovar'], 'contagens_config' => ['estoque', 'aprovar'],
-            'relger_dados' => ['estoque', 'listar'], 'relger_csv' => ['estoque', 'listar'],
+            'relger_dados' => ['estoque', 'listar'], 'relger_csv' => ['estoque', 'listar'], 'relger_envio_config' => ['estoque', 'admin'], 'relger_envio_salvar' => ['estoque', 'admin'], 'relger_envio_testar' => ['estoque', 'admin'],
             'espelhos_painel' => ['estoque', 'listar'], 'espelhos_itens_pc' => ['estoque', 'listar'], 'espelhos_sku' => ['estoque', 'listar'], 'espelhos_pdf' => ['estoque', 'listar'], 'espelhos_csv' => ['estoque', 'listar'], 'espelhos_imprimir' => ['estoque', 'listar'],
             'espelhos_salvar' => ['estoque', 'criar'], 'espelhos_status' => ['estoque', 'editar'],
             'locacoes_painel' => ['estoque', 'listar'], 'locacoes_csv' => ['estoque', 'listar'],

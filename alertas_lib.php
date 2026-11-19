@@ -215,7 +215,7 @@ function alt_email_montar(array $novos, array $piorou, array $repetir, array $re
 }
 
 /** $imagens (v3.31.0): [['cid'=>'foto1','mime'=>'image/jpeg','dados'=>binário], …] — vão embutidas no corpo (<img src="cid:foto1">). */
-function alt_email_enviar(array $cfg, string $assunto, string $html, string $texto, ?array $para = null, array $imagens = []): void {
+function alt_email_enviar(array $cfg, string $assunto, string $html, string $texto, ?array $para = null, array $imagens = [], array $anexos = []): void {
     $para = $para ?? $cfg['emails'];
     if (!$para) throw new RuntimeException('Nenhum destinatário configurado.');
     $host = preg_replace('/^www\./', '', preg_replace('/:\d+$/', '', (string)($_SERVER['HTTP_HOST'] ?? 'localhost')));
@@ -234,7 +234,17 @@ function alt_email_enviar(array $cfg, string $assunto, string $html, string $tex
     }
     $corpo = "--$limite\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . chunk_split(base64_encode($texto))
         . "--$limite\r\n" . $parteHtml . "--$limite--\r\n";
-    $cab = ['From: ' . $enc($cfg['remetente_nome']) . " <$de>", 'Reply-To: ' . $de, 'MIME-Version: 1.0', "Content-Type: multipart/alternative; boundary=\"$limite\"", 'X-Mailer: RecebimentoDrilling'];
+    $tipoCorpo = "multipart/alternative; boundary=\"$limite\"";
+    if ($anexos) {   // v3.58.0: anexos (ex.: CSV do relatório diário) — multipart/mixed envolvendo o corpo
+        $mix = '=_rm' . bin2hex(random_bytes(8));
+        $m = "--$mix\r\nContent-Type: multipart/alternative; boundary=\"$limite\"\r\n\r\n" . $corpo . "\r\n";
+        foreach ($anexos as $an) {
+            $nome = preg_replace('/[^A-Za-z0-9_.-]/', '_', (string)$an['nome']);
+            $m .= "--$mix\r\nContent-Type: " . ($an['mime'] ?? 'application/octet-stream') . "; name=\"$nome\"\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename=\"$nome\"\r\n\r\n" . chunk_split(base64_encode((string)$an['dados']));
+        }
+        $corpo = $m . "--$mix--\r\n"; $tipoCorpo = "multipart/mixed; boundary=\"$mix\"";
+    }
+    $cab = ['From: ' . $enc($cfg['remetente_nome']) . " <$de>", 'Reply-To: ' . $de, 'MIME-Version: 1.0', "Content-Type: $tipoCorpo", 'X-Mailer: RecebimentoDrilling'];
     if ($cfg['metodo'] !== 'smtp') {
         if (!function_exists('mail')) throw new RuntimeException('A função mail() está desativada neste servidor. Use SMTP.');
         if (!@mail(implode(', ', $para), $enc($assunto), $corpo, implode("\r\n", $cab), '-f' . $de)) throw new RuntimeException('O servidor recusou o envio pelo mail(). Configure SMTP.');

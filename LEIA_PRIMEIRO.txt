@@ -1,3 +1,9 @@
+v3.58.0 — Envio diário das saídas de material por e-mail
+- Relatório gerencial > "📧 Envio diário das saídas por e-mail" (só perfis que administram o Estoque): ligue, escolha o horário (padrão 18:00), o conteúdo (saídas do dia até o horário, ou do dia anterior) e os e-mails. Botão "Enviar teste agora".
+- O e-mail traz o resumo (movimentos, OS, valor de custo, sem OS), a tabela (hora, OS, material, quantidade, valor, aplicação = equipamento + finalidade) e o CSV completo em anexo. Sem saídas no dia, não envia (pode marcar "enviar mesmo sem saídas").
+- Usa o mesmo e-mail (SMTP/mail()) dos Alertas de estoque — configure lá primeiro. Envia 1 vez por dia; se falhar, tenta de novo a cada 30 min (até 3x) e mostra o erro na tela.
+- Dispara pelo sistema aberto (qualquer tela conectada). Para garantir mesmo com tudo fechado, crie o cron de hora em hora: php -q /CAMINHO/alertas_worker.php (já inclui o envio diário).
+
 v3.57.0 — Cadastros duplicados (ex.: PARAFLU aditivo rosa)
 - Estoque > Itens > "🔍 Cadastros duplicados": lista itens com nomes parecidos (principalmente os criados sem código SAP ao receber um PC). Para cada par: escolha qual manter, informe o fator de unidade (ex.: 1 UN do antigo = 20 L) e clique em Unificar. O saldo do antigo é transferido com registro no histórico (documento UNIF-...), apelidos/códigos são herdados, o antigo deixa de aparecer, e recebimentos/contagens futuras que citem o código antigo caem no item mantido. "São itens diferentes" tira o par da lista.
 - Se houver reserva ativa no cadastro antigo, o sistema pede para liberar antes. Com fator diferente de 1, as linhas de PC antigas ficam no cadastro antigo; faça novas saídas pelo item mantido.
