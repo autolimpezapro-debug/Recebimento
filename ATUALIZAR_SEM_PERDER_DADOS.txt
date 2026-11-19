@@ -1,0 +1,16 @@
+ATUALIZAR PARA A v3.53.0 SEM PERDER DADOS
+=========================================
+Seus dados ficam TODOS na pasta data/ do servidor (pedidos, estoque, coletas, usuários, fotos, assinaturas, configurações).
+Este pacote NÃO contém a pasta data/ de propósito: assim nada do que você já lançou é sobrescrito.
+
+1) BACKUP (obrigatório, 2 minutos)
+   - No cPanel > Gerenciador de Arquivos: compacte a pasta data/ (botão Compress) e baixe o .zip. (Ou use o backup do próprio sistema em Administração.)
+2) ENVIAR
+   - Descompacte este zip no seu computador e envie o CONTEÚDO da pasta "recebimento" para a raiz do sistema no servidor,
+     escolhendo "substituir arquivos existentes". NÃO apague nem substitua a pasta data/.
+   - Não envie nenhuma pasta data/ do seu computador por cima da do servidor.
+3) CONFERIR
+   - Abra o sistema com Ctrl+F5. Rodapé/versão deve mostrar 3.53.0. Confira um pedido e o estoque.
+4) (Uma vez) corrigir o PC 5027: no servidor, na pasta do sistema: php corrigir_pc5027.php (simula) e depois php corrigir_pc5027.php --apply
+5) Se algo der errado: restaure o backup da data/ e reenvie a versão anterior.
+Mudar para VPS: copie a pasta data/ inteira do servidor atual para o novo (ela é o sistema "vivo").

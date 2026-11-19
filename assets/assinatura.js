@@ -23,7 +23,7 @@ async function rdAssinar(opts = {}) {
       ${opts.resumo ? `<div class="rd-ass-resumo">${opts.resumo}</div>` : ''}
       <div class="rd-ass-campos">
         <label>Quem está retirando${lista.length ? ' (funcionário cadastrado)' : ''}<input name="nome" required minlength="3" list="rdFuncList" placeholder="${lista.length ? 'Digite para buscar na lista' : 'Nome e sobrenome'}" autocomplete="off"></label>
-        <label class="rd-ass-doc">Documento (CPF, RG ou empresa)<input name="documento" maxlength="40" placeholder="${lista.length ? 'Obrigatório para terceiros' : 'Opcional'}"></label>
+        <label class="rd-ass-doc">Documento (CPF, RG ou empresa) — opcional<input name="documento" maxlength="40" placeholder="Opcional"></label>
       </div>
       <datalist id="rdFuncList">${lista.map(f => `<option value="${esc(f.nome)}">${esc(f.matricula ? 'Matrícula ' + f.matricula : f.setor || '')}</option>`).join('')}</datalist>
       ${lista.length ? '<label class="rd-ass-aceite"><input type="checkbox" name="terceiro"> Não está na lista (terceiro, motorista ou visitante)</label><div class="rd-ass-status" aria-live="polite"></div>' : ''}
@@ -56,11 +56,10 @@ async function rdAssinar(opts = {}) {
     const atualizar = () => {
       if (!status) return;
       const f = achar(), terc = form.terceiro.checked;
-      form.documento.required = terc;
       bg.querySelector('.rd-ass-doc').classList.toggle('on', terc);
       status.className = 'rd-ass-status ' + (f ? 'ok' : terc ? 'warn' : form.nome.value.trim() ? 'bad' : '');
       status.textContent = f ? '✓ ' + f.nome + (f.matricula ? ' · matrícula ' + f.matricula : '') + (f.setor ? ' · ' + f.setor : '')
-        : terc ? 'Terceiro: informe o documento.' : form.nome.value.trim() ? 'Nome não encontrado na lista de funcionários ativos.' : '';
+        : terc ? 'Terceiro: documento é opcional.' : form.nome.value.trim() ? 'Nome não encontrado na lista de funcionários ativos.' : '';
     };
     if (lista.length) {
       form.nome.addEventListener('input', atualizar); form.terceiro.addEventListener('change', atualizar);
@@ -72,7 +71,6 @@ async function rdAssinar(opts = {}) {
       ev.preventDefault();
       const func = lista.length ? achar() : null;
       if (lista.length && !func && !form.terceiro.checked) { alert('Escolha o funcionário na lista ou marque "Não está na lista".'); form.nome.focus(); return; }
-      if (form.terceiro?.checked && form.documento.value.trim().length < 4) { alert('Para terceiros, informe o documento.'); form.documento.focus(); return; }
       if (tracos < 8) { alert('Assine no quadro antes de confirmar.'); return; }
       // recorta para o tamanho real e exporta PNG
       const out = document.createElement('canvas'); out.width = Math.min(cv.width, 1200); out.height = Math.round(cv.height * out.width / cv.width);

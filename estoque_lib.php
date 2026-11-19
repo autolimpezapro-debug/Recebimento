@@ -1795,8 +1795,6 @@ function est_assinatura_salvar(array &$db, array $a, $documento, $usuario) {
         if (!$func) est_fail('Funcionário não encontrado no cadastro.', 422);
         if (empty($func['ativo'])) est_fail('Funcionário inativo no cadastro: ' . $func['nome'] . '. Fale com o almoxarifado.', 422);
         $nome = $func['nome'];
-    } elseif (!empty($db['funcionarios'])) {
-        if (mb_strlen(trim((string)($a['documento'] ?? ''))) < 4) est_fail('Quem não está na lista de funcionários precisa informar um documento (CPF, RG ou empresa).', 422);
     }
     if (mb_strlen($nome) < 3) est_fail('Informe o nome completo de quem está retirando o material.', 422);
     if (empty($a['aceite'])) est_fail('Quem retira precisa confirmar o recebimento.', 422);
