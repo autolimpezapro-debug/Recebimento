@@ -1,6 +1,6 @@
 <?php
 /**
- * Recebimento Drilling — Indicador "Chegadas sem NF / sem pedido de compra" (v3.55.1). Somente leitura.
+ * Recebimento Drilling — Indicador "Chegadas sem NF / sem pedido de compra" (v3.55.2). Somente leitura.
  * Fontes: data/chegadas.json (módulo Chegadas / NF pendente), data/items.json (PCs recebidos sem NF no sistema) e
  * data/estoque.json (entradas manuais = material que entrou sem pedido de compra; ignora a carga histórica da planilha).
  */

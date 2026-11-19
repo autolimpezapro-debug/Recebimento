@@ -1,3 +1,7 @@
+v3.55.2 — Saída de material usa a base de funcionários
+- O campo "Quem retira / solicitante" da Saída agora busca na base de funcionários (Estoque > Funcionários): digite parte do nome ou a matrícula e escolha na lista; aparece "✔ Funcionário cadastrado" com matrícula, setor e função.
+- Quem não está na base (terceiro, motorista, visitante) continua podendo retirar: o sistema só avisa e não bloqueia. A confirmação com assinatura já vem com o nome escolhido.
+
 v3.55.1 — Auditoria do Inventário e do PWA (correções)
 Revisão completa (lint PHP/JS/JSON, verificação de tipos e 3 revisões independentes: backend, front/PWA e teste ponta a ponta). Corrigido:
 - Botão "Folha" (impressão) dava erro 500.

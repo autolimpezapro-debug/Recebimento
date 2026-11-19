@@ -538,8 +538,30 @@ function estNovaSaida() {
   estSaidaLinha();
   estSaidaSetorMudou(); estSaidaCarregarObras(); estCarregarEquipamentos('estEquipLista'); estEl('estSaidaOSInfo').hidden = true;
   estEl('estSaidaModal').classList.add('on');
-  estLoadItensSaida();
+  estLoadItensSaida(); estSaidaFuncCarregar();
   setTimeout(() => estEl('estSaidaBusca').focus(), 60);
+}
+
+/** v3.55.2: base de funcionários na Saída — busca por nome ou matrícula; informa se a pessoa está cadastrada (não bloqueia: terceiro/visitante pode retirar). */
+async function estSaidaFuncCarregar() {
+  estEl('estSaidaFuncInfo').textContent = '';
+  try {
+    const l = (typeof rdFuncionarios === 'function') ? await rdFuncionarios(true) : [];
+    estEl('estFuncLista').innerHTML = l.map(f => `<option value="${estHtml(f.nome)}">${estHtml([f.matricula ? 'Matrícula ' + f.matricula : '', f.setor, f.funcao].filter(Boolean).join(' · '))}</option>`).join('');
+    estEl('estSaidaSolicitante').placeholder = l.length ? `Digite o nome ou a matrícula (${l.length} funcionários cadastrados)` : 'Nome de quem retira';
+  } catch { /* digita livre */ }
+}
+function estSaidaFuncMudou() {
+  const inp = estEl('estSaidaSolicitante'), info = estEl('estSaidaFuncInfo'), lista = (typeof RD_FUNC !== 'undefined' && RD_FUNC) || [];
+  const v = inp.value.trim(); if (!v || !lista.length) { info.textContent = ''; return; }
+  const n = rdNormNome(v);
+  // matrícula digitada: troca pelo nome
+  const porMat = lista.filter(f => f.matricula && String(f.matricula).trim().toLowerCase() === v.toLowerCase());
+  if (porMat.length === 1) { inp.value = porMat[0].nome; return estSaidaFuncMudou(); }
+  const exato = lista.filter(f => rdNormNome(f.nome) === n);
+  if (exato.length === 1) { const f = exato[0]; info.textContent = ['✔ Funcionário cadastrado', f.matricula ? 'matrícula ' + f.matricula : '', f.setor, f.funcao].filter(Boolean).join(' · '); return; }
+  const parc = lista.filter(f => rdNormNome(f.nome).includes(n)).length;
+  info.textContent = parc ? `${parc} funcionário(s) combinam — escolha na lista.` : 'Não está na base de funcionários (será tratado como terceiro/visitante). Cadastre em Estoque > Funcionários se for do quadro.';
 }
 
 /** v3.27.0: sugestões do campo "Equipamento aplicado" (usados antes, ferramentas e locados). */
