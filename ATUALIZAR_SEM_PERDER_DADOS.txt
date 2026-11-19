@@ -1,14 +1,14 @@
-ATUALIZAR PARA A v3.54.1 SEM PERDER DADOS
+ATUALIZAR PARA A v3.54.2 SEM PERDER DADOS
 =========================================
 Este pacote tem os arquivos DIRETO NA RAIZ (index.html, api.php, assets/...), sem pasta "recebimento" por fora,
 e NÃO contém a pasta data/ de propósito: seus pedidos, estoque, coletas, usuários e fotos ficam intactos.
 
 1) BACKUP (2 minutos): cPanel > Gerenciador de Arquivos > clique com o botão direito na pasta data > Compress > baixe o .zip.
 2) Entre na pasta onde o sistema funciona hoje (a que tem index.html, api.php e a pasta data).
-3) Envie o recebimento_v3.54.1.zip PARA DENTRO dessa pasta e clique em Extract (Extrair) com a opção de sobrescrever.
+3) Envie o recebimento_v3.54.2.zip PARA DENTRO dessa pasta e clique em Extract (Extrair) com a opção de sobrescrever.
    Os arquivos novos se misturam aos antigos; a pasta data não é tocada.
 4) Apague o .zip depois de extrair.
-5) Abra o sistema com Ctrl+F5 (no celular, feche e abra o app). A versão no rodapé deve ser 3.54.1.
+5) Abra o sistema com Ctrl+F5 (no celular, feche e abra o app). A versão no rodapé deve ser 3.54.2.
 6) Menus novos: Chegadas / NF pendente, Relatório gerencial, Espelho de NF e Indicadores > Painel Premium.
 7) Uma vez só, no servidor (se tiver SSH): php corrigir_pc5027.php  (simula)  e  php corrigir_pc5027.php --apply
 Se algo der errado: restaure o backup da data e reenvie a versão anterior.

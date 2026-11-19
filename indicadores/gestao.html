@@ -88,10 +88,11 @@ tbody tr:hover td,table tr:hover>td{background:#12203600}
       <div><h2>Fornecedores: recebimentos, coletas e km</h2><p class="sub" id="cfSub">Quantas vezes recebemos de cada fornecedor, o que fomos buscar, km rodados e quanto poderia ser economizado</p></div>
       <div class="filt"><div class="seg" id="cfDias"><button data-d="30">30 dias</button><button data-d="90" class="on">90 dias</button><button data-d="180">180 dias</button><button data-d="365">12 meses</button></div><select id="cfMes" title="Ver um mês específico"><option value="">ou escolha o mês…</option></select><button id="cfGeo" title="Busca o endereço de cada fornecedor pelo CNPJ e localiza no mapa, para calcular os km">📍 Localizar fornecedores</button><button id="cfCsv">⇩ Excel (CSV)</button></div>
     </div>
-    <div class="tabs" id="cfTabs"><button data-t="rec" class="on">Recebimentos</button><button data-t="col">Coletas e km</button><button data-t="eco">Economia possível</button></div>
+    <div class="tabs" id="cfTabs"><button data-t="rec" class="on">Recebimentos</button><button data-t="col">Coletas e km</button><button data-t="eco">Economia possível</button><button data-t="nf">Chegadas sem NF / sem PC</button></div>
     <div class="pane on" id="paneRec"><div class="empty">Carregando…</div></div>
     <div class="pane" id="paneCol"><div class="kpis" id="cfKpis" style="margin:4px 0 12px"></div><div id="cdBox" style="margin:0 0 16px"></div><div id="cfTab"></div></div>
     <div class="pane" id="paneEco"><div class="empty">Carregando…</div></div>
+    <div class="pane" id="paneNf"><div class="empty">Carregando…</div></div>
   </section>
   <div class="grid" id="grid"></div>
 </main>
@@ -187,16 +188,37 @@ async function cfLoad(){
   $('#cfTab').innerHTML='<div class="empty">Carregando…</div>';$('#paneRec').innerHTML='<div class="empty">Carregando…</div>';$('#paneEco').innerHTML='<div class="empty">Carregando…</div>';
   const {de,ate}=cfRange(),hd={credentials:'same-origin',cache:'no-store',headers:TK?{'X-KPI-Link':TK}:{}};
   try{
-    const [a,b]=await Promise.all([fetch(`api.php?op=coletas_fornecedor&de=${de}&ate=${ate}`,hd).then(r=>r.json()),fetch(`api.php?op=recebimentos_fornecedor&de=${de}&ate=${ate}`,hd).then(r=>r.json())]);
-    if(!a.ok)throw new Error(a.erro||'Erro');if(!b.ok)throw new Error(b.erro||'Erro');cf.d=a;cf.r=b;
+    const [a,b,c]=await Promise.all([fetch(`api.php?op=coletas_fornecedor&de=${de}&ate=${ate}`,hd).then(r=>r.json()),fetch(`api.php?op=recebimentos_fornecedor&de=${de}&ate=${ate}`,hd).then(r=>r.json()),fetch(`api.php?op=chegadas_nf&de=${de}&ate=${ate}`,hd).then(r=>r.json()).catch(()=>({ok:false,erro:'indisponível'}))]);
+    if(!a.ok)throw new Error(a.erro||'Erro');if(!b.ok)throw new Error(b.erro||'Erro');cf.d=a;cf.r=b;cf.n=c.ok?c:null;
   }catch(e){const m=`<div class="empty">${H(e.message)}</div>`;$('#cfTab').innerHTML=m;$('#paneRec').innerHTML=m;$('#paneEco').innerHTML=m;return;}
-  cfRender();recRender();ecoRender();
+  cfRender();recRender();ecoRender();nfRender();
 }
-document.querySelectorAll('#cfTabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#cfTabs button').forEach(x=>x.classList.toggle('on',x===b));
-  ({rec:'#paneRec',col:'#paneCol',eco:'#paneEco'}[b.dataset.t]&&['#paneRec','#paneCol','#paneEco'].forEach(id=>$(id).classList.toggle('on',id===({rec:'#paneRec',col:'#paneCol',eco:'#paneEco'}[b.dataset.t]))));});
+document.querySelectorAll('#cfTabs button').forEach(b=>b.onclick=()=>{const m={rec:'#paneRec',col:'#paneCol',eco:'#paneEco',nf:'#paneNf'};document.querySelectorAll('#cfTabs button').forEach(x=>x.classList.toggle('on',x===b));Object.values(m).forEach(id=>$(id).classList.toggle('on',id===m[b.dataset.t]));});
 const SEM=d=>{const a=new Date(d+'T12:00'),b=new Date(a);b.setDate(b.getDate()+6);return a.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' a '+b.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});};
 const DSEM=d=>['dom','seg','ter','qua','qui','sex','sáb'][new Date(d+'T12:00').getDay()]+' '+D(d);
 cf.vis='dia';cf.busca='';cf.rAberto={};
+/* ---------- Aba Chegadas sem NF / sem PC (v3.54.2) ---------- */
+function nfRender(){
+  const n=cf.n,el=$('#paneNf');if(!n){el.innerHTML='<div class="empty">Indicador indisponível.</div>';return;}
+  const t=n.totais,k=(l,v,sub,c='')=>`<div class="kpi ${c}"><span>${l}</span><strong>${v}</strong><small>${sub||'&nbsp;'}</small></div>`,mx=Math.max(1,...n.meses.map(m=>m.total));
+  el.innerHTML=`<div class="kpis" style="margin:0 0 12px">
+   ${k('Ocorrências no período',N(t.ocorrencias),'registradas em Chegadas / NF pendente')}
+   ${k('Abertas agora',N(t.abertas),N(t.vencidas)+' vencida(s)',t.vencidas?'bad':t.abertas?'warn':'ok')}
+   ${k('PCs recebidos sem NF',N(t.pcs_sem_nf_sistema),t.pct_sem_nf==null?'':t.pct_sem_nf+'% dos '+N(t.pcs_recebidos)+' PCs recebidos',t.pcs_sem_nf_sistema?'warn':'ok')}
+   ${k('Sem pedido de compra',N(t.sem_pedido_total),N(t.sem_pc)+' chegada(s) sem PC + '+N(t.entradas_sem_pc)+' entrada(s) manual(is)',t.sem_pedido_total?'warn':'ok')}
+   ${k('Tempo médio p/ resolver',t.tempo_medio_resolucao_dias==null?'—':N(t.tempo_medio_resolucao_dias,1)+' d',N(t.resolvidas)+' resolvida(s)')}
+  </div><p class="note" style="margin:0 0 12px">${H(n.nota)}</p>
+  <div class="cf-cols"><div><h3 style="font-size:14px;margin:0 0 6px">Por tipo</h3><table><tr><th>Tipo</th><th class="num">Qtd.</th></tr>${n.por_tipo.map(x=>`<tr><td>${H(x.rotulo)}</td><td class="num"><b>${N(x.qtd)}</b></td></tr>`).join('')}</table>
+   <h3 style="font-size:14px;margin:14px 0 6px">Abertas por idade</h3><table><tr><th>Dias</th><th class="num">Abertas</th></tr>${Object.entries(n.aging_abertas).map(([a,v])=>`<tr><td>${a}</td><td class="num"><b>${N(v)}</b></td></tr>`).join('')}</table></div>
+   <div><h3 style="font-size:14px;margin:0 0 6px">Por mês</h3><table><tr><th>Mês</th><th style="width:34%"></th><th class="num">Total</th><th class="num">Sem NF</th><th class="num">NF s/ mat.</th><th class="num">Online</th><th class="num">Sem PC</th></tr>
+   ${n.meses.map(m=>`<tr><td>${MES[+m.mes.slice(5)-1]}/${m.mes.slice(0,4)}</td><td><div class="track"><i class="c2" style="width:${Math.max(3,m.total/mx*100)}%"></i></div></td><td class="num"><b>${N(m.total)}</b></td><td class="num">${N(m.sem_nf)}</td><td class="num">${N(m.nf_sem_material)}</td><td class="num">${N(m.online)}</td><td class="num">${N(m.sem_pc)}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">Sem ocorrências no período.</td></tr>'}</table></div></div>
+  <h3 style="font-size:14px;margin:16px 0 6px">Fornecedores com mais ocorrências</h3><div class="scroll" style="max-height:300px"><table><tr><th>Fornecedor</th><th class="num">Total</th><th class="num">Abertas</th><th class="num">Material sem NF</th><th class="num">NF sem material</th><th class="num">Online</th></tr>
+   ${n.fornecedores.map(f=>`<tr><td><b>${H(f.fornecedor)}</b></td><td class="num">${N(f.total)}</td><td class="num">${f.abertas?`<span class="pill warn">${f.abertas}</span>`:'0'}</td><td class="num">${N(f.sem_nf)}</td><td class="num">${N(f.nf_sem_material)}</td><td class="num">${N(f.online)}</td></tr>`).join('')||'<tr><td colspan="6" class="empty">Nenhuma.</td></tr>'}</table></div>
+  <h3 style="font-size:14px;margin:16px 0 6px">Pendências abertas (mais antigas primeiro)</h3><div class="scroll" style="max-height:300px"><table><tr><th>Código</th><th>Tipo</th><th>Chegou</th><th class="num">Dias</th><th>Fornecedor</th><th>PC</th><th class="num">Cobranças</th></tr>
+   ${n.abertas.map(a=>`<tr><td>${H(a.id)}</td><td>${H(a.tipo)}</td><td>${D(a.data)}</td><td class="num">${a.vencido?`<span class="pill bad">${a.dias}</span>`:a.dias}</td><td>${H(a.fornecedor)}</td><td>${a.pc||'<span class="rec">sem PC</span>'}</td><td class="num">${a.cobrancas}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">Nenhuma pendência aberta. 👏</td></tr>'}</table></div>
+  <div class="cf-cols" style="margin-top:16px"><div><h3 style="font-size:14px;margin:0 0 6px">PCs recebidos sem NF no sistema</h3><div class="scroll" style="max-height:280px"><table><tr><th>PC</th><th>Fornecedor</th><th>Recebido</th><th class="num">Dias</th></tr>${n.pcs_sem_nf.map(p=>`<tr><td><b>${p.pc}</b></td><td>${H(p.fornecedor)}</td><td>${D(p.recebido_em)}</td><td class="num">${p.dias}</td></tr>`).join('')||'<tr><td colspan="4" class="empty">Todos os PCs recebidos têm NF.</td></tr>'}</table></div></div>
+  <div><h3 style="font-size:14px;margin:0 0 6px">Entradas no estoque sem pedido de compra</h3><div class="scroll" style="max-height:280px"><table><tr><th>Data</th><th>Código</th><th class="num">Qtd.</th><th>Fornecedor / obs.</th></tr>${n.entradas_sem_pc.map(e=>`<tr><td>${D(e.data)}</td><td>${H(e.codigo)}</td><td class="num">${Q(e.quantidade)}</td><td>${H(e.fornecedor||e.obs)}</td></tr>`).join('')||'<tr><td colspan="4" class="empty">Nenhuma entrada manual.</td></tr>'}</table></div></div></div>`;
+}
 /* ---------- Aba Recebimentos ---------- */
 function recRender(){
   const r=cf.r;if(!r)return;const t=r.totais,F=r.fornecedores,o=t.por_origem;
