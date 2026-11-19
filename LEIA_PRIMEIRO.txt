@@ -1,3 +1,9 @@
+v3.56.0 — "Continuar de onde parei"
+- Se você começou um processo e não finalizou (fechou a janela, trocou de tela, a internet caiu ou o navegador fechou), o sistema guarda o que foi preenchido e mostra uma faixa no topo: "Você começou e não finalizou: … [Continuar de onde parei] [Descartar]". Ao continuar, abre a tela certa já com tudo preenchido (inclusive as linhas de material e os pedidos da Saída).
+- Vale para: Saída de material, Entrada manual, Chegada / NF pendente (novo registro), Espelho de NF (novo), Romaneio de terceiros (novo), Empréstimo de ferramentas e Contagem de inventário (volta para a contagem aberta).
+- O rascunho some sozinho quando o processo é concluído e salvo. É guardado neste aparelho, por usuário, por 7 dias; um rascunho por tipo de processo. Fotos tiradas na hora e assinaturas não são guardadas (refaça a foto/assinatura ao continuar).
+- Observação: o rascunho fica no navegador; se você começar no computador, só continua nele.
+
 v3.55.3 — Saída de material com 2 ou mais pedidos juntos
 - Na Saída, adicione quantos pedidos (PC) precisar na mesma saída: busque um PC, "Adicionar todos os materiais do PC", e o campo de busca já fica livre para o próximo. Ou digite vários números de uma vez (ex.: 2190 2200 2210) e tecle Enter — entram os materiais com saldo de cada um e o sistema avisa os que não foram (não encontrado, sem saldo, já retirado).
 - Faixa "N pedido(s) nesta saída" com um selo por PC (e botão ✕ para tirar um pedido inteiro); as linhas ficam agrupadas e com cor por pedido.

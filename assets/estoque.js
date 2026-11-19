@@ -409,7 +409,7 @@ function estManualLinha() {
     <input placeholder="Qtd" class="est-l-qtd" type="number" min="0.001" step="any">
     <input placeholder="R$ unit." class="est-l-valor" type="number" min="0" step="any">
     <input placeholder="Lote" class="est-l-lote" maxlength="60">
-    <button type="button" class="button ghost small" onclick="estSaidaRemoverLinha(this)">✕</button>`;
+    <button type="button" class="button ghost small" onclick="this.parentNode.remove()">✕</button>`;
   estEl('estManualLinhas').appendChild(div);
 }
 
@@ -591,7 +591,7 @@ function estSaidaLinha(preset) {
     <input placeholder="Qtd" class="est-s-qtd" type="number" min="0.001" step="any"${p && p.pendente != null ? ` max="${Number(p.pendente)}"` : ''}>
     <input placeholder="Observação" class="est-s-obs" maxlength="400">
     <label class="est-foto-btn" title="Fotografar o material (opcional)"><input type="file" accept="image/*" capture="environment" hidden onchange="estSaidaFoto(this)"><span>📷 Foto</span><img alt="" hidden></label>
-    <button type="button" class="button ghost small" onclick="this.parentNode.remove()">✕</button>`;
+    <button type="button" class="button ghost small" onclick="estSaidaRemoverLinha(this)">✕</button>`;
   if (p) {
     div.querySelector('.est-s-desc').value = p.descricao || '';
     div.querySelector('.est-s-qtd').value = p.quantidade != null ? p.quantidade : '';

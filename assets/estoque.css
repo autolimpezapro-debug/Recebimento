@@ -218,3 +218,8 @@
 .est-pc-chip{display:inline-flex;gap:6px;align-items:center;border:2px solid #2f7df6;border-radius:999px;padding:2px 4px 2px 10px;margin:2px 4px 2px 0;font-size:12px}
 .est-pc-chip button{border:0;background:none;color:inherit;cursor:pointer;font-size:13px;padding:2px 6px}
 .est-pcs-aviso{margin-top:6px;padding:7px 9px;border-radius:8px;background:rgba(247,144,9,.14);border-left:3px solid #f79009;font-size:12px;line-height:1.45}
+
+/* v3.56.0 — Continuar de onde parei */
+#rascBanner{margin:0 0 12px}#rascBanner[hidden]{display:none}
+.rasc-item{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 12px;margin-bottom:6px;border:1px solid #2f7df6;border-left-width:5px;border-radius:10px;background:rgba(47,125,246,.12)}
+.rasc-txt{flex:1 1 260px;min-width:0;line-height:1.4}.rasc-txt small{opacity:.75}

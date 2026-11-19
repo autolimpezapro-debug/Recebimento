@@ -182,6 +182,7 @@ function cntTela() {
   terEl('cntSo').onchange = e => { CNT.soPend = e.target.checked; cntTela(); };
   document.querySelectorAll('#cntTela .cnt-in').forEach(i => { i.onchange = () => cntSalvarItem(i.dataset.cod, i.value); i.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); const all = [...document.querySelectorAll('#cntTela .cnt-in')]; const n = all[all.indexOf(i) + 1]; if (i.value !== '') { CNT.focoCod = n ? n.dataset.cod : null; i.onchange = null; cntSalvarItem(i.dataset.cod, i.value, CNT.focoCod); } else if (n) n.focus(); } }; });
   document.querySelectorAll('#cntTela [data-dec]').forEach(b => b.onclick = () => cntDecidir(b.dataset.cod, b.dataset.dec));
+  if (typeof rascSalvar === 'function') { if (aberto) rascSalvar('contagem', { id: c.id }, `Contagem ${c.id} · ${c.nome} (${rs.contados}/${rs.total} contados)`); else if (typeof rascLimpar === 'function') rascLimpar('contagem'); }
   cntBadgeFila();
   if (CNT.focoCod) { const f = [...document.querySelectorAll('#cntTela .cnt-in')].find(x => x.dataset.cod === CNT.focoCod); if (f) f.focus(); CNT.focoCod = null; }
 }
