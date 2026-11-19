@@ -409,7 +409,7 @@ function estManualLinha() {
     <input placeholder="Qtd" class="est-l-qtd" type="number" min="0.001" step="any">
     <input placeholder="R$ unit." class="est-l-valor" type="number" min="0" step="any">
     <input placeholder="Lote" class="est-l-lote" maxlength="60">
-    <button type="button" class="button ghost small" onclick="this.parentNode.remove()">✕</button>`;
+    <button type="button" class="button ghost small" onclick="estSaidaRemoverLinha(this)">✕</button>`;
   estEl('estManualLinhas').appendChild(div);
 }
 
@@ -523,7 +523,7 @@ async function estLoadRequisicoes() {
     const qq = estEl('estReqQ') ? estEl('estReqQ').value.trim() : '';
     const r = await estApi('estoque_requisicoes', { query: qq ? { q: qq } : {} });
     estEl('estReqBody').innerHTML = r.requisicoes.map(q => `
-      <tr><td><code>${estHtml(q.id)}</code></td><td>${estHtml(q.setor || '—')}<small class="est-sub">${estHtml(q.solicitante || '—')}${q.os ? ' · OS ' + estHtml(q.os) : ''}${q.equipamento ? ' · ' + estHtml(q.equipamento) : ''}</small></td>
+      <tr><td><code>${estHtml(q.id)}</code></td><td>${estHtml(q.setor || '—')}<small class="est-sub">${estHtml(q.solicitante || '—')}${(() => { const p = [...new Set((q.linhas || []).map(l => l.pc).filter(Boolean))]; return p.length ? ' · PC ' + p.map(estHtml).join(', ') : ''; })()}${q.os ? ' · OS ' + estHtml(q.os) : ''}${q.equipamento ? ' · ' + estHtml(q.equipamento) : ''}</small></td>
       <td>${estNum((q.linhas || []).length)}</td>
       <td><span class="est-badge ${q.status === 'atendida' ? 'ok' : 'warn'}">${q.status === 'atendida' ? 'Atendida' : 'Rascunho'}</span></td>
       <td>${estData(q.atendida_em || q.atualizado_em)}${q.status === 'atendida' ? `<br><a href="#" onclick="rdAbrirComprovante('${estHtml(q.id)}');return false">${q.assinatura ? '✍ ' + estHtml(q.assinatura.nome) : 'comprovante'}</a>` : ''}</td></tr>`).join('')
@@ -533,7 +533,7 @@ async function estLoadRequisicoes() {
 
 function estNovaSaida() {
   estEl('estSaidaForm').reset();
-  estEl('estSaidaLinhas').innerHTML = '';
+  estEl('estSaidaLinhas').innerHTML = ''; EST_PCS_META = {}; estSaidaPcsRender();
   estEl('estSaidaBuscaRes').hidden = true; estEl('estSaidaBuscaRes').innerHTML = '';
   estSaidaLinha();
   estSaidaSetorMudou(); estSaidaCarregarObras(); estCarregarEquipamentos('estEquipLista'); estEl('estSaidaOSInfo').hidden = true;
@@ -630,6 +630,8 @@ function estBuscaTecla(ev) {
   ev.preventDefault();               // Enter nunca envia o formulário daqui
   clearTimeout(EST_BUSCA_T);
   const q = estEl('estSaidaBusca').value.trim(); if (q.length < 2) return;
+  const nums = q.match(/^\s*(?:pc|pedidos?)?\s*[#nº°.:-]*\s*(\d{3,7}(?:\s*(?:[,;e]|\s)\s*\d{3,7})+)\s*$/iu) ? q.match(/\d{3,7}/g) : null;
+  if (nums) return estBuscaVarios([...new Set(nums)]);
   estBuscaExecutar(q, true);
 }
 async function estBuscaExecutar(q, enter) {
@@ -644,6 +646,21 @@ async function estBuscaExecutar(q, enter) {
       else if (!ped && (r.itens || []).length === 1) estItemAdicionar(0);
     }
   } catch (e) { if (seq === EST_BUSCA_SEQ) { box.hidden = false; box.innerHTML = `<p class="est-busca-vazio">${estHtml(e.message)}</p>`; } }
+}
+/** v3.55.3: vários pedidos de uma vez (ex.: "2190 2200 2210"): adiciona os materiais com saldo de cada um e avisa os que não deu. */
+async function estBuscaVarios(nums) {
+  const falhas = []; let somados = 0;
+  for (const num of nums) {
+    try {
+      const r = await estApi('estoque_saida_buscar', { query: { q: num } }); const ped = r.pc;
+      if (!ped || ped.status !== 'ok') { falhas.push(`PC ${num}: ${ped && ped.mensagem ? ped.mensagem : 'não encontrado'}`); continue; }
+      EST_BUSCA_ULT = r; let n = 0; ped.linhas.forEach((l, i) => { if (estPcAdicionar(i, true)) n++; });
+      if (n) somados++; else falhas.push(`PC ${num}: nada novo para retirar`);
+    } catch (e) { falhas.push(`PC ${num}: ${e.message}`); }
+  }
+  EST_BUSCA_ULT = null; const b = estEl('estSaidaBusca'), box = estEl('estSaidaBuscaRes');
+  b.value = ''; box.hidden = !falhas.length; box.innerHTML = falhas.length ? `<div class="est-pc-card aviso">${falhas.map(estHtml).join('<br>')}</div>` : '';
+  estToast(`${somados} de ${nums.length} pedido(s) adicionado(s). Confira as quantidades.${falhas.length ? ' Veja os avisos.' : ''}`, !somados);
 }
 const EST_PC_ST = { ok: '', saldo_parcial: 'saldo parcial', sem_saldo: 'sem saldo', retirada_total: 'já retirado' };
 function estBuscaRender(r) {
@@ -676,8 +693,30 @@ function estSaidaLimparVazias() {
     if (!row.dataset.codigo && !row.querySelector('.est-s-desc').value.trim() && !row.querySelector('.est-s-qtd').value) row.remove();
   });
 }
+let EST_PCS_META = {};   // v3.55.3: o que cada pedido da saída prevê (destino/OS/equipamento) para avisar quando divergem
+function estSaidaRemoverLinha(btn) { btn.closest('.est-line-row').remove(); estSaidaPcsRender(); }
+function estSaidaPcsRender() {
+  const bar = estEl('estSaidaPcs'); if (!bar) return;
+  const rows = [...estEl('estSaidaLinhas').children], porPc = {};
+  rows.forEach(r => { if (r.dataset.pc) porPc[r.dataset.pc] = (porPc[r.dataset.pc] || 0) + 1; });
+  Object.keys(EST_PCS_META).forEach(k => { if (!porPc[k]) delete EST_PCS_META[k]; });
+  // agrupa as linhas por pedido (ordem em que cada PC entrou); materiais avulsos ficam no fim
+  const ordem = Object.keys(porPc), box = estEl('estSaidaLinhas');
+  if (ordem.length > 1) [...rows].sort((a, b) => { const ia = a.dataset.pc ? ordem.indexOf(a.dataset.pc) : 999, ib = b.dataset.pc ? ordem.indexOf(b.dataset.pc) : 999; return ia - ib; }).forEach(r => box.appendChild(r));
+  const cores = ['#2f7df6', '#12b76a', '#f79009', '#a855f7', '#ec4899', '#14b8a6'];
+  rows.forEach(r => { const k = ordem.indexOf(r.dataset.pc || ''); r.style.borderLeft = k >= 0 && ordem.length > 1 ? `4px solid ${cores[k % cores.length]}` : ''; r.style.paddingLeft = k >= 0 && ordem.length > 1 ? '6px' : ''; });
+  if (!ordem.length) { bar.hidden = true; bar.innerHTML = ''; return; }
+  const dests = new Set(), oss = new Set();
+  ordem.forEach(k => { const m = EST_PCS_META[k] || {}; if (m.destino) dests.add(m.destino); if (m.os) oss.add(m.os); });
+  let aviso = '';
+  if (dests.size > 1 || oss.size > 1) aviso = `<div class="est-pcs-aviso">⚠ Os pedidos têm destino/OS diferentes: ${ordem.map(k => { const m = EST_PCS_META[k] || {}; return `<b>PC ${estHtml(k)}</b> → ${estHtml(m.destino || 'sem destino')}${m.os ? ' · OS ' + estHtml(m.os) : ''}`; }).join(' · ')}. Esta saída vai para <b>um</b> destino (o escolhido acima). Se for para lugares diferentes, faça saídas separadas.</div>`;
+  bar.hidden = false;
+  bar.innerHTML = `<div><b>${ordem.length} pedido(s) nesta saída:</b> ${ordem.map((k, i) => `<span class="est-pc-chip" style="border-color:${cores[i % cores.length]}">PC ${estHtml(k)} · ${porPc[k]} item(ns) <button type="button" title="Tirar este pedido da saída" onclick="estSaidaTirarPc('${estHtml(k)}')">✕</button></span>`).join(' ')}</div>${aviso}<small class="est-sub">Dica: para lançar vários de uma vez, digite os números separados por espaço ou vírgula (ex.: 2190 2200 2210) e tecle Enter.</small>`;
+}
+function estSaidaTirarPc(pc) { [...estEl('estSaidaLinhas').children].forEach(r => { if (r.dataset.pc === String(pc)) r.remove(); }); delete EST_PCS_META[pc]; estSaidaPcsRender(); }
 function estSaidaDestinoSugerir(ped) {
   const d = (ped && ped.destino) || {};
+  if (ped && ped.pc) EST_PCS_META[ped.pc] = { destino: d.obra || d.setor_codigo || '', os: ped.os || '' };
   if (d.setor_codigo && !estEl('estSaidaSetor').value) {
     const sel = estEl('estSaidaSetor');
     if ([...sel.options].some(o => o.value === d.setor_codigo)) {
@@ -704,7 +743,7 @@ function estPcAdicionar(i, silencioso) {
   estSaidaLimparVazias();
   estSaidaLinha({ codigo: l.codigo, descricao: l.descricao, unidade: l.unidade, quantidade: l.qtd_sugerida, pc: ped.pc, linha_pc: l.linha_id,
     foto: l.foto, foto_origem: l.foto_origem, fotos: l.fotos || [], pendente: l.pendente, rotulo: `PC ${ped.pc}${l.sku ? ' · SKU ' + l.sku : ''} · pendente ${estNum(l.pendente)} ${l.unidade}` });
-  estSaidaDestinoSugerir(ped);
+  estSaidaDestinoSugerir(ped); estSaidaPcsRender();
   if (!silencioso) estToast('Adicionado: ' + l.descricao);
   return true;
 }
@@ -712,6 +751,7 @@ function estPcAdicionarTodas() {
   const ped = EST_BUSCA_ULT && EST_BUSCA_ULT.pc; if (!ped) return;
   let n = 0; ped.linhas.forEach((l, i) => { if (estPcAdicionar(i, true)) n++; });
   estToast(n ? `${n} material(is) do PC ${ped.pc} adicionado(s). Confira as quantidades.` : 'Nada novo para adicionar deste PC.', !n);
+  if (n) { const b = estEl('estSaidaBusca'); b.value = ''; estEl('estSaidaBuscaRes').hidden = true; estEl('estSaidaBuscaRes').innerHTML = ''; EST_BUSCA_ULT = null; b.focus(); }   // pronto para o próximo pedido
 }
 function estItemAdicionar(i) {
   const it = EST_BUSCA_ULT && (EST_BUSCA_ULT.itens || [])[i]; if (!it) return;

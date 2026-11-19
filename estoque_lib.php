@@ -1830,12 +1830,13 @@ function est_comprovante_html(array $db, $doc) {
     $img = '';
     if ($ass && is_file(EST_ASS_DIR . '/' . $ass['arquivo'])) $img = 'data:image/png;base64,' . base64_encode((string)file_get_contents(EST_ASS_DIR . '/' . $ass['arquivo']));
     $m0 = $movs[0];
-    $linhas = '';
+    $linhas = ''; $pcsDoc = [];
     foreach ($movs as $m) {
         $it = $db['itens'][$m['codigo']] ?? [];
         $fp = !empty($m['foto']) ? est_foto_saida_path((string)$m['foto']) : null;
         $fimg = $fp ? '<br><img src="data:' . (mime_content_type($fp) ?: 'image/jpeg') . ';base64,' . base64_encode((string)file_get_contents($fp)) . '" alt="Foto do produto" style="max-width:220px;max-height:160px;border:1px solid #ccc;border-radius:6px;margin-top:6px">' : '';
-        $linhas .= '<tr><td>' . $h($m['codigo']) . '</td><td>' . $h($it['descricao'] ?? $m['descricao_origem'] ?? '') . $fimg . '</td><td style="text-align:right">' . $n($m['quantidade']) . ' ' . $h($it['unidade'] ?? '') . '</td></tr>';
+        if (!empty($m['pc'])) $pcsDoc[(int)$m['pc']] = true;
+        $linhas .= '<tr><td>' . $h($m['codigo']) . '</td><td>' . $h($it['descricao'] ?? $m['descricao_origem'] ?? '') . $fimg . '</td><td>' . (!empty($m['pc']) ? 'PC ' . (int)$m['pc'] : '—') . '</td><td style="text-align:right">' . $n($m['quantidade']) . ' ' . $h($it['unidade'] ?? '') . '</td></tr>';
     }
     $destino = $req['setor'] ?? ($m0['obra'] ?? $m0['setor'] ?? '');
     $solic = $req['solicitante'] ?? ($m0['solicitante'] ?? '');
@@ -1844,8 +1845,8 @@ function est_comprovante_html(array $db, $doc) {
     return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Comprovante ' . $h($doc) . '</title>
 <style>body{font:13px/1.45 Arial,sans-serif;color:#111;max-width:760px;margin:24px auto;padding:0 16px}h1{font-size:18px;margin:0}table{width:100%;border-collapse:collapse;margin:14px 0}td,th{border:1px solid #bbb;padding:6px 8px;text-align:left}th{background:#eef2f7;font-size:11px;text-transform:uppercase}.top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1d4ed8;padding-bottom:10px;margin-bottom:12px}.g{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px}.ass{margin-top:22px;border:1px solid #bbb;border-radius:8px;padding:12px}.ass img{max-width:100%;height:150px;object-fit:contain;display:block;margin:0 auto;border-bottom:1px solid #333}.mut{color:#555;font-size:11px}button{padding:8px 14px;margin-top:14px}@media print{button{display:none}}</style></head><body>
 <div class="top"><div><h1>Comprovante de entrega de material</h1><div class="mut">Drilling do Brasil — Almoxarifado · Recebimento Drilling</div></div><div style="text-align:right"><b>' . $h($doc) . '</b><br>' . $h(date('d/m/Y H:i', strtotime($m0['em']))) . '</div></div>
-<div class="g"><div><b>Destino / obra:</b> ' . $h($destino ?: '—') . '</div><div><b>Solicitante:</b> ' . $h($solic ?: '—') . '</div><div><b>Entregue por:</b> ' . $h($m0['usuario'] ?? '') . '</div><div><b>Ordem de serviço:</b> ' . $h($osC ?: '—') . '</div><div><b>Equipamento aplicado:</b> ' . $h($eqC ?: '—') . '</div><div><b>Finalidade / obs.:</b> ' . $h($fin ?: '—') . '</div></div>
-<table><thead><tr><th>Código</th><th>Material</th><th style="text-align:right">Quantidade</th></tr></thead><tbody>' . $linhas . '</tbody></table>
+<div class="g"><div><b>Destino / obra:</b> ' . $h($destino ?: '—') . '</div>' . ($pcsDoc ? '<div><b>Pedidos (PC):</b> ' . $h(implode(', ', array_keys($pcsDoc))) . '</div>' : '') . '<div><b>Solicitante:</b> ' . $h($solic ?: '—') . '</div><div><b>Entregue por:</b> ' . $h($m0['usuario'] ?? '') . '</div><div><b>Ordem de serviço:</b> ' . $h($osC ?: '—') . '</div><div><b>Equipamento aplicado:</b> ' . $h($eqC ?: '—') . '</div><div><b>Finalidade / obs.:</b> ' . $h($fin ?: '—') . '</div></div>
+<table><thead><tr><th>Código</th><th>Material</th><th>Pedido</th><th style="text-align:right">Quantidade</th></tr></thead><tbody>' . $linhas . '</tbody></table>
 <div class="ass"><p>Declaro que recebi os materiais acima, em perfeito estado e nas quantidades indicadas.</p>' . ($img ? '<img src="' . $img . '" alt="Assinatura">' : '<p><b>Sem assinatura registrada</b> (saída anterior à exigência de assinatura).</p>') .
 ($ass ? '<p style="text-align:center;margin:6px 0 0"><b>' . $h($ass['nome']) . '</b>' . ($ass['documento_pessoa'] ? ' · ' . $h($ass['documento_pessoa']) : '') . '</p><p class="mut" style="text-align:center">Assinado em ' . $h(date('d/m/Y H:i:s', strtotime($ass['em']))) . ' (horário do servidor) · ' . $h($ass['id']) . '<br>Código de verificação SHA-256: ' . $h(substr($ass['sha256'], 0, 32)) . '…</p>' : '') . '</div>
 <button onclick="print()">Imprimir / salvar em PDF</button></body></html>';

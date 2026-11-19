@@ -197,7 +197,7 @@ document.querySelectorAll('#cfTabs button').forEach(b=>b.onclick=()=>{const m={r
 const SEM=d=>{const a=new Date(d+'T12:00'),b=new Date(a);b.setDate(b.getDate()+6);return a.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' a '+b.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});};
 const DSEM=d=>['dom','seg','ter','qua','qui','sex','sáb'][new Date(d+'T12:00').getDay()]+' '+D(d);
 cf.vis='dia';cf.busca='';cf.rAberto={};
-/* ---------- Aba Chegadas sem NF / sem PC (v3.55.2) ---------- */
+/* ---------- Aba Chegadas sem NF / sem PC (v3.55.3) ---------- */
 function nfRender(){
   const n=cf.n,el=$('#paneNf');if(!n){el.innerHTML='<div class="empty">Indicador indisponível.</div>';return;}
   const t=n.totais,k=(l,v,sub,c='')=>`<div class="kpi ${c}"><span>${l}</span><strong>${v}</strong><small>${sub||'&nbsp;'}</small></div>`,mx=Math.max(1,...n.meses.map(m=>m.total));

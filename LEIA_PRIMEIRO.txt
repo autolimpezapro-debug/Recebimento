@@ -1,3 +1,9 @@
+v3.55.3 — Saída de material com 2 ou mais pedidos juntos
+- Na Saída, adicione quantos pedidos (PC) precisar na mesma saída: busque um PC, "Adicionar todos os materiais do PC", e o campo de busca já fica livre para o próximo. Ou digite vários números de uma vez (ex.: 2190 2200 2210) e tecle Enter — entram os materiais com saldo de cada um e o sistema avisa os que não foram (não encontrado, sem saldo, já retirado).
+- Faixa "N pedido(s) nesta saída" com um selo por PC (e botão ✕ para tirar um pedido inteiro); as linhas ficam agrupadas e com cor por pedido.
+- Se os pedidos têm destino/OS previstos diferentes, aparece um aviso: a saída é de um destino só — para destinos diferentes, faça saídas separadas.
+- O controle "quanto já saiu de cada PC" continua por pedido e por linha (não deixa tirar mais do que o recebido). O comprovante agora mostra o PC de cada material e a lista de pedidos; a lista de requisições mostra os PCs.
+
 v3.55.2 — Saída de material usa a base de funcionários
 - O campo "Quem retira / solicitante" da Saída agora busca na base de funcionários (Estoque > Funcionários): digite parte do nome ou a matrícula e escolha na lista; aparece "✔ Funcionário cadastrado" com matrícula, setor e função.
 - Quem não está na base (terceiro, motorista, visitante) continua podendo retirar: o sistema só avisa e não bloqueia. A confirmação com assinatura já vem com o nome escolhido.
