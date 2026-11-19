@@ -568,7 +568,7 @@ function estSaidaLinha(preset) {
   div.innerHTML = `<div class="est-s-descbox"><input list="estSaidaDatalist" placeholder="Material (digite para buscar)" class="est-s-desc" maxlength="600"${p ? ' readonly' : ''}>${p && p.rotulo ? `<small class="est-sub">${estHtml(p.rotulo)}</small>` : ''}</div>
     <input placeholder="Qtd" class="est-s-qtd" type="number" min="0.001" step="any"${p && p.pendente != null ? ` max="${Number(p.pendente)}"` : ''}>
     <input placeholder="Observação" class="est-s-obs" maxlength="400">
-    <label class="est-foto-btn" title="Foto do produto (opcional)"><input type="file" accept="image/*" capture="environment" hidden onchange="estSaidaFoto(this)"><span>📷</span><img alt="" hidden></label>
+    <label class="est-foto-btn" title="Fotografar o material (opcional)"><input type="file" accept="image/*" capture="environment" hidden onchange="estSaidaFoto(this)"><span>📷 Foto</span><img alt="" hidden></label>
     <button type="button" class="button ghost small" onclick="this.parentNode.remove()">✕</button>`;
   if (p) {
     div.querySelector('.est-s-desc').value = p.descricao || '';

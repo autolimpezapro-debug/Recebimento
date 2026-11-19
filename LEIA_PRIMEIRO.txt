@@ -1,3 +1,6 @@
+v3.53.2 — Foto do material na Saída mais visível
+- Cada linha da Saída de material tem o botão "📷 Foto" (abre a câmera no celular). A foto é opcional, é reduzida no aparelho e vai no comprovante e no histórico da saída. Antes era só um ícone pequeno.
+
 v3.53.1 — Documento do colaborador/terceiro NÃO é mais obrigatório
 - Saída de material e Empréstimo de ferramentas: o campo Documento (CPF, RG ou empresa) agora é opcional, inclusive para terceiros (na tela e no servidor). Continuam obrigatórios: nome, assinatura na tela e o aceite.
 

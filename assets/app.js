@@ -1,7 +1,7 @@
 /* Recebimento Drilling v3.0.0 — conferência por insumo + módulo de estoque */
 'use strict';
 const API='api.php';
-const APP_VERSION='3.53.1';
+const APP_VERSION='3.53.2';
 const notificationClientId='receb_'+Math.random().toString(36).slice(2)+Date.now().toString(36);
 const STATUS=['SIM','PARCIAL','NÃO','EM TRÂNSITO','N/A'];
 const STATUS_NAMES={'SIM':'Recebido','PARCIAL':'Parcial','NÃO':'Não chegou','EM TRÂNSITO':'Em trânsito','N/A':'N/A','':'Sem status'};

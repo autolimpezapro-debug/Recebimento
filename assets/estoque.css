@@ -207,3 +207,8 @@
 .est-gvazio { padding: 12px 14px; color: var(--muted, #92a3bb); }
 .est-gbusca .searchbox { display: flex; align-items: center; gap: 8px; width: 100%; padding: 0 12px; min-height: 48px; }
 .est-gbusca .searchbox input { flex: 1; min-width: 0; width: 100%; font-size: 15px; }
+
+/* v3.53.2 — botão de foto do material mais visível */
+.est-foto-btn{width:84px;font-size:13px;font-weight:600;gap:4px;white-space:nowrap}
+.est-foto-btn.on:not(.auto)::after{content:'✓';position:absolute;right:4px;top:2px;color:#3fb68b;font-size:12px}
+.est-foto-btn{position:relative}
