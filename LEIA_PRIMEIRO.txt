@@ -1,3 +1,7 @@
+v3.56.2 — Saída: trocar o material de uma linha
+- Cada material adicionado pelo PC ou pela busca ganhou o botão "🔁 Trocar material": se o insumo veio errado, clique, escolha o correto no campo (digite para buscar) e a quantidade é mantida. A linha deixa de ficar presa ao pedido/foto do material anterior. O ✕ continua removendo a linha.
+- Corrigido: em algumas telas o ✕ ficava por cima do botão "📷 Foto" (o botão de foto não era mais o mesmo tamanho da coluna). Ajustado no computador, tablet e celular.
+
 v3.56.1 — Menu rola no tablet e no celular
 - Causa: em telas de até 790 px (iPad/tablet em pé, celular) uma regra antiga deixava a lista do menu com rolagem vertical desligada; como o menu ganhou novos itens (Chegadas, Espelho de NF, Inventário…), os de baixo ficavam inalcançáveis. Agora o menu lateral/gaveta rola com o dedo em qualquer tamanho de tela, inclusive tablet na horizontal (barra lateral fixa), e respeita a barra inferior do navegador.
 

@@ -43,7 +43,7 @@
 .est-lines-head{display:flex;justify-content:space-between;align-items:center;margin-top:14px}
 .est-line-row{display:grid;grid-template-columns:minmax(160px,2.4fr) 70px 90px 100px 110px 40px;gap:6px;align-items:center}
 .est-line-row input{width:100%;min-height:34px;padding:7px 9px}
-#estSaidaLinhas .est-line-row{grid-template-columns:minmax(200px,2.6fr) 90px minmax(140px,1.4fr) 40px 40px}
+#estSaidaLinhas .est-line-row{grid-template-columns:minmax(200px,2.6fr) 90px minmax(140px,1.4fr) 84px 44px}
 .est-modal-wide{max-width:1100px;width:min(1100px,96vw)}
 .est-ficha-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px}
 .est-ficha-grid>div{background:#14263e;border:1px solid #2b405f;border-radius:10px;padding:10px}
@@ -177,7 +177,7 @@
   .est-pc-tab td:nth-child(3){grid-area:q;align-self:end}
   .est-pc-tab td:nth-child(4){grid-area:b}
   .est-pc-acoes .button{width:100%}
-  #estSaidaLinhas .est-line-row{grid-template-columns:84px minmax(0,1fr) 44px 44px}
+  #estSaidaLinhas .est-line-row{grid-template-columns:84px minmax(0,1fr) 84px 44px}
   #estSaidaLinhas .est-s-descbox{grid-column:1/-1}
   #estSaidaLinhas .est-s-qtd{grid-column:1/2}
   #estSaidaLinhas .est-s-obs{grid-column:2/3}
@@ -223,3 +223,7 @@
 #rascBanner{margin:0 0 12px}#rascBanner[hidden]{display:none}
 .rasc-item{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 12px;margin-bottom:6px;border:1px solid #2f7df6;border-left-width:5px;border-radius:10px;background:rgba(47,125,246,.12)}
 .rasc-txt{flex:1 1 260px;min-width:0;line-height:1.4}.rasc-txt small{opacity:.75}
+
+/* v3.56.2 — Saída: botão Trocar material e ✕ sem sobrepor o botão de foto */
+.est-s-trocar{justify-self:start;margin-top:3px;font-size:12px;padding:3px 9px;min-height:28px}
+#estSaidaLinhas .est-line-row>.button.small:last-child{min-width:44px;min-height:36px}

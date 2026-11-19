@@ -587,7 +587,7 @@ function estSaidaLinha(preset) {
     div.dataset.codigo = p.codigo || ''; div.dataset.pc = p.pc || ''; div.dataset.linhaPc = p.linha_pc || '';
     div.dataset.autoFoto = p.foto || ''; div.dataset.fotoEscolhida = ''; div.dataset.max = p.pendente != null ? p.pendente : '';
   }
-  div.innerHTML = `<div class="est-s-descbox"><input list="estSaidaDatalist" placeholder="Material (digite para buscar)" class="est-s-desc" maxlength="600"${p ? ' readonly' : ''}>${p && p.rotulo ? `<small class="est-sub">${estHtml(p.rotulo)}</small>` : ''}</div>
+  div.innerHTML = `<div class="est-s-descbox"><input list="estSaidaDatalist" placeholder="Material (digite para buscar)" class="est-s-desc" maxlength="600"${p ? ' readonly' : ''}>${p && p.rotulo ? `<small class="est-sub">${estHtml(p.rotulo)}</small>` : ''}${p ? '<button type="button" class="button ghost small est-s-trocar" onclick="estSaidaTrocar(this)" title="Material errado? Troque por outro">🔁 Trocar material</button>' : ''}</div>
     <input placeholder="Qtd" class="est-s-qtd" type="number" min="0.001" step="any"${p && p.pendente != null ? ` max="${Number(p.pendente)}"` : ''}>
     <input placeholder="Observação" class="est-s-obs" maxlength="400">
     <label class="est-foto-btn" title="Fotografar o material (opcional)"><input type="file" accept="image/*" capture="environment" hidden onchange="estSaidaFoto(this)"><span>📷 Foto</span><img alt="" hidden></label>
@@ -694,6 +694,18 @@ function estSaidaLimparVazias() {
   });
 }
 let EST_PCS_META = {};   // v3.55.3: o que cada pedido da saída prevê (destino/OS/equipamento) para avisar quando divergem
+/** v3.56.2: linha adicionada pelo PC/busca com o material errado — vira linha livre (mantém a quantidade) para escolher outro material. */
+function estSaidaTrocar(btn) {
+  const row = btn.closest('.est-line-row'), desc = row.querySelector('.est-s-desc'), qtd = row.querySelector('.est-s-qtd');
+  row.classList.remove('est-line-preset');
+  ['codigo', 'pc', 'linhaPc', 'autoFoto', 'fotoEscolhida', 'max'].forEach(k => delete row.dataset[k]);
+  qtd.removeAttribute('max'); desc.readOnly = false; desc.value = '';
+  row.querySelectorAll('.est-sub, .est-fotos-opc, .est-s-trocar').forEach(e => e.remove());
+  const lab = row.querySelector('.est-foto-btn');
+  if (lab && lab.classList.contains('auto')) { const im = lab.querySelector('img'); im.hidden = true; im.removeAttribute('src'); lab.querySelector('span').hidden = false; lab.classList.remove('on', 'auto'); lab.title = 'Fotografar o material (opcional)'; delete lab.dataset.foto; }
+  desc.focus(); estSaidaPcsRender();
+  estToast('Escolha o material correto no campo (digite para buscar). A quantidade foi mantida.');
+}
 function estSaidaRemoverLinha(btn) { btn.closest('.est-line-row').remove(); estSaidaPcsRender(); }
 function estSaidaPcsRender() {
   const bar = estEl('estSaidaPcs'); if (!bar) return;
