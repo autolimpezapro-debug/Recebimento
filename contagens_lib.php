@@ -38,7 +38,7 @@ function cnt_ts(?string $s): int { $t = $s ? strtotime($s) : false; return $t ?:
 function cnt_abc(array $db): array {
     $corte = time() - 365 * 86400; $giro = []; $val = [];
     foreach ($db['movimentos'] ?? [] as $m) if (($m['tipo'] ?? '') === 'SAIDA' && cnt_ts($m['em'] ?? '') >= $corte) $giro[$m['codigo']] = ($giro[$m['codigo']] ?? 0) + 1;
-    foreach ($db['itens'] ?? [] as $c => $it) $val[$c] = max(0, (float)$it['saldo']) * (float)($it['custo_medio'] ?? 0);
+    foreach ($db['itens'] ?? [] as $c => $it) if (empty($it['unificado_para'])) $val[$c] = max(0, (float)$it['saldo']) * (float)($it['custo_medio'] ?? 0);
     arsort($giro); arsort($val); $n = max(1, count($db['itens'] ?? []));
     $topG = array_slice(array_keys($giro), 0, (int)ceil($n * .20)); $topG2 = array_keys($giro);   // B = teve alguma saída em 12 meses
     $topV = array_slice(array_keys(array_filter($val)), 0, (int)ceil($n * .10)); $out = [];
@@ -93,7 +93,7 @@ function cnt_sugestao(array $d, array $db, int $n): array {
     $abc = cnt_abc($db); $ult = cnt_ultima_contagem($d); $cfg = $d['config']; $hoje = strtotime(date('Y-m-d')); $lista = []; $venc = ['A' => 0, 'B' => 0, 'C' => 0]; $emAberto = [];
     foreach ($d['contagens'] as $c) if (($c['status'] ?? '') === 'CONTANDO') foreach ($c['itens'] as $cod => $_) $emAberto[$cod] = true;
     foreach ($db['itens'] as $cod => $it) {
-        if (isset($emAberto[$cod])) continue;
+        if (isset($emAberto[$cod]) || !empty($it['unificado_para'])) continue;
         if ((float)$it['saldo'] <= 0) continue;   // item zerado não entra no plano cíclico
         $cl = $abc[$cod] ?? 'C'; $freq = (int)($cfg['freq_dias'][$cl] ?? 180); $dt = $ult[$cod]['data'] ?? null;
         $dias = $dt ? (int)floor(($hoje - strtotime($dt)) / 86400) : 9999;
@@ -116,6 +116,7 @@ function cnt_criar(array &$d, array $db, array $in, string $user): array {
     foreach ($d['contagens'] as $o) if (($o['status'] ?? '') === 'CONTANDO') foreach ($o['itens'] as $k => $_) $emAberto[(string)$k] = $o['id'];
     $pulados = 0; $codigosLista = array_map('strval', (array)($in['codigos'] ?? []));
     foreach ($db['itens'] as $cod => $it) {
+        if (!empty($it['unificado_para'])) continue;
         if ($esc === 'CATEGORIA' && ($it['categoria'] ?? '') !== $filtro) continue;
         if ($esc === 'LOCALIZACAO' && mb_strtoupper((string)($it['localizacao'] ?? '')) !== mb_strtoupper($filtro)) continue;
         if ($esc === 'ABC' && ($abc[$cod] ?? 'C') !== strtoupper($filtro)) continue;

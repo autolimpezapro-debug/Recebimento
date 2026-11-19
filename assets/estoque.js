@@ -1296,3 +1296,50 @@ function estGBuscaTecla(ev) {
   if (ev.key === 'Escape') estEl('estGRes').hidden = true;
 }
 document.addEventListener('click', ev => { const b = document.getElementById('estGBuscaBox'); if (b && !b.contains(ev.target)) { const r = document.getElementById('estGRes'); if (r) r.hidden = true; } });
+
+
+/* ---------------- v3.57.0 — Cadastros duplicados: sugestões + unificação auditada ---------------- */
+const EST_DUP = { pares: [] };
+async function estDupAbrir() {
+  estEl('estDupModal').classList.add('on');
+  const b = estEl('estDupBody'); b.innerHTML = '<p class="muted">Procurando cadastros parecidos…</p>';
+  try { EST_DUP.pares = (await estApi('estoque_duplicados')).pares || []; estDupRender(); }
+  catch (e) { b.innerHTML = `<p class="muted">${estHtml(e.message)}</p>`; }
+}
+function estDupCard(it, manter) {
+  return `<div class="est-dup-it${manter ? ' manter' : ''}"><b>${estHtml(it.codigo)}</b>${it.provisorio ? ' <small>(criado sem código SAP)</small>' : ''}<br>${estHtml(it.descricao)}<br><small>Saldo ${estNum(it.saldo)} ${estHtml(it.unidade)}${it.reservado ? ' · reservado ' + estNum(it.reservado) : ''}</small></div>`;
+}
+function estDupRender() {
+  const b = estEl('estDupBody'), L = EST_DUP.pares;
+  if (!L.length) { b.innerHTML = '<p class="muted">Nenhum cadastro parecido encontrado. 👍</p>'; return; }
+  b.innerHTML = '<p class="muted">Itens com nomes parecidos. Confira e unifique os que são o mesmo material — o saldo do cadastro antigo é transferido (com registro no histórico) e ele deixa de aparecer.</p>' +
+    L.map((p, i) => `<div class="est-dup-par" id="estDupPar${i}"><div class="est-dup-cols">${estDupCard(p.a, p.manter === p.a.codigo)}${estDupCard(p.b, p.manter === p.b.codigo)}</div>
+      <div class="est-dup-acao"><label>Manter <select id="estDupKeep${i}" onchange="estDupAviso(${i})"><option value="a"${p.manter === p.a.codigo ? ' selected' : ''}>${estHtml(p.a.codigo)}</option><option value="b"${p.manter === p.b.codigo ? ' selected' : ''}>${estHtml(p.b.codigo)}</option></select></label>
+      <label>1 do cadastro antigo = <input id="estDupFator${i}" type="number" min="0" step="any" value="1" style="width:80px"> do mantido</label>
+      <span class="est-dup-aviso" id="estDupAv${i}"></span>
+      <button class="button primary" onclick="estDupUnificar(${i})">Unificar</button><button class="button ghost" onclick="estDupIgnorar(${i})">São itens diferentes</button></div></div>`).join('');
+  L.forEach((_, i) => estDupAviso(i));
+}
+function estDupAviso(i) {
+  const p = EST_DUP.pares[i], k = estEl('estDupKeep' + i).value, keep = k === 'a' ? p.a : p.b, de = k === 'a' ? p.b : p.a;
+  estEl('estDupAv' + i).textContent = String(keep.unidade).toUpperCase() !== String(de.unidade).toUpperCase()
+    ? `⚠ Unidades diferentes (${de.unidade} → ${keep.unidade}): informe quantas ${keep.unidade} vale 1 ${de.unidade}.` : '';
+}
+async function estDupUnificar(i) {
+  const p = EST_DUP.pares[i], k = estEl('estDupKeep' + i).value, keep = k === 'a' ? p.a : p.b, de = k === 'a' ? p.b : p.a;
+  const fator = Number(estEl('estDupFator' + i).value);
+  if (!(fator > 0)) return estToast('Informe um fator maior que zero.', true);
+  const novo = de.saldo * fator;
+  if (!confirm(`Unificar ${de.codigo} em ${keep.codigo}?\n\nSaldo ${estNum(de.saldo)} ${de.unidade} do antigo vira +${estNum(novo)} ${keep.unidade} no mantido.\nO cadastro ${de.codigo} deixará de aparecer.`)) return;
+  try {
+    const r = await estPost('estoque_unificar', { de: de.codigo, para: keep.codigo, fator, motivo: 'Cadastro duplicado' });
+    estToast(`Unificado. Saldo atual de ${keep.codigo}: ${estNum(r.saldo_final)}.` + (r.aviso ? ' ' + r.aviso : ''));
+    EST_DUP.pares = EST_DUP.pares.filter(x => x.a.codigo !== de.codigo && x.b.codigo !== de.codigo); estDupRender();
+    if (typeof estLoadItens === 'function') estLoadItens();
+  } catch (e) { estToast(e.message, true); }
+}
+async function estDupIgnorar(i) {
+  const p = EST_DUP.pares[i];
+  try { await estPost('estoque_duplicado_ignorar', { a: p.a.codigo, b: p.b.codigo }); EST_DUP.pares.splice(i, 1); estDupRender(); }
+  catch (e) { estToast(e.message, true); }
+}

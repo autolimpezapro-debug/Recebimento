@@ -68,6 +68,7 @@ function est_list_itens(array $db, array $q) {
     $cat = (string)($q['categoria'] ?? '');
     $rows = [];
     foreach ($db['itens'] as $code => $it) {
+        if (!empty($it['unificado_para'])) continue;   // v3.57.0: cadastro unificado não aparece na lista
         $v = est_item_view($it);
         if ($cat !== '' && ($v['categoria'] ?? '') !== $cat) continue;
         if ($status !== '' && $v['status'] !== $status) continue;
@@ -200,6 +201,8 @@ function est_handle() {
             case 'estoque_obras':
                 require_once __DIR__ . '/rd_obras.php';
                 respond(['ok' => true, 'obras' => rd_obras_lista(), 'setores' => RD_SETORES]);
+            case 'estoque_duplicados':   // v3.57.0
+                require_once __DIR__ . '/duplicados_lib.php'; respond(['ok' => true, 'pares' => dup_sugestoes(est_read())]);
             case 'estoque_itens':
                 respond(['ok' => true] + est_list_itens(est_read(), $_GET));
             case 'estoque_os_config':
@@ -394,6 +397,18 @@ function est_handle() {
                 est_write($db);
                 est_log_event('estoque', 'Entrada manual ' . $doc['entrada_id'] . ' com ' . count($movs) . ' item(ns)');
                 return ['entrada' => $doc, 'movimentos' => $movs];
+
+            case 'estoque_unificar':   // v3.57.0: unifica cadastro duplicado (saldo, apelidos, histórico preservado)
+                require_once __DIR__ . '/duplicados_lib.php';
+                $r = dup_unificar($db, (string)($body['de'] ?? ''), (string)($body['para'] ?? ''), (float)str_replace(',', '.', (string)($body['fator'] ?? 1)), (string)($body['motivo'] ?? ''), $user);
+                est_write($db);
+                return $r;
+
+            case 'estoque_duplicado_ignorar':   // v3.57.0: "são itens diferentes"
+                require_once __DIR__ . '/duplicados_lib.php';
+                dup_ignorar($db, (string)($body['a'] ?? ''), (string)($body['b'] ?? ''), $user);
+                est_write($db);
+                return ['ok' => true];
 
             case 'estoque_item_save':
                 // Preserva o código exato do item escolhido (a interface envia o código real).

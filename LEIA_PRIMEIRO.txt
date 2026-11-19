@@ -1,3 +1,8 @@
+v3.57.0 — Cadastros duplicados (ex.: PARAFLU aditivo rosa)
+- Estoque > Itens > "🔍 Cadastros duplicados": lista itens com nomes parecidos (principalmente os criados sem código SAP ao receber um PC). Para cada par: escolha qual manter, informe o fator de unidade (ex.: 1 UN do antigo = 20 L) e clique em Unificar. O saldo do antigo é transferido com registro no histórico (documento UNIF-...), apelidos/códigos são herdados, o antigo deixa de aparecer, e recebimentos/contagens futuras que citem o código antigo caem no item mantido. "São itens diferentes" tira o par da lista.
+- Se houver reserva ativa no cadastro antigo, o sistema pede para liberar antes. Com fator diferente de 1, as linhas de PC antigas ficam no cadastro antigo; faça novas saídas pelo item mantido.
+- Quem pode: perfis com permissão de aprovar em Estoque.
+
 v3.56.2 — Saída: trocar o material de uma linha
 - Cada material adicionado pelo PC ou pela busca ganhou o botão "🔁 Trocar material": se o insumo veio errado, clique, escolha o correto no campo (digite para buscar) e a quantidade é mantida. A linha deixa de ficar presa ao pedido/foto do material anterior. O ✕ continua removendo a linha.
 - Corrigido: em algumas telas o ✕ ficava por cima do botão "📷 Foto" (o botão de foto não era mais o mesmo tamanho da coluna). Ajustado no computador, tablet e celular.

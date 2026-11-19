@@ -227,3 +227,12 @@
 /* v3.56.2 — Saída: botão Trocar material e ✕ sem sobrepor o botão de foto */
 .est-s-trocar{justify-self:start;margin-top:3px;font-size:12px;padding:3px 9px;min-height:28px}
 #estSaidaLinhas .est-line-row>.button.small:last-child{min-width:44px;min-height:36px}
+
+/* v3.57.0 — cadastros duplicados */
+.est-dup-par{border:1px solid var(--line,#d9dee5);border-radius:10px;padding:10px;margin:10px 0}
+.est-dup-cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.est-dup-it{padding:8px;border-radius:8px;background:rgba(127,127,127,.08);font-size:13px;word-break:break-word}
+.est-dup-it.manter{outline:2px solid #2f9e6b}
+.est-dup-acao{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:8px;font-size:13px}
+.est-dup-aviso{color:#b45309;flex-basis:100%}
+@media(max-width:700px){.est-dup-cols{grid-template-columns:1fr}}

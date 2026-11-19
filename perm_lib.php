@@ -390,7 +390,7 @@ function rd_rota(string $action): ?array {
             'estoque_abc' => ['estoque', 'listar'], 'estoque_kardex' => ['estoque', 'detalhe'],
             'estoque_export_csv' => ['estoque', 'exportar'],
             'estoque_entrada_save' => ['estoque', 'criar'], 'estoque_entrada_from_pedido' => ['estoque', 'criar'],
-            'estoque_entrada_manual' => ['estoque', 'criar'], 'estoque_item_save' => ['estoque', 'criar'],
+            'estoque_entrada_manual' => ['estoque', 'criar'], 'estoque_item_save' => ['estoque', 'criar'], 'estoque_duplicados' => ['estoque', 'listar'], 'estoque_unificar' => ['estoque', 'aprovar'], 'estoque_duplicado_ignorar' => ['estoque', 'aprovar'],
             'estoque_entrada_remover' => ['estoque', 'excluir'], 'estoque_conferir' => ['estoque', 'editar'],
             'estoque_receber' => ['estoque', 'finalizar'], 'estoque_saida' => ['estoque', 'criar'],
             'estoque_inventario_criar' => ['estoque', 'criar'], 'estoque_inventario_contar' => ['estoque', 'editar'],

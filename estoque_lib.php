@@ -179,6 +179,12 @@ function est_item_index(array $itens) {
  * 4) único contido dentro do outro (evita casar vários)  → null se ambíguo.
  */
 function est_match_item(array $db, $descricao, $codigoSugerido = '') {
+    // v3.57.0: cadastro unificado nunca recebe entrada — segue o redirecionamento para o item mantido.
+    $c = est_match_item_bruto($db, $descricao, $codigoSugerido); $guard = 0;
+    while ($c !== null && !empty($db['itens'][$c]['unificado_para']) && $guard++ < 5) $c = $db['itens'][$c]['unificado_para'];
+    return $c;
+}
+function est_match_item_bruto(array $db, $descricao, $codigoSugerido = '') {
     $itens = $db['itens'] ?? [];
     if (!$itens) return null;
     // v3.30.0: código exato do item (inclusive com espaço, como "EE 150 01") casa direto, antes de qualquer limpeza.
@@ -923,6 +929,7 @@ function est_item_view(array $it) {
 }
 
 function est_dashboard(array $db) {
+    foreach ($db['itens'] ?? [] as $k => $it) if (!empty($it['unificado_para'])) unset($db['itens'][$k]);   // v3.57.0
     $itens = array_map('est_item_view', array_values($db['itens'] ?? []));
     $crit = 0; $zero = 0; $valor = 0.0;
     foreach ($itens as $i) {
@@ -2430,6 +2437,7 @@ function est_pc_saida_info(array $db, int $pc): array {
 }
 /** Busca única da saída: número do PC, SKU/código, nome (com apelidos). Retorna o PC (se houver) e até 12 itens. */
 function est_buscar_saida(array $db, string $q): array {
+    foreach ($db['itens'] as $k => $it) if (!empty($it['unificado_para'])) unset($db['itens'][$k]);   // v3.57.0: unificados não aparecem
     $q = trim($q);
     $out = ['q' => $q, 'pc' => null, 'itens' => []];
     if ($q === '') return $out;
