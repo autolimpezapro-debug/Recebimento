@@ -11,6 +11,7 @@ if ($obMet === 'GET') {
         case 'obras_painel': respond(['ok' => true] + ob_painel(ob_read()));
         case 'obras_obra': respond(['ok' => true] + ob_obra(ob_read(), (string)($_GET['id'] ?? '')));
         case 'obras_arquivo': ob_servir(ob_read());
+        case 'obras_remessa': respond(['ok' => true] + ob_remessa_info(ob_read(), (string)($_GET['numero'] ?? ''), (string)($_GET['ignorar'] ?? '')));   // v3.60.0
         case 'obras_pc': respond(['ok' => true, 'pedido' => ob_pc_info(ob_read(), (int)($_GET['pc'] ?? 0), (string)($_GET['ignorar'] ?? ''))]);   // v3.33.0: só leitura
     }
     ob_fail('Ação de obras inválida', 400);

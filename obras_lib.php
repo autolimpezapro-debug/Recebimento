@@ -11,6 +11,7 @@
  */
 if (!defined('DATA_DIR')) { http_response_code(403); exit; }
 require_once __DIR__ . '/rd_obras.php';
+require_once __DIR__ . '/espelho_lib.php';   // v3.60.0: busca de remessa (Espelho de NF / Romaneio) → materiais do envio
 
 const OB_FILE = DATA_DIR . '/obras_envios.json';
 const OB_LOCK = DATA_DIR . '/.obras.lock';
@@ -123,6 +124,36 @@ function ob_obra(array $d, string $id): array {
     return ['obra' => $o, 'envios' => $envios, 'sistema' => $sis, 'chaves' => $ch, 'tipos' => OB_TIPOS];
 }
 
+/** v3.60.0 — acha a remessa pelo número e devolve TODOS os materiais dela, para o envio à obra. Só leitura: não mexe no estoque.
+ *  Aceita: nº da nota emitida no Espelho de NF (ex.: 13685), código do espelho (ESP-2026-0003) ou do romaneio de terceiros (ROM-0005). */
+function ob_remessa_info(array $d, string $numero, string $ignorar = ''): array {
+    $q = mb_strtoupper(trim($numero)); $out = ['numero' => $numero, 'status' => 'nao_encontrado', 'mensagem' => 'Remessa "' . $numero . '" não encontrada.', 'remessas' => []];
+    if ($q === '') { $out['mensagem'] = 'Digite o número da remessa.'; return $out; }
+    $zero = fn($x) => ltrim(preg_replace('/\D/', '', (string)$x), '0');
+    $usada = function (string $ref) use ($d, $ignorar) { $l = []; foreach ($d['envios'] as $e) if (empty($e['excluido']) && ($e['remessa_ref'] ?? '') === $ref && ($e['id'] ?? '') !== $ignorar) $l[] = ['id' => $e['id'], 'data' => $e['data'] ?? '', 'obra_nome' => $e['obra_nome'] ?? '']; return $l; };
+    $nome = fn(array $i) => ['sku' => (string)($i['sku'] ?? ''), 'descricao' => (string)$i['descricao'], 'unidade' => (string)($i['unidade'] ?? 'UN'), 'quantidade' => (float)$i['quantidade'], 'valor_total' => (float)($i['valor_total'] ?? 0)];
+    foreach (esp_read()['espelhos'] as $r) {
+        if (($r['status'] ?? '') === 'CANCELADO') continue;
+        $porNf = ($r['nf_numero'] ?? '') !== '' && $zero($r['nf_numero']) !== '' && $zero($r['nf_numero']) === $zero($q) && !preg_match('/^(ESP|ROM)/', $q);
+        if (!$porNf && mb_strtoupper((string)$r['id']) !== $q) continue;
+        $it = array_map($nome, (array)$r['itens']);
+        $out['remessas'][] = ['ref' => $r['id'], 'origem' => 'Espelho de NF', 'tipo' => 'NF_REMESSA', 'numero' => ($r['nf_numero'] ?? '') ?: $r['id'], 'status' => $r['status'], 'status_label' => ESP_STATUS[$r['status']] ?? $r['status'],
+            'data' => ($r['nf_data'] ?? '') ?: ($r['data'] ?? ''), 'destino' => (string)($r['destinatario'] ?? ''), 'obra_id' => (string)($r['obra_id'] ?? ''), 'obs' => (string)($r['obs'] ?? ''),
+            'itens' => $it, 'total' => round(array_sum(array_column($it, 'valor_total')), 2), 'ja_aplicada' => $usada((string)$r['id'])];
+    }
+    if (preg_match('/^ROM-?\d+$/', $q)) {
+        $id = 'ROM-' . str_pad($zero($q) ?: '0', 4, '0', STR_PAD_LEFT);
+        foreach (rom_read()['romaneios'] as $r) if ($r['id'] === $id && ($r['status'] ?? '') !== 'CANCELADO') {
+            $out['remessas'][] = ['ref' => $r['id'], 'origem' => 'Romaneio', 'tipo' => 'ROMANEIO', 'numero' => $r['id'], 'status' => $r['status'], 'status_label' => ROM_STATUS[$r['status']] ?? $r['status'],
+                'data' => (string)($r['data'] ?? ''), 'destino' => (string)($r['obra_nome'] ?? ''), 'obra_id' => (string)($r['obra_id'] ?? ''), 'obs' => (string)($r['obs'] ?? ''),
+                'itens' => array_map($nome, (array)$r['itens']), 'total' => 0.0, 'ja_aplicada' => $usada((string)$r['id'])];
+        }
+    }
+    if ($out['remessas']) { $out['status'] = 'ok'; $out['mensagem'] = ''; }
+    elseif (preg_match('/^\d+$/', $q)) $out['mensagem'] = 'Nenhuma nota de remessa com o número ' . $numero . ' no Espelho de NF. Confira se o espelho foi marcado como "Nota emitida". Para romaneio, digite ROM-0001.';
+    return $out;
+}
+
 function ob_obra_nova(array &$d, array $in): array {
     $nome = ob_str($in['nome'] ?? '', 120);
     if (mb_strlen($nome) < 3) ob_fail('Informe o nome da obra.');
@@ -208,6 +239,13 @@ function ob_envio_salvar(array &$d, array $in, string $usuario): array {
         'atualizado_em' => ob_now(), 'atualizado_por' => $usuario,
         'pc' => $pc, 'linhas_pc' => $linhasPc, 'pc_fornecedor' => $infoPc ? $infoPc['fornecedor'] : '',
     ]);
+    // v3.60.0: remessa escolhida (os materiais vêm do próprio sistema, nunca do navegador)
+    $ref = ob_str($in['remessa_ref'] ?? '', 30);
+    if ($ref !== '') {
+        $rm = ob_remessa_info($d, $ref, $id)['remessas'][0] ?? null;
+        if (!$rm) ob_fail('Remessa ' . $ref . ' não encontrada.');
+        $e['remessa_ref'] = $rm['ref']; $e['remessa_itens'] = $rm['itens'];
+    } else { unset($e['remessa_ref'], $e['remessa_itens']); }
     // v3.33.0: fotos do recebimento do PC escolhidas pelo operador viram fotos do envio (cópia; o original continua no PC).
     if ($infoPc) {
         foreach (array_slice((array)($in['fotos_pc'] ?? []), 0, 10) as $rel) {
