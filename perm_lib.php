@@ -400,7 +400,7 @@ function rd_rota(string $action): ?array {
             'estoque_sap_historico' => ['estoque', 'listar'], 'estoque_sap_previa' => ['estoque', 'criar'],
             'estoque_sap_importar' => ['estoque', 'aprovar'],
             'protocolos_painel' => ['pedidos', 'listar'], 'protocolos_arquivo' => ['pedidos', 'baixar'], 'protocolos_imprimir' => ['pedidos', 'baixar'], 'protocolos_pdf' => ['pedidos', 'baixar'], 'protocolos_csv' => ['pedidos', 'baixar'],
-            'protocolos_criar' => ['pedidos', 'editar'], 'protocolos_status' => ['pedidos', 'editar'], 'protocolos_doc_enviar' => ['pedidos', 'anexar'],
+            'protocolos_criar' => ['pedidos', 'editar'], 'protocolos_email_enviar' => ['pedidos', 'editar'], 'protocolos_email_config' => ['pedidos', 'listar'], 'protocolos_email_config_salvar' => ['pedidos', 'aprovar'], 'protocolos_status' => ['pedidos', 'editar'], 'protocolos_doc_enviar' => ['pedidos', 'anexar'],
             'romaneios_painel' => ['estoque', 'listar'], 'romaneios_pdf' => ['estoque', 'listar'], 'romaneios_csv' => ['estoque', 'listar'], 'romaneios_imprimir' => ['estoque', 'listar'],
             'romaneios_salvar' => ['estoque', 'criar'], 'romaneios_status' => ['estoque', 'editar'],
             'chegadas_painel' => ['estoque', 'listar'], 'chegadas_pcs' => ['estoque', 'listar'], 'chegadas_csv' => ['estoque', 'listar'], 'chegadas_foto' => ['estoque', 'listar'],

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0b1f3a">
+<title>Assinatura eletrônica · Drilling do Brasil</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#eef1f5;color:#101828;font:15px/1.5 "Segoe UI",Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%}
+.wrap{max-width:680px;margin:0 auto;padding:0 0 40px}
+.top{background:#0b1f3a;color:#fff;padding:calc(22px + env(safe-area-inset-top)) 22px 18px;border-bottom:4px solid #f5b942}
+.top small{letter-spacing:2px;color:#f5b942;font-weight:700;font-size:11px}
+.top h1{margin:4px 0 2px;font-size:22px}.top p{margin:0;color:#b9c8de;font-size:14px}
+.card{background:#fff;border:1px solid #e3e8ef;border-radius:12px;margin:14px 14px 0;padding:16px}
+.kpis{display:flex;gap:10px;margin:14px 14px 0}.kpi{flex:1;background:#fff;border:1px solid #e3e8ef;border-radius:12px;padding:12px;text-align:center}
+.kpi b{display:block;font-size:20px;color:#0b1f3a}.kpi span{font-size:11px;color:#667085;text-transform:uppercase;letter-spacing:.6px}
+table{width:100%;border-collapse:collapse;font-size:14px}td{padding:9px 4px;border-top:1px solid #eef1f5;vertical-align:top}tr:first-child td{border-top:0}
+.sub{display:block;color:#667085;font-size:12px}.r{text-align:right;white-space:nowrap}
+label{display:block;font-weight:600;font-size:13px;margin:12px 0 4px}
+input{width:100%;min-height:46px;padding:10px 12px;border:1px solid #cfd6e0;border-radius:10px;font:inherit;background:#fff}
+input:focus{outline:2px solid #0b1f3a;outline-offset:1px}
+.pad{position:relative;border:1.5px dashed #98a2b3;border-radius:12px;background:#fbfcfe;touch-action:none}
+canvas{display:block;width:100%;height:190px;touch-action:none;cursor:crosshair}
+.pad .dica{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#98a2b3;pointer-events:none;font-size:14px}
+.pad .linha{position:absolute;left:14px;right:14px;bottom:44px;border-top:1px solid #d0d5dd;pointer-events:none}
+.btns{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+button{font:inherit;font-weight:700;border-radius:10px;border:1px solid #cfd6e0;background:#fff;color:#0b1f3a;padding:13px 18px;min-height:48px;cursor:pointer}
+button.pri{background:#0b1f3a;color:#fff;border-color:#0b1f3a;flex:1}
+button:disabled{opacity:.55;cursor:default}
+.leg{font-size:12px;color:#667085;margin-top:10px}
+.erro{color:#b42318;font-size:14px;margin-top:10px;min-height:20px}
+.ok{text-align:center;padding:26px 16px}.ok .v{width:64px;height:64px;border-radius:50%;background:#ecfdf3;color:#067647;font-size:34px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px}
+.cod{display:inline-block;background:#f2f4f7;border-radius:8px;padding:6px 12px;font-weight:700;letter-spacing:1px;margin-top:6px}
+.msg{text-align:center;padding:34px 18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><small>DRILLING DO BRASIL</small><h1 id="tit">Assinatura eletrônica</h1><p id="sub">Protocolo de notas fiscais</p></div>
+  <div id="app"><div class="msg">Carregando…</div></div>
+</div>
+<script>
+'use strict';
+const T = new URLSearchParams(location.search).get('t') || '';
+const $ = id => document.getElementById(id);
+const H = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const BRL = n => Number(n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const num = v => { let s = String(v ?? '').replace(/[^\d,.-]/g, ''); if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.'); const n = parseFloat(s); return isNaN(n) ? 0 : n; };
+const dia = v => { const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}/${m[2]}/${m[1]}` : ''; };
+let tracos = [], atual = null, cv, ctx;
+
+function msg(t, sub) { $('app').innerHTML = `<div class="card msg"><b>${H(t)}</b><p class="leg">${H(sub || '')}</p></div>`; }
+async function carregar() {
+  if (!/^[a-f0-9]{48}$/.test(T)) return msg('Link inválido.', 'Abra o link exatamente como veio no e-mail.');
+  let r, j; try { r = await fetch('protocolos_assinar_api.php?t=' + T, { cache: 'no-store' }); j = await r.json(); } catch { return msg('Sem conexão.', 'Tente de novo em instantes.'); }
+  if (!j.ok) { if (j.protocolo_id) $('sub').textContent = 'Protocolo ' + j.protocolo_id; return msg(j.error || 'Link indisponível.'); }
+  const p = j.protocolo; $('tit').textContent = 'Protocolo ' + p.id; $('sub').textContent = 'Para ' + p.destinatario + ' · gerado em ' + dia(p.criado_em);
+  $('app').innerHTML = `<div class="kpis"><div class="kpi"><b>${p.qtd_nfs}</b><span>Notas fiscais</span></div><div class="kpi"><b>${p.total_valor ? BRL(p.total_valor) : '—'}</b><span>Valor total</span></div></div>
+    <div class="card"><table>${p.linhas.map(l => `<tr><td><b>NF ${H(l.numeroNF)}</b>${l.serieNF ? ' <span class="sub" style="display:inline">s.' + H(l.serieNF) + '</span>' : ''}<span class="sub">${H(l.fornecedor)} · PC ${H(l.pc)}${l.emissaoNF ? ' · emissão ' + dia(l.emissaoNF) : ''}</span></td><td class="r">${num(l.valorNF) ? BRL(num(l.valorNF)) : '—'}</td></tr>`).join('')}</table>${p.obs ? `<p class="leg"><b>Obs.:</b> ${H(p.obs)}</p>` : ''}</div>
+    <div class="card"><b>Assinar</b>
+      <label for="nome">Nome completo</label><input id="nome" autocomplete="name" maxlength="80" placeholder="Seu nome">
+      <label for="cargo">Cargo / setor (opcional)</label><input id="cargo" maxlength="60" placeholder="Ex.: Financeiro">
+      <label>Assinatura (use o dedo ou o mouse)</label>
+      <div class="pad"><canvas id="cv"></canvas><div class="linha"></div><div class="dica" id="dica">Assine aqui</div></div>
+      <div class="btns"><button type="button" id="limpar">Limpar</button><button type="button" class="pri" id="enviar">✍ Assinar e enviar</button></div>
+      <div class="erro" id="erro"></div>
+      <p class="leg">Ao assinar você confirma o recebimento das notas fiscais acima. Ficam registrados nome, data e hora, e um código de verificação. Link válido até ${dia(p.expira_em)}.</p></div>`;
+  iniciarQuadro(); $('limpar').onclick = limpar; $('enviar').onclick = enviar;
+}
+function iniciarQuadro() {
+  cv = $('cv'); const r = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight; cv.width = w * r; cv.height = h * r;
+  ctx = cv.getContext('2d'); ctx.scale(r, r); ctx.lineWidth = 2.6; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#0b1f5c';
+  const pos = e => { const b = cv.getBoundingClientRect(); return [(e.clientX - b.left), (e.clientY - b.top)]; };
+  cv.addEventListener('pointerdown', e => { e.preventDefault(); cv.setPointerCapture(e.pointerId); atual = [pos(e)]; $('dica').style.display = 'none'; ctx.beginPath(); ctx.moveTo(...atual[0]); ctx.lineTo(atual[0][0] + .1, atual[0][1]); ctx.stroke(); });
+  cv.addEventListener('pointermove', e => { if (!atual) return; e.preventDefault(); const p = pos(e); const q = atual[atual.length - 1]; ctx.beginPath(); ctx.moveTo(...q); ctx.lineTo(...p); ctx.stroke(); atual.push(p); });
+  const fim = () => { if (atual && atual.length) tracos.push(atual); atual = null; };
+  cv.addEventListener('pointerup', fim); cv.addEventListener('pointercancel', fim);
+}
+function limpar() { tracos = []; atual = null; ctx.clearRect(0, 0, cv.clientWidth, cv.clientHeight); $('dica').style.display = ''; $('erro').textContent = ''; }
+async function enviar() {
+  const nome = $('nome').value.trim(); $('erro').textContent = '';
+  if (nome.length < 3) return $('erro').textContent = 'Digite seu nome completo.';
+  if (!tracos.length) return $('erro').textContent = 'Faça a assinatura no quadro.';
+  const w = cv.clientWidth, h = cv.clientHeight;   // converte para o quadro 600 x 200 do sistema
+  const tr = tracos.map(t => t.map(([x, y]) => [Math.round(x / w * 600), Math.round(y / h * 200)]));
+  $('enviar').disabled = true; $('enviar').textContent = 'Enviando…';
+  try {
+    const r = await fetch('protocolos_assinar_api.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: T, nome, cargo: $('cargo').value.trim(), tracos: tr }) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'Não foi possível assinar.');
+    $('app').innerHTML = `<div class="card ok"><div class="v">✔</div><b style="font-size:18px">Assinatura registrada</b><p class="leg">Obrigado, ${H(nome)}. O protocolo ${H(j.protocolo_id)} foi assinado.</p><div class="cod">${H(j.codigo)}</div><p class="leg">Código de verificação · você já pode fechar esta página.</p></div>`;
+  } catch (e) { $('erro').textContent = e.message; $('enviar').disabled = false; $('enviar').textContent = '✍ Assinar e enviar'; }
+}
+carregar();
+</script>
+</body>
+</html>

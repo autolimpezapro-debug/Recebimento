@@ -1,3 +1,11 @@
+v3.59.0 — Protocolo de NFs: e-mail automático + assinatura eletrônica por link
+- Protocolo de NFs > "⚙ E-mail e assinatura": ligue o envio automático e cadastre o(s) e-mail(s) do Financeiro/Fiscal. Ao gerar o protocolo, o sistema envia na hora um e-mail com o resumo das NFs, o PDF em anexo e o botão "✍ Assinar eletronicamente".
+- O destinatário abre o link no celular ou computador (sem senha), confere as notas, digita o nome e assina na tela. O protocolo vira "Assinado", com nome, data/hora, IP, canal "link por e-mail" e código de verificação; o sistema manda a confirmação com o PDF assinado para os e-mails cadastrados.
+- Segurança: o link vale só para aquele protocolo, é de uso único, expira (padrão 7 dias) e não dá acesso a mais nada; gerar um link novo cancela o anterior; muitas tentativas inválidas são bloqueadas.
+- Em cada protocolo: botão "✉ Enviar por e-mail / Reenviar e-mail" (cria link novo). Continuam valendo imprimir 2 vias e "Assinar no sistema".
+- Usa o mesmo e-mail (SMTP) dos Alertas de estoque. Nada é obrigatório além do nome de quem assina.
+- Arquivos novos: protocolos_email_lib.php, protocolos_assinar_api.php e assinar_protocolo.html (páginas públicas por link — mantenha no servidor).
+
 v3.58.2 — E-mail diário das saídas com visual premium
 - Novo layout do e-mail: cabeçalho escuro com data por extenso, 4 indicadores (movimentos, OS, custo total, sem OS), um cartão por OS (maior custo primeiro) com obra/equipamento/solicitante e, em cada material, SKU, hora, aplicação, quantidade e valor; botão "Abrir relatório completo" e CSV em anexo. Funciona no celular, Gmail e Outlook.
 - Observação: "sem custo" aparece nos materiais sem custo médio cadastrado (valor entra como R$ 0,00) — o custo vem do inventário SAP/entradas com valor.
