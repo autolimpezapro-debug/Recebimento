@@ -10,12 +10,12 @@ require_once __DIR__ . '/protocolos_lib.php';
 require_once __DIR__ . '/alertas_lib.php';
 
 const PEM_CONFIG = DATA_DIR . '/protocolos_email.json';
-const PEM_PADRAO = ['ativo' => false, 'emails' => [], 'validade_dias' => 7, 'anexar_pdf' => true, 'confirmar' => true];
+const PEM_PADRAO = ['ativo' => true, 'emails' => ['almoxarifado@drilling.com.br'], 'validade_dias' => 7, 'anexar_pdf' => true, 'confirmar' => true];
 
 function pem_emails($v): array {
     $l = preg_split('/[\s,;]+/', is_array($v) ? implode(',', $v) : (string)$v);
     $l = array_values(array_unique(array_filter(array_map('trim', $l), fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL))));
-    if (count($l) > 10) prt_fail('No máximo 10 e-mails.');
+    if (count($l) > 4) prt_fail('No máximo 4 e-mails (1 principal + 3 opcionais).');
     return $l;
 }
 function pem_config(): array { return alt_json_read(PEM_CONFIG, PEM_PADRAO); }

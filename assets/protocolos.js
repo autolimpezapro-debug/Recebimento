@@ -250,10 +250,13 @@ function prtEnviarEmail(id) {
   };
 }
 function prtConfigEmail() {
-  const c = PRT.cfg || { ativo: false, emails: [], validade_dias: 7, anexar_pdf: true, confirmar: true };
+  const c = PRT.cfg || { ativo: true, emails: ['almoxarifado@drilling.com.br'], validade_dias: 7, anexar_pdf: true, confirmar: true };
   const bg = prtModal('E-mail e assinatura eletrônica', `<p class="muted">Ao gerar um protocolo, o sistema envia ao(s) e-mail(s) abaixo o resumo, o PDF e um botão para assinar eletronicamente (sem senha). Usa o mesmo e-mail (SMTP) dos Alertas de estoque.</p>
     <div class="rd-ass-campos"><label style="flex-direction:row;gap:8px;align-items:center"><input type="checkbox" name="ativo" ${c.ativo ? 'checked' : ''}> Enviar automaticamente ao gerar o protocolo</label>
-    <label>E-mail(s) cadastrado(s) — separe por vírgula<input name="emails" value="${prtH((c.emails || []).join(', '))}" maxlength="400" placeholder="financeiro@empresa.com, fiscal@empresa.com"></label>
+    <label>E-mail principal<input name="e0" type="email" value="${prtH((c.emails || [])[0] || 'almoxarifado@drilling.com.br')}" maxlength="120"></label>
+    <label>E-mail opcional 2<input name="e1" type="email" value="${prtH((c.emails || [])[1] || '')}" maxlength="120" placeholder="(opcional)"></label>
+    <label>E-mail opcional 3<input name="e2" type="email" value="${prtH((c.emails || [])[2] || '')}" maxlength="120" placeholder="(opcional)"></label>
+    <label>E-mail opcional 4<input name="e3" type="email" value="${prtH((c.emails || [])[3] || '')}" maxlength="120" placeholder="(opcional)"></label>
     <label>Validade do link (dias)<input name="validade_dias" type="number" min="1" max="60" value="${c.validade_dias || 7}"></label>
     <label style="flex-direction:row;gap:8px;align-items:center"><input type="checkbox" name="anexar_pdf" ${c.anexar_pdf ? 'checked' : ''}> Anexar o PDF do protocolo</label>
     <label style="flex-direction:row;gap:8px;align-items:center"><input type="checkbox" name="confirmar" ${c.confirmar ? 'checked' : ''}> Avisar por e-mail (com o PDF assinado) quando for assinado</label></div>
@@ -262,7 +265,7 @@ function prtConfigEmail() {
   bg.querySelector('[data-ok]').onclick = async function () {
     this.disabled = true;
     try {
-      PRT.cfg = (await prtPost('protocolos_email_config_salvar', { ativo: ck('ativo'), emails: prtVal(bg, 'emails'), validade_dias: prtVal(bg, 'validade_dias'), anexar_pdf: ck('anexar_pdf'), confirmar: ck('confirmar') })).config;
+      PRT.cfg = (await prtPost('protocolos_email_config_salvar', { ativo: ck('ativo'), emails: [0, 1, 2, 3].map(i => prtVal(bg, 'e' + i)).filter(Boolean), validade_dias: prtVal(bg, 'validade_dias'), anexar_pdf: ck('anexar_pdf'), confirmar: ck('confirmar') })).config;
       bg.remove(); prtToast('Configuração salva.');
     } catch (e) { prtToast(e.message, true); this.disabled = false; }
   };

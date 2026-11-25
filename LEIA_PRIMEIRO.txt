@@ -1,3 +1,7 @@
+v3.59.1 — E-mail do protocolo já vem ligado para o almoxarifado
+- Todo protocolo gerado envia e-mail automaticamente para almoxarifado@drilling.com.br (já vem cadastrado e ligado; não precisa configurar) e para até 3 e-mails opcionais, que se cadastram em Protocolo de NFs > "⚙ E-mail e assinatura". Todos recebem o mesmo e-mail (resumo + PDF + botão de assinatura eletrônica); o link é de uso único, então quem assinar primeiro vale.
+- Se já tinha salvo outra configuração na v3.59.0, ela é mantida.
+
 v3.59.0 — Protocolo de NFs: e-mail automático + assinatura eletrônica por link
 - Protocolo de NFs > "⚙ E-mail e assinatura": ligue o envio automático e cadastre o(s) e-mail(s) do Financeiro/Fiscal. Ao gerar o protocolo, o sistema envia na hora um e-mail com o resumo das NFs, o PDF em anexo e o botão "✍ Assinar eletronicamente".
 - O destinatário abre o link no celular ou computador (sem senha), confere as notas, digita o nome e assina na tela. O protocolo vira "Assinado", com nome, data/hora, IP, canal "link por e-mail" e código de verificação; o sistema manda a confirmação com o PDF assinado para os e-mails cadastrados.
