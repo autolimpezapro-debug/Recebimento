@@ -32,7 +32,7 @@ function rtrRender() {
   const L = RTR.d.rastreios, ab = L.filter(r => r.situacao === 'EM_TRANSITO'), at = L.filter(r => r.atrasado), conf = L.filter(r => r.conferir.length);
   const ent = L.filter(r => r.situacao === 'ENTREGUE'), mes = RTR.d.hoje.slice(0, 7), entm = ent.filter(r => (r.data_entrega || '').startsWith(mes));
   const val = ent.filter(r => r.dias != null && r.dias >= 0 && r.dias <= 30), med = val.length ? (val.reduce((a, r) => a + r.dias, 0) / val.length) : null;
-  const pont = ent.length ? Math.round(100 * val.filter(r => r.dias <= RTR.d.config.prazo_alerta_dias).length / ent.length) : 0;
+  const pont = ent.length ? Math.round(100 * ent.filter(r => r.no_prazo).length / ent.length) : 0;
   const kpi = (ic, n, t, sub, cls = '') => `<div class="rtr-kpi ${cls}"><i>${ic}</i><b>${n}</b><span>${t}</span><small>${sub}</small></div>`;
   // volume por mês (últimos 6) e por transportadora
   const meses = {}; L.forEach(r => { const m = (r.data_envio || '').slice(0, 7); if (m) meses[m] = (meses[m] || 0) + 1; });
@@ -43,7 +43,7 @@ function rtrRender() {
   const trs = RTR.d.transportadoras.map(t => `<option ${RTR.tr === t ? 'selected' : ''}>${terH(t)}</option>`).join('');
   rtrEl('terRastreios').innerHTML = `
   <div class="rtr-hero"><div><div class="rtr-eyebrow">CENTRAL DE RASTREIOS</div><h2>${ab.length ? `${ab.length} envio${ab.length > 1 ? 's' : ''} a caminho` : 'Nenhum envio em trânsito'}</h2><p>${at.length ? `<b class="rtr-bad">${at.length} com atraso</b> · ` : ''}${L.length} envios controlados${med != null ? ` · prazo médio de entrega ${med.toFixed(1).replace('.', ',')} dias` : ''}</p></div>
-    <div class="rtr-ring" style="--p:${pont}"><div><b>${pont}%</b><small>entregues em até ${RTR.d.config.prazo_alerta_dias} dias</small></div></div></div>
+    <div class="rtr-ring" style="--p:${pont}"><div><b>${pont}%</b><small>entregues no prazo</small></div></div></div>
   ${rtrPode('criar') ? `<div class="rtr-quick"><span>⚡</span><input id="rtrQuick" placeholder="Novo envio: cole ou digite o código de rastreio e tecle Enter…" autocomplete="off"><button class="button primary" id="rtrQuickBtn">Adicionar</button><kbd title="Atalho de teclado">N</kbd></div>` : ''}
   ${rtrAtencao(L)}
   <div class="rtr-kpis">${kpi('🚚', ab.length, 'Em trânsito', ab.length ? 'aguardando entrega' : 'tudo entregue', ab.length ? 'warn' : '')}${kpi('⏱', at.length, 'Atrasados', `mais de ${RTR.d.config.prazo_alerta_dias} dias`, at.length ? 'bad' : '')}${kpi('✔', entm.length, 'Entregues no mês', `${ent.length} no total`, 'ok')}${kpi('⌛', med != null ? med.toFixed(1).replace('.', ',') : '—', 'Prazo médio (dias)', 'envio → entrega')}${kpi('⚠', conf.length, 'A conferir', 'dados para revisar', conf.length ? 'warn' : '')}</div>
@@ -51,7 +51,7 @@ function rtrRender() {
     <section class="rtr-panel"><h3>Por transportadora <small>envios · prazo médio</small></h3><div class="rtr-carr">${pt.map(([t, o]) => `<div><span><i style="background:${rtrCor(t)}"></i>${terH(t)}</span><div class="rtr-track"><i style="width:${100 * o.n / mxt}%;background:${rtrCor(t)}"></i></div><b>${o.n}</b><small>${o.k ? (o.soma / o.k).toFixed(1).replace('.', ',') + ' d' : '—'}${o.ab ? ` · ${o.ab} aberto${o.ab > 1 ? 's' : ''}` : ''}</small></div>`).join('')}</div><small class="rtr-note">Prazo médio considera entregas de até 30 dias.</small></section></div>
   <div class="rtr-bar"><div class="rtr-seg">${sit('ABERTOS', 'Em trânsito', ab.length)}${sit('ATRASADOS', 'Atrasados', at.length)}${sit('ENTREGUES', 'Entregues', ent.length)}${sit('CONFERIR', 'A conferir', conf.length)}${sit('TODOS', 'Todos', L.length)}</div>
     <div class="rtr-tools"><input id="rtrBusca" type="search" placeholder="🔎  Buscar código, fornecedor, PC, produto…" value="${terH(RTR.q)}"><select id="rtrTr"><option value="">Todas as transportadoras</option>${trs}</select><select id="rtrOrd" title="Ordenar"><option value="recentes" ${RTR.ord === 'recentes' ? 'selected' : ''}>Mais recentes</option><option value="antigos" ${RTR.ord === 'antigos' ? 'selected' : ''}>Mais antigos</option><option value="prazo" ${RTR.ord === 'prazo' ? 'selected' : ''}>Maior prazo</option></select>
-    <button class="button ghost" onclick="rtrCsv()">⬇ CSV</button>${rtrPode('criar') ? `<button class="button ghost" onclick="rtrImportar()">📋 Importar</button><button class="button primary" onclick="rtrForm()">＋ Novo rastreio</button>` : ''}${rtrPode('admin') ? `<button class="button ghost" onclick="rtrConfig()" title="Configurar">⚙</button>` : ''}</div></div>
+    <button class="button ghost" onclick="rtrRelatorio()">📄 Relatório</button><button class="button ghost" onclick="rtrCsv()">⬇ CSV</button>${rtrPode('criar') ? `<button class="button ghost" onclick="rtrImportar()">📋 Importar</button><button class="button primary" onclick="rtrForm()">＋ Novo rastreio</button>` : ''}${rtrPode('admin') ? `<button class="button ghost" onclick="rtrConfig()" title="Configurar">⚙</button>` : ''}</div></div>
   <div id="rtrLista"></div>`;
   rtrEl('rtrBusca').oninput = e => { RTR.q = e.target.value; rtrLista(); };
   rtrEl('rtrTr').onchange = e => { RTR.tr = e.target.value; rtrLista(); };
@@ -74,7 +74,7 @@ function rtrLista() {
     return `<article class="rtr-card ${r.atrasado ? 'late' : ''} ${ent ? 'done' : ''}" style="--c:${cor}">
       <div class="rtr-main"><div class="rtr-top">${st}<span class="rtr-carrier" style="--c:${cor}">${terH(r.transportadora) || 'sem transportadora'}</span>${r.codigo ? `<code class="rtr-code" title="Copiar" onclick="navigator.clipboard&&navigator.clipboard.writeText('${terH(r.codigo)}');terToast('Código copiado')">${terH(r.codigo)}</code>` : '<span class="rtr-nocode">sem código</span>'}</div>
         <h4 class="rtr-tit" onclick="rtrDetalhe('${id}')" title="Ver detalhes">${terH(r.produto) || '—'}</h4><p>${terH(r.fornecedor) || '—'}${r.pedido ? ` · PC ${terH(r.pedido)}` : ''}${r.romaneio ? ` · ${terH(r.romaneio)}` : ''} <small>${id}</small></p></div>
-      <div class="rtr-line"><div class="rtr-dates"><span>${rtrData(r.data_envio)}</span><b>${r.dias != null ? r.dias + (r.dias === 1 ? ' dia' : ' dias') : ''}</b><span>${ent ? rtrData(r.data_entrega) : 'a caminho'}</span></div><div class="rtr-prog"><i style="width:${pct}%"></i></div>${ent && r.recebedor ? `<small>Recebido por ${terH(r.recebedor)}</small>` : ''}</div>
+      <div class="rtr-line"><div class="rtr-dates"><span>${rtrData(r.data_envio)}</span><b>${r.dias != null ? r.dias + (r.dias === 1 ? ' dia' : ' dias') : ''}</b><span>${ent ? rtrData(r.data_entrega) : 'a caminho'}</span></div>${r.data_previsao ? `<div class="rtr-prev ${r.atrasado || (ent && !r.no_prazo) ? 'late' : ''}">📅 Previsão ${rtrData(r.data_previsao)}${r.atrasado ? ` · ${r.dias_atraso} dia(s) de atraso` : ent ? (r.no_prazo ? ' · entregue no prazo' : ` · entregue com ${r.dias_atraso} dia(s) de atraso`) : ''}</div>` : ''}<div class="rtr-prog"><i style="width:${pct}%"></i></div>${ent && r.recebedor ? `<small>Recebido por ${terH(r.recebedor)}</small>` : ''}</div>
       <div class="rtr-ac">${lk}${ac}</div>
       ${r.conferir.length ? `<div class="rtr-warn">⚠ ${r.conferir.map(terH).join(' · ')}</div>` : ''}</article>`;
   }).join('');
@@ -110,7 +110,7 @@ function rtrForm(id, pre) {
     <section><h5>1 · Envio</h5><div class="rtr-grid">${f('fornecedor', 'Fornecedor / origem', r.fornecedor, 'list="rtrLF" autocomplete="off"')}${f('pedido', 'Nº do pedido (PC)', r.pedido)}${f('produto', 'O que foi enviado', r.produto, 'list="rtrLP" autocomplete="off"', 'span2')}</div></section>
     <section><h5>2 · Rastreio</h5><label>Transportadora<div class="rtr-chips">${chips}</div><input name="transportadora" value="${terH(r.transportadora || '')}" list="rtrTrs" placeholder="ou digite outra"></label>
       <div class="rtr-grid">${f('codigo', 'Código de rastreio', r.codigo, 'autocomplete="off" autofocus')}${f('link', 'Link próprio (opcional)', r.link)}</div><div class="rtr-lk" id="rtrLk"></div></section>
-    <section><h5>3 · Datas e entrega</h5><div class="rtr-grid">${f('data_envio', 'Data de envio', r.data_envio, 'type="date"')}${f('data_entrega', 'Data de entrega', r.data_entrega, 'type="date"')}${f('recebedor', 'Recebedor', r.recebedor, 'list="rtrLR" autocomplete="off"')}${f('romaneio', 'Romaneio (opcional)', r.romaneio, 'placeholder="ROM-0001"')}</div>${f('obs', 'Observação', r.obs, '', 'full')}<small>Preencher a data de entrega finaliza o envio.</small></section>
+    <section><h5>3 · Datas e entrega</h5><div class="rtr-grid">${f('data_envio', 'Data de envio', r.data_envio, 'type="date"')}${f('data_previsao', 'Previsão de entrega', r.data_previsao, 'type="date"')}${f('data_entrega', 'Data de entrega', r.data_entrega, 'type="date"')}${f('recebedor', 'Recebedor', r.recebedor, 'list="rtrLR" autocomplete="off"')}${f('romaneio', 'Romaneio (opcional)', r.romaneio, 'placeholder="ROM-0001"')}</div>${f('obs', 'Observação', r.obs, '', 'full')}<small>Preencher a data de entrega finaliza o envio.</small></section>
   </div><div class="rd-ass-act"><button class="button ghost" data-x2>Cancelar</button>${id ? '' : '<button class="button ghost" data-ok2>Salvar e adicionar outro</button>'}<button class="button primary" data-ok>Salvar</button></div>`, 720);
   const v = n => terVal(bg, n), set = (n, x) => { bg.querySelector(`[name="${n}"]`).value = x; };
   const pinta = () => { bg.querySelectorAll('[data-tr]').forEach(b => b.classList.toggle('on', b.dataset.tr === v('transportadora'))); const t = v('transportadora'), c = v('codigo').trim(), lk = v('link').trim(); const mod = RTR.d.modelos[t] || ''; const url = lk || (mod ? mod.replace('{codigo}', encodeURIComponent(c)) : ''); bg.querySelector('#rtrLk').innerHTML = url ? `🔗 O botão Rastrear abrirá: <a href="${terH(url)}" target="_blank" rel="noopener noreferrer">${terH(url.length > 70 ? url.slice(0, 70) + '…' : url)}</a>` : (t ? 'Sem modelo de link para esta transportadora — cole um link próprio ou configure em ⚙.' : ''); };
@@ -121,7 +121,7 @@ function rtrForm(id, pre) {
   bg.querySelector('[name="fornecedor"]').onchange = () => { if (id || v('transportadora')) return; const h = RTR.d.rastreios.find(x => x.fornecedor === v('fornecedor') && x.transportadora); if (h) { set('transportadora', h.transportadora); pinta(); } };
   pinta(); if (pre && pre.codigo) { set('codigo', pre.codigo); bg.querySelector('[name="codigo"]').oninput(); } setTimeout(() => bg.querySelector(!id && !(pre && pre.codigo) ? '[name="fornecedor"]' : '[name="codigo"]').focus(), 50);
   const salvar = async (outro) => {
-    const b = { id: id || '' }; ['fornecedor', 'pedido', 'produto', 'transportadora', 'codigo', 'link', 'data_envio', 'data_entrega', 'recebedor', 'romaneio', 'obs'].forEach(n => b[n] = v(n));
+    const b = { id: id || '' }; ['fornecedor', 'pedido', 'produto', 'transportadora', 'codigo', 'link', 'data_envio', 'data_previsao', 'data_entrega', 'recebedor', 'romaneio', 'obs'].forEach(n => b[n] = v(n));
     try { const d = await terPost('rastreios_salvar', b); terToast(d.avisos && d.avisos.length ? 'Salvo. Atenção: ' + d.avisos.join('; ') : '✔ Rastreio salvo'); bg.remove(); RTR.sit = 'ABERTOS'; await rtrCarregar(); if (outro) rtrForm(null, { fornecedor: b.fornecedor, transportadora: b.transportadora, pedido: '' }); } catch (e) { terToast(e.message, true); }
   };
   bg.querySelector('[data-ok]').onclick = () => salvar(false);
@@ -131,7 +131,7 @@ function rtrDetalhe(id) {
   const r = RTR.d.rastreios.find(x => x.id === id); if (!r) return; const ent = r.situacao === 'ENTREGUE';
   const pas = (ok, t, d, sub) => `<li class="${ok ? 'ok' : ''}"><i></i><b>${t}</b><span>${d}</span>${sub ? `<small>${sub}</small>` : ''}</li>`;
   const bg = terModal(terH(r.produto || r.id), `<p class="rtr-dp">${terH(r.fornecedor)}${r.pedido ? ' · PC ' + terH(r.pedido) : ''} · <small>${terH(r.id)}</small></p>
-   <ul class="rtr-tl">${pas(true, 'Enviado', rtrData(r.data_envio), terH(r.transportadora) + (r.codigo ? ' · ' + terH(r.codigo) : ''))}${pas(!ent, 'Em trânsito', ent ? 'concluído' : (r.dias != null ? r.dias + ' dia(s)' : ''), r.atrasado ? '⚠ acima do prazo' : '')}${pas(ent, 'Entregue', ent ? rtrData(r.data_entrega) : 'aguardando', ent && r.recebedor ? 'Recebido por ' + terH(r.recebedor) : '')}</ul>
+   <ul class="rtr-tl">${pas(true, 'Enviado', rtrData(r.data_envio), terH(r.transportadora) + (r.codigo ? ' · ' + terH(r.codigo) : ''))}${r.data_previsao ? pas(false, 'Previsão de entrega', rtrData(r.data_previsao), r.atrasado ? `⚠ ${r.dias_atraso} dia(s) de atraso` : ent ? (r.no_prazo ? 'entregue no prazo' : `entregue com ${r.dias_atraso} dia(s) de atraso`) : '') : ''}${pas(!ent, 'Em trânsito', ent ? 'concluído' : (r.dias != null ? r.dias + ' dia(s)' : ''), r.atrasado ? '⚠ acima do prazo' : '')}${pas(ent, 'Entregue', ent ? rtrData(r.data_entrega) : 'aguardando', ent && r.recebedor ? 'Recebido por ' + terH(r.recebedor) : '')}</ul>
    ${r.obs ? `<p class="rtr-dp">📝 ${terH(r.obs)}</p>` : ''}${r.conferir.length ? `<div class="rtr-warn">⚠ ${r.conferir.map(terH).join(' · ')}</div>` : ''}
    <div class="rd-ass-act">${r.link_final ? `<a class="button ghost" href="${terH(r.link_final)}" target="_blank" rel="noopener noreferrer">🔎 Rastrear</a>` : ''}${rtrPode('editar') ? `<button class="button ghost" data-ed>✏ Editar</button>` : ''}<button class="button primary" data-x2>Fechar</button></div>`, 520);
   const e = bg.querySelector('[data-ed]'); if (e) e.onclick = () => { bg.remove(); rtrForm(id); };
@@ -157,4 +157,41 @@ function rtrConfig() {
     const modelos = {}; bg.querySelectorAll('[data-m]').forEach(i => modelos[i.dataset.m] = i.value);
     try { await terPost('rastreios_config', { prazo_alerta_dias: +terVal(bg, 'dias'), modelos }); terToast('Configuração salva'); bg.remove(); await rtrCarregar(); } catch (e) { terToast(e.message, true); }
   };
+}
+
+/* ---------- Relatório (impressão / PDF) ---------- */
+function rtrRelatorio() {
+  const ini = RTR.d.hoje.slice(0, 8) + '01', trs = RTR.d.transportadoras.map(t => `<option>${terH(t)}</option>`).join('');
+  const bg = terModal('Relatório de rastreios', `<p><small>Gera uma página pronta para imprimir ou salvar em PDF (no diálogo de impressão, escolha “Salvar como PDF”).</small></p>
+  <div class="rtr-grid"><label>Enviados de<input type="date" name="i" value="${ini}"></label><label>até<input type="date" name="f" value="${RTR.d.hoje}"></label>
+  <label>Transportadora<select name="t"><option value="">Todas</option>${trs}</select></label>
+  <label>Situação<select name="s"><option value="">Todas</option><option value="EM_TRANSITO">Em trânsito</option><option value="ENTREGUE">Entregues</option><option value="ATRASADOS">Atrasados / fora do prazo</option></select></label></div>
+  <div class="rd-ass-act"><button class="button ghost" data-x2>Cancelar</button><button class="button ghost" data-todo>Período todo</button><button class="button primary" data-ok>📄 Gerar relatório</button></div>`, 560);
+  bg.querySelector('[data-todo]').onclick = () => { bg.querySelector('[name=i]').value = ''; bg.querySelector('[name=f]').value = ''; };
+  bg.querySelector('[data-ok]').onclick = () => { rtrRelGerar({ i: terVal(bg, 'i'), f: terVal(bg, 'f'), t: terVal(bg, 't'), s: terVal(bg, 's') }); bg.remove(); };
+}
+function rtrRelGerar(F) {
+  const L = RTR.d.rastreios.filter(r => (!F.i || r.data_envio >= F.i) && (!F.f || r.data_envio <= F.f) && (!F.t || r.transportadora === F.t) &&
+    (!F.s || (F.s === 'ATRASADOS' ? (r.atrasado || (r.situacao === 'ENTREGUE' && r.no_prazo === false)) : r.situacao === F.s))).sort((a, b) => (a.data_envio || '').localeCompare(b.data_envio || ''));
+  if (!L.length) { terToast('Nenhum envio neste filtro.', true); return; }
+  const E = L.filter(r => r.situacao === 'ENTREGUE'), A = L.filter(r => r.situacao !== 'ENTREGUE'), V = E.filter(r => r.dias != null && r.dias >= 0 && r.dias <= 30);
+  const med = V.length ? (V.reduce((a, r) => a + r.dias, 0) / V.length).toFixed(1).replace('.', ',') : '—', pz = E.filter(r => r.no_prazo != null), np = pz.length ? Math.round(100 * pz.filter(r => r.no_prazo).length / pz.length) : null;
+  const por = {}; L.forEach(r => { const t = r.transportadora || '(sem transportadora)', o = por[t] = por[t] || { n: 0, e: 0, a: 0, s: 0, k: 0, p: 0, np: 0 }; o.n++; if (r.situacao === 'ENTREGUE') { o.e++; if (r.dias != null && r.dias >= 0 && r.dias <= 30) { o.s += r.dias; o.k++; } if (r.no_prazo != null) { o.p++; if (r.no_prazo) o.np++; } } else o.a++; });
+  const per = `${F.i ? rtrData(F.i) : 'início'} a ${F.f ? rtrData(F.f) : 'hoje'}`, h = terH;
+  const linhas = L.map(r => `<tr><td>${rtrData(r.data_envio)}</td><td>${h(r.fornecedor)}${r.pedido ? '<br><small>PC ' + h(r.pedido) + '</small>' : ''}</td><td>${h(r.produto)}</td><td>${h(r.transportadora)}<br><small>${h(r.codigo) || 'sem código'}</small></td><td>${rtrData(r.data_previsao)}</td><td>${rtrData(r.data_entrega)}</td><td>${r.dias ?? '—'}</td><td class="${r.atrasado || r.no_prazo === false ? 'r' : ''}">${r.situacao === 'ENTREGUE' ? (r.no_prazo === false ? `Entregue (+${r.dias_atraso}d)` : 'Entregue') : (r.atrasado ? 'Atrasado' : 'Em trânsito')}${r.recebedor ? '<br><small>' + h(r.recebedor) + '</small>' : ''}</td></tr>`).join('');
+  const tab = Object.entries(por).sort((a, b) => b[1].n - a[1].n).map(([t, o]) => `<tr><td>${h(t)}</td><td>${o.n}</td><td>${o.e}</td><td>${o.a}</td><td>${o.k ? (o.s / o.k).toFixed(1).replace('.', ',') : '—'}</td><td>${o.p ? Math.round(100 * o.np / o.p) + '%' : '—'}</td></tr>`).join('');
+  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório de rastreios</title><style>
+  *{box-sizing:border-box}body{font:12px/1.45 Inter,Arial,sans-serif;color:#14213a;margin:0;padding:28px 34px}h1{margin:0;font-size:22px;letter-spacing:-.02em}.sub{color:#5a6b86;margin:3px 0 18px}
+  .k{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px}.k div{border:1px solid #d6deea;border-radius:10px;padding:10px 12px;background:#f6f9fd}.k b{display:block;font-size:22px;letter-spacing:-.03em}.k span{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#5a6b86}
+  h2{font-size:13px;margin:18px 0 6px;text-transform:uppercase;letter-spacing:.08em;color:#2a5fb8}table{width:100%;border-collapse:collapse}th{background:#e8eef8;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;padding:7px 8px}td{padding:6px 8px;border-top:1px solid #dfe6f1;vertical-align:top}small{color:#6b7b95}.r{color:#b42318;font-weight:700}
+  .bar{display:flex;gap:10px;margin-bottom:14px}.bar button{padding:8px 14px;border:0;border-radius:8px;background:#2a5fb8;color:#fff;font-weight:700;cursor:pointer}.foot{margin-top:18px;color:#6b7b95;font-size:10px}
+  @media print{.bar{display:none}body{padding:0}tr{break-inside:avoid}}</style></head><body>
+  <div class="bar"><button onclick="print()">🖨 Imprimir / Salvar PDF</button></div>
+  <h1>Relatório de rastreios — Drilling do Brasil</h1><div class="sub">Envios de ${per}${F.t ? ' · ' + h(F.t) : ''}${F.s ? ' · ' + ({ EM_TRANSITO: 'em trânsito', ENTREGUE: 'entregues', ATRASADOS: 'atrasados / fora do prazo' })[F.s] : ''} · emitido em ${rtrData(RTR.d.hoje)}</div>
+  <div class="k"><div><b>${L.length}</b><span>Envios</span></div><div><b>${E.length}</b><span>Entregues</span></div><div><b>${A.length}</b><span>Em trânsito</span></div><div><b>${med}</b><span>Prazo médio (dias)</span></div><div><b>${np == null ? '—' : np + '%'}</b><span>Entregues no prazo</span></div></div>
+  <h2>Por transportadora</h2><table><thead><tr><th>Transportadora</th><th>Envios</th><th>Entregues</th><th>Em trânsito</th><th>Prazo médio (d)</th><th>No prazo</th></tr></thead><tbody>${tab}</tbody></table>
+  <h2>Detalhamento</h2><table><thead><tr><th>Envio</th><th>Fornecedor</th><th>Produto</th><th>Transportadora / código</th><th>Previsão</th><th>Entrega</th><th>Dias</th><th>Situação</th></tr></thead><tbody>${linhas}</tbody></table>
+  <div class="foot">Prazo médio considera entregas de até 30 dias. “No prazo” usa a previsão de entrega quando informada; sem previsão, considera o limite de ${RTR.d.config.prazo_alerta_dias} dias.</div></body></html>`;
+  const w = window.open('', '_blank'); if (!w) { terToast('Libere pop-ups para abrir o relatório.', true); return; }
+  w.document.open(); w.document.write(html); w.document.close();
 }

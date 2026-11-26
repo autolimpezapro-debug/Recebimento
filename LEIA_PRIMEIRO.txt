@@ -1,3 +1,5 @@
+v3.64.3 — Rastreios: previsão de entrega (atraso e 'no prazo' calculados pela previsão) e Relatório imprimível/PDF por período, transportadora e situação.
+
 v3.64.2 — Rastreios: adição rápida (campo ⚡ + tecla N), formulário guiado com transportadora por chips, detecção automática de Correios, autocompletar, 'Salvar e adicionar outro', Duplicar, faixa 'Precisa de atenção', detalhe com linha do tempo, ordenação.
 
 v3.64.1 — Rastreios: layout premium (cabeçalho com indicadores, gráficos por mês/transportadora, filtros em abas, cartões com linha do tempo).

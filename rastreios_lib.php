@@ -86,6 +86,7 @@ function rtr_norm(array $in): array {
         'link'           => '',
         'data_envio'     => rtr_data($in['data_envio'] ?? ''),
         'data_entrega'   => rtr_data($in['data_entrega'] ?? ''),
+        'data_previsao'  => rtr_data($in['data_previsao'] ?? ''),
         'recebedor'      => prt_str($in['recebedor'] ?? '', 80),
         'romaneio'       => strtoupper(prt_str($in['romaneio'] ?? '', 20)),
         'obs'            => prt_str($in['obs'] ?? '', 300),
@@ -99,6 +100,8 @@ function rtr_norm(array $in): array {
     if ($r['data_envio'] === '') $av[] = 'sem data de envio válida';
     if (trim((string)($in['data_envio'] ?? '')) !== '' && $r['data_envio'] === '') $av[] = 'data de envio não reconhecida';
     if (trim((string)($in['data_entrega'] ?? '')) !== '' && $r['data_entrega'] === '') $av[] = 'data de entrega não reconhecida';
+    if (trim((string)($in['data_previsao'] ?? '')) !== '' && $r['data_previsao'] === '') $av[] = 'previsão de entrega não reconhecida';
+    if ($r['data_envio'] !== '' && $r['data_previsao'] !== '' && $r['data_previsao'] < $r['data_envio']) $av[] = 'previsão anterior ao envio';
     if ($r['data_envio'] !== '' && $r['data_entrega'] !== '' && $r['data_entrega'] < $r['data_envio']) $av[] = 'entrega anterior ao envio';
     return [$r, $av];
 }
@@ -110,7 +113,16 @@ function rtr_derivar(array $d, array $r, string $hoje): array {
     $fim = $ent ? ($r['data_entrega'] ?: '') : $hoje;
     $r['dias'] = rtr_dias((string)($r['data_envio'] ?? ''), $fim);
     $lim = (int)($d['config']['prazo_alerta_dias'] ?? 7);
-    $r['atrasado'] = !$ent && $r['dias'] !== null && $r['dias'] > $lim;
+    $prev = (string)($r['data_previsao'] ?? '');
+    if ($prev !== '') {
+        $r['atrasado'] = !$ent && $hoje > $prev;
+        $r['dias_atraso'] = $ent ? max(0, (int)rtr_dias($prev, (string)$r['data_entrega'])) : max(0, (int)rtr_dias($prev, $hoje));
+        $r['no_prazo'] = $ent ? ($r['data_entrega'] !== '' && $r['data_entrega'] <= $prev) : null;
+    } else {
+        $r['atrasado'] = !$ent && $r['dias'] !== null && $r['dias'] > $lim;
+        $r['dias_atraso'] = 0;
+        $r['no_prazo'] = $ent && $r['dias'] !== null ? ($r['dias'] <= $lim) : null;
+    }
     $url = (string)($r['link'] ?? '');
     $mod = rtr_modelo($d, (string)($r['transportadora'] ?? ''));
     $r['link_final'] = $url !== '' ? $url : ($mod !== '' ? str_replace('{codigo}', rawurlencode((string)$r['codigo']), $mod) : '');
@@ -119,6 +131,7 @@ function rtr_derivar(array $d, array $r, string $hoje): array {
     if (($r['transportadora'] ?? '') === '') $c[] = 'Sem transportadora';
     if ($r['codigo'] !== '' && preg_match('/objetos=([A-Z0-9]+)/i', $url, $m) && strcasecmp($m[1], $r['codigo']) !== 0) $c[] = "O link aponta para outro código ({$m[1]})";
     if (($r['data_envio'] ?? '') !== '' && ($r['data_entrega'] ?? '') !== '' && $r['data_entrega'] < $r['data_envio']) $c[] = 'Entrega anterior ao envio';
+    if ($prev !== '' && ($r['data_envio'] ?? '') !== '' && $prev < $r['data_envio']) $c[] = 'Previsão anterior ao envio';
     if ($ent && $r['dias'] !== null && $r['dias'] > 30) $c[] = "Entregue em {$r['dias']} dias (confira as datas)";
     if ($ent && ($r['recebedor'] ?? '') === '') $c[] = 'Entregue sem recebedor';
     if ($ent && ($r['data_entrega'] ?? '') === '') $c[] = 'Finalizado sem data de entrega';
@@ -193,7 +206,7 @@ function rtr_config(array &$d, array $in): array {
 }
 
 /* ---------- Importação colando linhas do Excel ---------- */
-const RTR_CAMPOS = ['fornecedor', 'pedido', 'produto', 'transportadora', 'codigo', 'link', 'data_envio', 'data_entrega', 'finalizado', 'recebedor'];
+const RTR_CAMPOS = ['fornecedor', 'pedido', 'produto', 'transportadora', 'codigo', 'link', 'data_envio', 'data_entrega', 'finalizado', 'recebedor'];   // modelo antigo de 10 colunas
 function rtr_cab(string $h): string {
     $h = mb_strtolower(trim($h)); $h = strtr($h, ['á' => 'a', 'ã' => 'a', 'â' => 'a', 'é' => 'e', 'ê' => 'e', 'í' => 'i', 'ó' => 'o', 'ô' => 'o', 'õ' => 'o', 'ú' => 'u', 'ç' => 'c']);
     if (str_contains($h, 'fornecedor')) return 'fornecedor';
@@ -203,6 +216,7 @@ function rtr_cab(string $h): string {
     if (str_contains($h, 'codigo') || str_contains($h, 'rastreio') && !str_contains($h, 'site')) return 'codigo';
     if (str_contains($h, 'site') || str_contains($h, 'link')) return 'link';
     if (str_contains($h, 'envio')) return 'data_envio';
+    if (str_contains($h, 'previs')) return 'data_previsao';
     if (str_contains($h, 'entrega')) return 'data_entrega';
     if (str_contains($h, 'finaliz')) return 'finalizado';
     if (str_contains($h, 'recebedor')) return 'recebedor';
@@ -252,9 +266,9 @@ function rtr_importar(array &$d, string $texto, string $user): array {
 
 function rtr_csv(array $d): string {
     $p = rtr_painel($d); $o = fopen('php://temp', 'w+');
-    fputcsv($o, ['ID', 'Fornecedor', 'Nº pedido', 'Produto', 'Transportadora', 'Código de rastreio', 'Link', 'Data envio', 'Data entrega', 'Dias', 'Situação', 'Recebedor', 'Romaneio', 'Observação'], ';');
+    fputcsv($o, ['ID', 'Fornecedor', 'Nº pedido', 'Produto', 'Transportadora', 'Código de rastreio', 'Link', 'Data envio', 'Previsão de entrega', 'Data entrega', 'Dias', 'Dias de atraso', 'Situação', 'Recebedor', 'Romaneio', 'Observação'], ';');
     foreach ($p['rastreios'] as $r) fputcsv($o, [$r['id'], $r['fornecedor'], $r['pedido'], $r['produto'], $r['transportadora'], $r['codigo'], $r['link_final'],
-        $r['data_envio'] ? date('d/m/Y', strtotime($r['data_envio'])) : '', $r['data_entrega'] ? date('d/m/Y', strtotime($r['data_entrega'])) : '', $r['dias'] ?? '',
+        $r['data_envio'] ? date('d/m/Y', strtotime($r['data_envio'])) : '', $r['data_previsao'] ? date('d/m/Y', strtotime($r['data_previsao'])) : '', $r['data_entrega'] ? date('d/m/Y', strtotime($r['data_entrega'])) : '', $r['dias'] ?? '', $r['dias_atraso'] ?: '',
         $r['situacao'] === 'ENTREGUE' ? 'Entregue' : ($r['atrasado'] ? 'Em trânsito (atrasado)' : 'Em trânsito'), $r['recebedor'], $r['romaneio'], $r['obs']], ';');
     rewind($o); return "\xEF\xBB\xBF" . stream_get_contents($o);
 }
