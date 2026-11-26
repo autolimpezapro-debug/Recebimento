@@ -1111,7 +1111,7 @@ async function estSapLer() {
 }
 
 function estSapOpcoes() {
-  return { arquivo: EST_SAP.arquivo, deposito: EST_SAP.deposito, data_base: estEl('estSapData').value, somar_pedidos: estEl('estSapSomar').checked };
+  return { arquivo: EST_SAP.arquivo, deposito: EST_SAP.deposito, data_base: estEl('estSapData').value, somar_pedidos: estEl('estSapSomar').checked, incluir_importados: !!estEl('estSapImp')?.checked, zerar_fora: !!estEl('estSapZero')?.checked };
 }
 
 async function estSapPrevia() {
@@ -1135,6 +1135,7 @@ async function estSapPrevia() {
         <div class="kpi ${t.divergencias ? 'warn' : ''}"><span>Divergências</span><strong>${p.primeira_carga ? '—' : estNum(t.divergencias)}</strong><small>${p.primeira_carga ? 'carga inicial: sem comparação' : 'de ' + estNum(t.conferidos) + ' conferidos'}</small></div>
         <div class="kpi ${t.valor_divergencia_neg ? 'bad' : ''}"><span>Falta / sobra (R$)</span><strong>${p.primeira_carga ? '—' : estMoeda(t.valor_divergencia_neg) + ' / ' + estMoeda(t.valor_divergencia_pos)}</strong><small>SAP × sistema</small></div>
       </div>
+      ${p.zerar?.length ? `<div class="panel" style="border-color:#6b3544;background:#2a1820;margin-bottom:14px;font-size:12px"><b>${estNum(p.zerar.length)} item(ns) serão ZERADOS</b> (têm saldo no sistema e não constam na planilha do SAP):<div style="max-height:170px;overflow:auto;margin-top:8px"><table class="orders-table"><thead><tr><th>Código</th><th>Descrição</th><th>Saldo hoje</th></tr></thead><tbody>${p.zerar.map(z => `<tr><td><code>${estHtml(z.codigo)}</code></td><td>${estHtml(z.descricao)}</td><td>${estNum(z.saldo)} ${estHtml(z.unidade)}</td></tr>`).join('')}</tbody></table></div></div>` : ''}
       ${aviso.length ? `<div class="panel" style="border-color:#695638;background:#2b2618;margin-bottom:14px;font-size:12px;line-height:1.6">${aviso.map(a => '⚠ ' + a).join('<br>')}</div>` : ''}
       <div class="table-panel"><div class="table-scroll" style="max-height:460px"><table class="orders-table">
         <thead><tr><th>Código</th><th>Descrição</th><th>SAP</th><th>+ PCs</th><th>Saldo hoje</th><th>Saldo final</th><th>Preço</th><th>Valor final</th><th>Diferença</th><th>Situação</th></tr></thead>

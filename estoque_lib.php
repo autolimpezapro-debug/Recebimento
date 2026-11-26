@@ -1522,8 +1522,10 @@ function est_sap_conciliar(array &$db, array $rows, array $opt, $usuario, $aplic
     $detalhe = [];
     $unificar = [];
     $tot['importados_preservados'] = 0;
+    $inclImp = !empty($opt['incluir_importados']);   // v3.64.5: SAP é a verdade também para os itens importados
+    $preserv = [];
     foreach ($linhas as $cod => $l) {
-        if (!empty($db['itens'][$cod]['importado'])) { $tot['importados_preservados']++; unset($linhas[$cod]); continue; }
+        if (!$inclImp && !empty($db['itens'][$cod]['importado'])) { $tot['importados_preservados']++; $preserv[$cod] = true; unset($linhas[$cod]); continue; }
     }
     foreach ($linhas as $cod => $l) {
         $atual = $db['itens'][$cod] ?? null;
@@ -1564,11 +1566,16 @@ function est_sap_conciliar(array &$db, array $rows, array $opt, $usuario, $aplic
                 'possivel_duplicidade' => $dupl];
         }
     }
-    foreach ($db['itens'] as $c => $it) if (!isset($linhas[$c]) && !isset($unificar[$c]) && (float)$it['saldo'] > 0) $tot['fora_da_planilha']++;
+    $zerar = [];   // v3.64.5: a planilha do SAP lista só itens com saldo — o que tem saldo aqui e não está lá é zero no SAP
+    foreach ($db['itens'] as $c => $it) if (!isset($linhas[$c]) && !isset($unificar[$c]) && (float)$it['saldo'] > 0) {
+        $tot['fora_da_planilha']++;
+        if (!empty($opt['zerar_fora']) && !isset($preserv[$c]) && ($inclImp || empty($it['importado']))) $zerar[] = ['codigo' => $c, 'descricao' => (string)$it['descricao'], 'saldo' => (float)$it['saldo'], 'unidade' => (string)($it['unidade'] ?? '')];
+    }
+    $tot['a_zerar'] = count($zerar);
     foreach (['valor_sap', 'pedidos_valor', 'valor_final', 'valor_divergencia_pos', 'valor_divergencia_neg'] as $k) $tot[$k] = round($tot[$k], 2);
     usort($detalhe, fn($a, $b) => $b['valor_final'] <=> $a['valor_final']);
     $res = ['id' => $id, 'primeira_carga' => $primeira, 'somar_pedidos' => $somar, 'totais' => $tot,
-            'duplicados' => array_slice($dup, 0, 50), 'linhas' => $detalhe];
+            'duplicados' => array_slice($dup, 0, 50), 'linhas' => $detalhe, 'zerar' => $zerar];
     if (!$aplicar) { $res['linhas'] = array_slice($detalhe, 0, 400); $res['linhas_total'] = count($detalhe); return $res; }
 
     // ---------- gravação ----------
@@ -1608,8 +1615,14 @@ function est_sap_conciliar(array &$db, array $rows, array $opt, $usuario, $aplic
             'diferenca_inventario' => $d['diferenca'] ?? 0, 'documento' => $id, 'usuario' => $usuario,
             'observacao' => 'Inventário SAP ' . ($opt['deposito'] ?? '') . ': ' . est_num($l['qtd']) . ' + PCs ' . est_num($d['pedidos'] ?? 0)]);
     }
+    foreach ($zerar as $z) {
+        est_apply_movement($db, ['tipo' => 'INVENTARIO_SAP', 'codigo' => $z['codigo'], 'quantidade' => round(0 - $z['saldo'], 4),
+            'saldo_alvo' => 0, 'qtd_sap' => 0, 'pedidos_somados' => 0, 'documento' => $id, 'usuario' => $usuario,
+            'observacao' => 'Inventário SAP: item não consta na planilha (saldo SAP = 0); saldo anterior ' . est_num($z['saldo'])]);
+    }
     $reg = $res;
-    unset($reg['linhas']);
+    unset($reg['linhas'], $reg['zerar']);
+    $reg['zerados'] = count($zerar);
     $reg['em'] = est_now();
     $reg['usuario'] = $usuario;
     $reg['arquivo'] = est_str($opt['arquivo'] ?? '', 200);
