@@ -1,5 +1,5 @@
 /* Rastreios de envios (Terceiros) — v3.64.0. Usa terApi/terPost/terModal/terH de terceiros.js. */
-const RTR = { d: null, q: '', sit: 'ABERTOS', tr: '', aba: 'romaneios' };
+const RTR = { d: null, q: '', sit: 'ABERTOS', tr: '', ord: 'recentes', aba: 'romaneios' };
 const rtrPode = op => typeof rdaPermite !== 'function' || rdaPermite('estoque', op);
 const rtrData = s => (s ? s.split('-').reverse().join('/') : '—');
 const rtrEl = id => document.getElementById(id);
@@ -19,7 +19,8 @@ async function rtrCarregar() {
 }
 function rtrFiltrados() {
   const q = RTR.q.trim().toLowerCase();
-  return RTR.d.rastreios.filter(r =>
+  const o = { recentes: (a, b) => (b.data_envio || '').localeCompare(a.data_envio || ''), antigos: (a, b) => (a.data_envio || '').localeCompare(b.data_envio || ''), prazo: (a, b) => (b.dias ?? -1) - (a.dias ?? -1) }[RTR.ord];
+  return RTR.d.rastreios.slice().sort(o).filter(r =>
     (RTR.sit === 'TODOS' || (RTR.sit === 'ABERTOS' && r.situacao === 'EM_TRANSITO') || (RTR.sit === 'ATRASADOS' && r.atrasado) || (RTR.sit === 'ENTREGUES' && r.situacao === 'ENTREGUE') || (RTR.sit === 'CONFERIR' && r.conferir.length)) &&
     (!RTR.tr || r.transportadora === RTR.tr) &&
     (!q || [r.id, r.fornecedor, r.pedido, r.produto, r.codigo, r.transportadora, r.recebedor, r.romaneio].join(' ').toLowerCase().includes(q)));
@@ -43,15 +44,20 @@ function rtrRender() {
   rtrEl('terRastreios').innerHTML = `
   <div class="rtr-hero"><div><div class="rtr-eyebrow">CENTRAL DE RASTREIOS</div><h2>${ab.length ? `${ab.length} envio${ab.length > 1 ? 's' : ''} a caminho` : 'Nenhum envio em trânsito'}</h2><p>${at.length ? `<b class="rtr-bad">${at.length} com atraso</b> · ` : ''}${L.length} envios controlados${med != null ? ` · prazo médio de entrega ${med.toFixed(1).replace('.', ',')} dias` : ''}</p></div>
     <div class="rtr-ring" style="--p:${pont}"><div><b>${pont}%</b><small>entregues em até ${RTR.d.config.prazo_alerta_dias} dias</small></div></div></div>
+  ${rtrPode('criar') ? `<div class="rtr-quick"><span>⚡</span><input id="rtrQuick" placeholder="Novo envio: cole ou digite o código de rastreio e tecle Enter…" autocomplete="off"><button class="button primary" id="rtrQuickBtn">Adicionar</button><kbd title="Atalho de teclado">N</kbd></div>` : ''}
+  ${rtrAtencao(L)}
   <div class="rtr-kpis">${kpi('🚚', ab.length, 'Em trânsito', ab.length ? 'aguardando entrega' : 'tudo entregue', ab.length ? 'warn' : '')}${kpi('⏱', at.length, 'Atrasados', `mais de ${RTR.d.config.prazo_alerta_dias} dias`, at.length ? 'bad' : '')}${kpi('✔', entm.length, 'Entregues no mês', `${ent.length} no total`, 'ok')}${kpi('⌛', med != null ? med.toFixed(1).replace('.', ',') : '—', 'Prazo médio (dias)', 'envio → entrega')}${kpi('⚠', conf.length, 'A conferir', 'dados para revisar', conf.length ? 'warn' : '')}</div>
   <div class="rtr-panels"><section class="rtr-panel"><h3>Envios por mês</h3><div class="rtr-bars">${ms.map(m => `<div><b>${meses[m]}</b><i style="height:${Math.max(6, 100 * meses[m] / mx)}%"></i><small>${rtrMes(m)}</small></div>`).join('')}</div></section>
     <section class="rtr-panel"><h3>Por transportadora <small>envios · prazo médio</small></h3><div class="rtr-carr">${pt.map(([t, o]) => `<div><span><i style="background:${rtrCor(t)}"></i>${terH(t)}</span><div class="rtr-track"><i style="width:${100 * o.n / mxt}%;background:${rtrCor(t)}"></i></div><b>${o.n}</b><small>${o.k ? (o.soma / o.k).toFixed(1).replace('.', ',') + ' d' : '—'}${o.ab ? ` · ${o.ab} aberto${o.ab > 1 ? 's' : ''}` : ''}</small></div>`).join('')}</div><small class="rtr-note">Prazo médio considera entregas de até 30 dias.</small></section></div>
   <div class="rtr-bar"><div class="rtr-seg">${sit('ABERTOS', 'Em trânsito', ab.length)}${sit('ATRASADOS', 'Atrasados', at.length)}${sit('ENTREGUES', 'Entregues', ent.length)}${sit('CONFERIR', 'A conferir', conf.length)}${sit('TODOS', 'Todos', L.length)}</div>
-    <div class="rtr-tools"><input id="rtrBusca" type="search" placeholder="🔎  Buscar código, fornecedor, PC, produto…" value="${terH(RTR.q)}"><select id="rtrTr"><option value="">Todas as transportadoras</option>${trs}</select>
+    <div class="rtr-tools"><input id="rtrBusca" type="search" placeholder="🔎  Buscar código, fornecedor, PC, produto…" value="${terH(RTR.q)}"><select id="rtrTr"><option value="">Todas as transportadoras</option>${trs}</select><select id="rtrOrd" title="Ordenar"><option value="recentes" ${RTR.ord === 'recentes' ? 'selected' : ''}>Mais recentes</option><option value="antigos" ${RTR.ord === 'antigos' ? 'selected' : ''}>Mais antigos</option><option value="prazo" ${RTR.ord === 'prazo' ? 'selected' : ''}>Maior prazo</option></select>
     <button class="button ghost" onclick="rtrCsv()">⬇ CSV</button>${rtrPode('criar') ? `<button class="button ghost" onclick="rtrImportar()">📋 Importar</button><button class="button primary" onclick="rtrForm()">＋ Novo rastreio</button>` : ''}${rtrPode('admin') ? `<button class="button ghost" onclick="rtrConfig()" title="Configurar">⚙</button>` : ''}</div></div>
   <div id="rtrLista"></div>`;
   rtrEl('rtrBusca').oninput = e => { RTR.q = e.target.value; rtrLista(); };
   rtrEl('rtrTr').onchange = e => { RTR.tr = e.target.value; rtrLista(); };
+  rtrEl('rtrOrd').onchange = e => { RTR.ord = e.target.value; rtrLista(); };
+  const qk = rtrEl('rtrQuick'); if (qk) { const go = () => { const v = qk.value.trim(); if (v) { qk.value = ''; rtrForm(null, { codigo: v }); } else rtrForm(); }; qk.onkeydown = e => { if (e.key === 'Enter') go(); }; rtrEl('rtrQuickBtn').onclick = go; }
+  document.querySelectorAll('#terRastreios [data-foco]').forEach(b => b.onclick = () => { RTR.sit = b.dataset.foco; rtrRender(); });
   document.querySelectorAll('#terRastreios [data-sit]').forEach(b => b.onclick = () => { RTR.sit = b.dataset.sit; document.querySelectorAll('#terRastreios [data-sit]').forEach(x => x.classList.toggle('on', x === b)); rtrLista(); });
   rtrLista();
 }
@@ -64,10 +70,10 @@ function rtrLista() {
     const pct = ent ? 100 : Math.min(92, Math.max(8, 100 * (r.dias || 0) / lim * .8));
     const st = ent ? '<span class="rtr-tag ok">Entregue</span>' : (r.atrasado ? '<span class="rtr-tag bad">Atrasado</span>' : '<span class="rtr-tag warn">Em trânsito</span>');
     const lk = r.link_final ? `<a class="button ghost" href="${terH(r.link_final)}" target="_blank" rel="noopener noreferrer">🔎 Rastrear</a>` : '';
-    const ac = pode ? (ent ? `<button class="button ghost" onclick="rtrReabrir('${id}')" title="Reabrir">↩</button>` : `<button class="button primary" onclick="rtrEntregar('${id}')">✔ Entregue</button>`) + `<button class="button ghost" onclick="rtrForm('${id}')" title="Editar">✏</button>` : '';
+    const ac = pode ? (ent ? `<button class="button ghost" onclick="rtrReabrir('${id}')" title="Reabrir">↩</button>` : `<button class="button primary" onclick="rtrEntregar('${id}')">✔ Entregue</button>`) + `<button class="button ghost" onclick="rtrForm('${id}')" title="Editar">✏</button>` + (rtrPode('criar') ? `<button class="button ghost" onclick="rtrDup('${id}')" title="Duplicar: novo envio com os mesmos dados">⧉ Duplicar</button>` : '') : '';
     return `<article class="rtr-card ${r.atrasado ? 'late' : ''} ${ent ? 'done' : ''}" style="--c:${cor}">
       <div class="rtr-main"><div class="rtr-top">${st}<span class="rtr-carrier" style="--c:${cor}">${terH(r.transportadora) || 'sem transportadora'}</span>${r.codigo ? `<code class="rtr-code" title="Copiar" onclick="navigator.clipboard&&navigator.clipboard.writeText('${terH(r.codigo)}');terToast('Código copiado')">${terH(r.codigo)}</code>` : '<span class="rtr-nocode">sem código</span>'}</div>
-        <h4>${terH(r.produto) || '—'}</h4><p>${terH(r.fornecedor) || '—'}${r.pedido ? ` · PC ${terH(r.pedido)}` : ''}${r.romaneio ? ` · ${terH(r.romaneio)}` : ''} <small>${id}</small></p></div>
+        <h4 class="rtr-tit" onclick="rtrDetalhe('${id}')" title="Ver detalhes">${terH(r.produto) || '—'}</h4><p>${terH(r.fornecedor) || '—'}${r.pedido ? ` · PC ${terH(r.pedido)}` : ''}${r.romaneio ? ` · ${terH(r.romaneio)}` : ''} <small>${id}</small></p></div>
       <div class="rtr-line"><div class="rtr-dates"><span>${rtrData(r.data_envio)}</span><b>${r.dias != null ? r.dias + (r.dias === 1 ? ' dia' : ' dias') : ''}</b><span>${ent ? rtrData(r.data_entrega) : 'a caminho'}</span></div><div class="rtr-prog"><i style="width:${pct}%"></i></div>${ent && r.recebedor ? `<small>Recebido por ${terH(r.recebedor)}</small>` : ''}</div>
       <div class="rtr-ac">${lk}${ac}</div>
       ${r.conferir.length ? `<div class="rtr-warn">⚠ ${r.conferir.map(terH).join(' · ')}</div>` : ''}</article>`;
@@ -81,16 +87,56 @@ function rtrEntregar(id) {
   bg.querySelector('[data-ok]').onclick = async () => { await rtrAcao('rastreios_entregar', { id, data_entrega: terVal(bg, 'd'), recebedor: terVal(bg, 'rc') }, 'Entrega registrada'); bg.remove(); };
 }
 function rtrReabrir(id) { if (confirm('Reabrir este envio (volta para “em trânsito”)?')) rtrAcao('rastreios_reabrir', { id }, 'Reaberto'); }
-function rtrForm(id) {
-  const r = id ? RTR.d.rastreios.find(x => x.id === id) : {}; r.finalizado = !!r.finalizado;
-  const f = (n, t, v, extra = '') => `<label>${t}<input name="${n}" value="${terH(v || '')}" ${extra}></label>`;
-  const dl = `<datalist id="rtrTrs">${RTR.d.transportadoras.map(t => `<option value="${terH(t)}">`).join('')}</datalist>`;
-  const bg = terModal(id ? 'Editar rastreio' : 'Novo rastreio', `${dl}<div class="rtr-grid">${f('fornecedor', 'Fornecedor', r.fornecedor)}${f('pedido', 'Nº do pedido (PC)', r.pedido)}${f('produto', 'Produto', r.produto)}${f('transportadora', 'Transportadora', r.transportadora, 'list="rtrTrs"')}${f('codigo', 'Código de rastreio', r.codigo)}${f('link', 'Link de rastreio (opcional)', r.link)}${f('data_envio', 'Data de envio', r.data_envio, 'type="date"')}${f('data_entrega', 'Data de entrega', r.data_entrega, 'type="date"')}${f('recebedor', 'Recebedor', r.recebedor)}${f('romaneio', 'Romaneio (opcional, ex.: ROM-0001)', r.romaneio)}</div>${f('obs', 'Observação', r.obs)}<small>Sem link, o sistema abre o site da transportadora. Com data de entrega o envio fica finalizado.</small><div class="rd-ass-act"><button class="button ghost" data-x2>Cancelar</button><button class="button primary" data-ok>Salvar</button></div>`, 640);
-  bg.querySelector('[data-ok]').onclick = async () => {
-    const b = { id: id || '' }; ['fornecedor', 'pedido', 'produto', 'transportadora', 'codigo', 'link', 'data_envio', 'data_entrega', 'recebedor', 'romaneio', 'obs'].forEach(n => b[n] = terVal(bg, n));
-    try { const d = await terPost('rastreios_salvar', b); terToast(d.avisos && d.avisos.length ? 'Salvo. Atenção: ' + d.avisos.join('; ') : 'Rastreio salvo'); bg.remove(); await rtrCarregar(); } catch (e) { terToast(e.message, true); }
-  };
+const rtrUnicos = k => [...new Set(RTR.d.rastreios.map(r => (r[k] || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+const rtrDetecta = c => { c = (c || '').trim().toUpperCase(); return /^[A-Z]{2}\d{9}[A-Z]{2}$/.test(c) ? 'Correios' : ''; };
+function rtrAtencao(L) {
+  const lim = RTR.d.config.prazo_alerta_dias, it = [];
+  const at = L.filter(r => r.atrasado).length, quase = L.filter(r => r.situacao === 'EM_TRANSITO' && !r.atrasado && r.dias != null && r.dias >= lim - 2).length;
+  const sem = L.filter(r => r.situacao === 'EM_TRANSITO' && !r.codigo).length, conf = L.filter(r => r.conferir.length).length;
+  if (at) it.push(`<button data-foco="ATRASADOS" class="bad">⏱ ${at} atrasado${at > 1 ? 's' : ''} — cobrar a transportadora</button>`);
+  if (quase) it.push(`<button data-foco="ABERTOS" class="warn">⏳ ${quase} perto do prazo</button>`);
+  if (sem) it.push(`<button data-foco="ABERTOS" class="warn">🏷 ${sem} em trânsito sem código</button>`);
+  if (conf) it.push(`<button data-foco="CONFERIR" class="info">⚠ ${conf} com dados a conferir</button>`);
+  return it.length ? `<div class="rtr-atencao"><b>Precisa de atenção</b>${it.join('')}</div>` : `<div class="rtr-atencao ok"><b>✔ Tudo em dia</b><span>Nenhum envio atrasado ou com pendência.</span></div>`;
 }
+function rtrDup(id) { const r = RTR.d.rastreios.find(x => x.id === id); if (r) rtrForm(null, { fornecedor: r.fornecedor, pedido: r.pedido, produto: r.produto, transportadora: r.transportadora, romaneio: r.romaneio }); }
+function rtrForm(id, pre) {
+  const r = id ? Object.assign({}, RTR.d.rastreios.find(x => x.id === id)) : Object.assign({ data_envio: RTR.d.hoje }, pre || {});
+  const dl = (n, k) => `<datalist id="${n}">${rtrUnicos(k).map(t => `<option value="${terH(t)}">`).join('')}</datalist>`;
+  const f = (n, t, v, extra = '', cls = '') => `<label class="${cls}">${t}<input name="${n}" value="${terH(v || '')}" ${extra}></label>`;
+  const chips = RTR.d.transportadoras.map(t => `<button type="button" class="rtr-chip" data-tr="${terH(t)}" style="--c:${rtrCor(t)}">${terH(t)}</button>`).join('');
+  const bg = terModal(id ? `Editar ${terH(id)}` : 'Novo rastreio', `${dl('rtrLF', 'fornecedor')}${dl('rtrLP', 'produto')}${dl('rtrLR', 'recebedor')}${dl('rtrTrs', 'transportadora')}
+  <div class="rtr-f">
+    <section><h5>1 · Envio</h5><div class="rtr-grid">${f('fornecedor', 'Fornecedor / origem', r.fornecedor, 'list="rtrLF" autocomplete="off"')}${f('pedido', 'Nº do pedido (PC)', r.pedido)}${f('produto', 'O que foi enviado', r.produto, 'list="rtrLP" autocomplete="off"', 'span2')}</div></section>
+    <section><h5>2 · Rastreio</h5><label>Transportadora<div class="rtr-chips">${chips}</div><input name="transportadora" value="${terH(r.transportadora || '')}" list="rtrTrs" placeholder="ou digite outra"></label>
+      <div class="rtr-grid">${f('codigo', 'Código de rastreio', r.codigo, 'autocomplete="off" autofocus')}${f('link', 'Link próprio (opcional)', r.link)}</div><div class="rtr-lk" id="rtrLk"></div></section>
+    <section><h5>3 · Datas e entrega</h5><div class="rtr-grid">${f('data_envio', 'Data de envio', r.data_envio, 'type="date"')}${f('data_entrega', 'Data de entrega', r.data_entrega, 'type="date"')}${f('recebedor', 'Recebedor', r.recebedor, 'list="rtrLR" autocomplete="off"')}${f('romaneio', 'Romaneio (opcional)', r.romaneio, 'placeholder="ROM-0001"')}</div>${f('obs', 'Observação', r.obs, '', 'full')}<small>Preencher a data de entrega finaliza o envio.</small></section>
+  </div><div class="rd-ass-act"><button class="button ghost" data-x2>Cancelar</button>${id ? '' : '<button class="button ghost" data-ok2>Salvar e adicionar outro</button>'}<button class="button primary" data-ok>Salvar</button></div>`, 720);
+  const v = n => terVal(bg, n), set = (n, x) => { bg.querySelector(`[name="${n}"]`).value = x; };
+  const pinta = () => { bg.querySelectorAll('[data-tr]').forEach(b => b.classList.toggle('on', b.dataset.tr === v('transportadora'))); const t = v('transportadora'), c = v('codigo').trim(), lk = v('link').trim(); const mod = RTR.d.modelos[t] || ''; const url = lk || (mod ? mod.replace('{codigo}', encodeURIComponent(c)) : ''); bg.querySelector('#rtrLk').innerHTML = url ? `🔗 O botão Rastrear abrirá: <a href="${terH(url)}" target="_blank" rel="noopener noreferrer">${terH(url.length > 70 ? url.slice(0, 70) + '…' : url)}</a>` : (t ? 'Sem modelo de link para esta transportadora — cole um link próprio ou configure em ⚙.' : ''); };
+  bg.querySelectorAll('[data-tr]').forEach(b => b.onclick = () => { set('transportadora', b.dataset.tr); pinta(); });
+  bg.querySelector('[name="codigo"]').oninput = () => { const d = rtrDetecta(v('codigo')); if (d && !v('transportadora')) set('transportadora', d); pinta(); };
+  ['transportadora', 'link'].forEach(n => bg.querySelector(`[name="${n}"]`).oninput = pinta);
+  // lembra do último fornecedor→produto/transportadora usados
+  bg.querySelector('[name="fornecedor"]').onchange = () => { if (id || v('transportadora')) return; const h = RTR.d.rastreios.find(x => x.fornecedor === v('fornecedor') && x.transportadora); if (h) { set('transportadora', h.transportadora); pinta(); } };
+  pinta(); if (pre && pre.codigo) { set('codigo', pre.codigo); bg.querySelector('[name="codigo"]').oninput(); } setTimeout(() => bg.querySelector(!id && !(pre && pre.codigo) ? '[name="fornecedor"]' : '[name="codigo"]').focus(), 50);
+  const salvar = async (outro) => {
+    const b = { id: id || '' }; ['fornecedor', 'pedido', 'produto', 'transportadora', 'codigo', 'link', 'data_envio', 'data_entrega', 'recebedor', 'romaneio', 'obs'].forEach(n => b[n] = v(n));
+    try { const d = await terPost('rastreios_salvar', b); terToast(d.avisos && d.avisos.length ? 'Salvo. Atenção: ' + d.avisos.join('; ') : '✔ Rastreio salvo'); bg.remove(); RTR.sit = 'ABERTOS'; await rtrCarregar(); if (outro) rtrForm(null, { fornecedor: b.fornecedor, transportadora: b.transportadora, pedido: '' }); } catch (e) { terToast(e.message, true); }
+  };
+  bg.querySelector('[data-ok]').onclick = () => salvar(false);
+  const o2 = bg.querySelector('[data-ok2]'); if (o2) o2.onclick = () => salvar(true);
+}
+function rtrDetalhe(id) {
+  const r = RTR.d.rastreios.find(x => x.id === id); if (!r) return; const ent = r.situacao === 'ENTREGUE';
+  const pas = (ok, t, d, sub) => `<li class="${ok ? 'ok' : ''}"><i></i><b>${t}</b><span>${d}</span>${sub ? `<small>${sub}</small>` : ''}</li>`;
+  const bg = terModal(terH(r.produto || r.id), `<p class="rtr-dp">${terH(r.fornecedor)}${r.pedido ? ' · PC ' + terH(r.pedido) : ''} · <small>${terH(r.id)}</small></p>
+   <ul class="rtr-tl">${pas(true, 'Enviado', rtrData(r.data_envio), terH(r.transportadora) + (r.codigo ? ' · ' + terH(r.codigo) : ''))}${pas(!ent, 'Em trânsito', ent ? 'concluído' : (r.dias != null ? r.dias + ' dia(s)' : ''), r.atrasado ? '⚠ acima do prazo' : '')}${pas(ent, 'Entregue', ent ? rtrData(r.data_entrega) : 'aguardando', ent && r.recebedor ? 'Recebido por ' + terH(r.recebedor) : '')}</ul>
+   ${r.obs ? `<p class="rtr-dp">📝 ${terH(r.obs)}</p>` : ''}${r.conferir.length ? `<div class="rtr-warn">⚠ ${r.conferir.map(terH).join(' · ')}</div>` : ''}
+   <div class="rd-ass-act">${r.link_final ? `<a class="button ghost" href="${terH(r.link_final)}" target="_blank" rel="noopener noreferrer">🔎 Rastrear</a>` : ''}${rtrPode('editar') ? `<button class="button ghost" data-ed>✏ Editar</button>` : ''}<button class="button primary" data-x2>Fechar</button></div>`, 520);
+  const e = bg.querySelector('[data-ed]'); if (e) e.onclick = () => { bg.remove(); rtrForm(id); };
+}
+document.addEventListener('keydown', e => { if (RTR.aba === 'rastreios' && e.key.toLowerCase() === 'n' && !e.ctrlKey && !e.metaKey && !e.altKey && !/INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || '') && !document.querySelector('.rd-ass-bg') && rtrPode('criar')) { e.preventDefault(); const q = rtrEl('rtrQuick'); if (q) q.focus(); } });
 function rtrImportar() {
   const bg = terModal('Importar da planilha', `<p>No Excel, selecione as linhas (com a linha de títulos: FORNECEDOR, Nº DE PEDIDO, PRODUTO, TRANSPORTADORA, CÓDIGO DE RASTREIO, SITE DE RASTREIO, DATA DE ENVIO, DATA DE ENTREGA, FINALIZADO, RECEBEDOR), copie e cole aqui. Nada é gravado antes de você conferir a prévia.</p><textarea name="t" rows="8" style="width:100%" placeholder="Cole aqui…"></textarea><div id="rtrPrev"></div><div class="rd-ass-act"><button class="button ghost" data-x2>Cancelar</button><button class="button ghost" data-pv>Pré-visualizar</button><button class="button primary" data-ok disabled>Importar</button></div>`, 900);
   const ok = bg.querySelector('[data-ok]'), pv = bg.querySelector('#rtrPrev');

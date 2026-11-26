@@ -49,7 +49,7 @@ function rtr_transportadora(string $t): string {
     $k = mb_strtolower($t);
     if (str_contains($k, 'correio')) return 'Correios';
     if (str_contains($k, 'azul')) return 'Azul Cargo';
-    if (str_contains($k, 'satilog')) return 'Satilog';
+    if (str_contains($k, 'satilog') || str_contains($k, 'satlog')) return 'Satilog';
     if (str_contains($k, 'rodonaves')) return 'Rodonaves';
     if (str_contains($k, 'gontijo')) return 'Gontijo';
     if (str_contains($k, 'andorinha') || str_contains($k, 'ssw')) return 'Andorinha Express';
@@ -90,6 +90,8 @@ function rtr_norm(array $in): array {
         'romaneio'       => strtoupper(prt_str($in['romaneio'] ?? '', 20)),
         'obs'            => prt_str($in['obs'] ?? '', 300),
     ];
+    if ($r['transportadora'] === '' && preg_match('/^[A-Z]{2}\d{9}[A-Z]{2}$/', strtoupper($codigo))) $r['transportadora'] = 'Correios';   // código dos Correios é inconfundível
+    if ($r['transportadora'] === 'Correios') $r['codigo'] = strtoupper($r['codigo']);
     $link = trim((string)($in['link'] ?? '')); if (preg_match('#^https?://#i', $link) && mb_strlen($link) <= 400) $r['link'] = $link;
     $r['finalizado'] = array_key_exists('finalizado', $in) ? (is_bool($in['finalizado']) ? $in['finalizado'] : rtr_bool($in['finalizado'])) : ($r['data_entrega'] !== '');
     if ($r['data_entrega'] !== '') $r['finalizado'] = true;
