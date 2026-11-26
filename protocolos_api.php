@@ -2,12 +2,14 @@
 /** Recebimento Drilling — rotas protocolos_* (v3.36.0). Incluído por api.php depois do portão de permissões. */
 if (!defined('DATA_DIR')) { http_response_code(403); exit; }
 require_once __DIR__ . '/protocolos_lib.php';
+require_once __DIR__ . '/protocolos_email_lib.php';
 
 $prtUser = (function_exists('rd_login_info') && is_array(rd_login_info())) ? rd_login_info()['username'] : 'operador-local';
 $prtMet = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 if ($prtMet === 'GET') {
     switch ($action) {
+        case 'protocolos_email_config': respond(['ok' => true, 'config' => pem_config(), 'smtp_ok' => (alt_config()['metodo'] === 'smtp' ? alt_config()['smtp_host'] !== '' : true)]);
         case 'protocolos_painel': respond(['ok' => true] + prt_painel(prt_read(), read_items()));
         case 'protocolos_arquivo': prt_doc_servir(prt_read());
         case 'protocolos_pdf': case 'protocolos_csv':
@@ -43,7 +45,14 @@ if (!is_array($body)) prt_fail('Dados inválidos', 400);
 $res = prt_with_lock(function () use ($action, $body, $prtUser) {
     $d = prt_read();
     switch ($action) {
-        case 'protocolos_criar': $r = ['protocolo' => prt_view(prt_criar($d, $body, read_items(), $prtUser))]; break;
+        case 'protocolos_criar':
+            $novo = prt_criar($d, $body, read_items(), $prtUser); $cfgE = pem_config();
+            $em = ($cfgE['ativo'] && $cfgE['emails']) ? pem_enviar($d, $novo['id'], null, $prtUser) : ['enviado' => false, 'motivo' => 'sem_config'];
+            $r = ['protocolo' => prt_view(prt_get($d, $novo['id'])), 'email' => $em]; break;
+        case 'protocolos_email_enviar':   // (re)envia com um link novo; o anterior deixa de valer
+            $em = pem_enviar($d, prt_str($body['id'] ?? '', 20), isset($body['emails']) ? pem_emails($body['emails']) : null, $prtUser);
+            $r = ['protocolo' => prt_view(prt_get($d, prt_str($body['id'] ?? '', 20))), 'email' => $em]; break;
+        case 'protocolos_email_config_salvar': $r = ['config' => pem_config_salvar($body)]; prt_write($d); return $r;
         case 'protocolos_status': $r = ['protocolo' => prt_view(prt_status($d, $body, $prtUser))]; break;
         default: prt_fail('Ação de protocolos inválida', 400);
     }

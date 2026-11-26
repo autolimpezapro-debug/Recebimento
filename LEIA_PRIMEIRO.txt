@@ -1,3 +1,11 @@
+v3.63.0 — Junção das duas linhas do sistema (servidor 3.60.3 + melhorias 3.58.2 → 3.62.2)
+- Base: o backup do servidor (3.60.3), com a Caixa de NFs por e-mail (nfmail) e "Corrigir número do PC".
+- Acrescentado sobre ele: e-mail diário das saídas com layout premium (mantendo SKU do PC, setor e valor unitário do servidor);
+  protocolo de NFs com e-mail automático + assinatura por link; Obras: remessa pelo número e relatório "Tudo enviado às obras";
+  completar OS/equipamento de saída assinada; Terceiros: busca por PC/SKU com pré-visualização e sugestões de motorista/placa;
+  Painel: obra Nexa reconhecida por Vazante.
+- Atenção: os números 3.59.x/3.60.x abaixo aparecem duas vezes porque as duas linhas usaram os mesmos números; vale o que está escrito em cada bloco.
+
 v3.60.3 — Caixa de NFs abre com o histórico completo
 - A Caixa de NFs abria no filtro "Falta o PC" e parecia que as notas já lançadas tinham sumido. Agora abre em "Todas",
   com as notas que ainda precisam de PC no topo. Nenhum dado tinha sido perdido.
@@ -51,6 +59,68 @@ v3.59.0 — Caixa de NFs (notas recebidas por e-mail)
 - Sem duplicidade: NF pela chave, PDF pelo conteúdo, e-mail pelo Message-ID.
 - Configuração (perfil com Pedidos > Administrar): servidor IMAP, e-mail e senha da caixa (a senha fica cifrada), CNPJs da empresa, intervalo. Botão "Testar conexão".
 - Leitura automática: a tela aberta e qualquer tela do sistema (a cada poucos minutos) verificam a caixa no intervalo configurado. Para ler mesmo com tudo fechado, crie no cPanel o cron */10 * * * *: php -q /CAMINHO/nfmail_worker.php (o caminho exato aparece na aba Configuração). O alertas_worker.php também já inclui a leitura.
+
+VERSAO 3.62.2 - TERCEIROS: BUSCA POR PC + SKU COM PRE-VISUALIZACAO
+- Novo romaneio: campos Pedido (PC) e SKU/nome. So PC = todos os itens do pedido; PC + SKU = so aquele item; so SKU = busca no estoque.
+- Antes de adicionar aparece uma pre-visualizacao (marque os itens e ajuste a quantidade); so entra no romaneio o que voce confirmar.
+- "Salvar e emitir" agora mostra a pre-visualizacao do romaneio (obra, transporte, itens) e avisa o que falta antes de emitir.
+
+VERSAO 3.62.1 - TERCEIROS: MOTORISTA/PLACA/VEICULO/COLABORADOR DO HISTORICO
+- No Novo romaneio, Motorista, Placa, Veiculo, Transportadora, Solicitante e Responsavel pelo patio sugerem o que o sistema ja registrou (romaneios, DANFEs e remessas do Painel, motoristas cadastrados, usuarios, saidas do estoque, emprestimos de ferramentas).
+- Escolhendo o motorista, preenche placa/veiculo/transportadora usados por ele; escolhendo a placa, preenche o motorista. So preenche campos vazios.
+- Colaboradores mostram a funcao (cargo cadastrado ou setor). Digitar qualquer outro texto continua permitido.
+
+VERSAO 3.62.0 - TERCEIROS: ROMANEIO COM BUSCA OPCIONAL
+- No Novo romaneio: campo opcional "Pedido de compra (PC)" + botao "Trazer itens do PC" preenche a lista (SKU, material, un., qtd) e a obra, se vazia.
+- Em cada linha: digitar o SKU e sair do campo preenche material e unidade; digitar parte do nome sugere materiais do estoque.
+- Tudo continua editavel e o preenchimento 100% manual segue igual. Nao movimenta estoque.
+
+VERSAO 3.61.4 - VERIFICACAO DE CONTROLES
+- Conferido: completar OS/equipamento nao altera saldo, itens, assinaturas nem status; relatorio e busca de remessa so leem dados.
+- Se parte dos lancamentos da saida ja estiver no arquivo historico, o sistema avisa (a saida em si e atualizada).
+
+VERSAO 3.61.3 - OBRAS: REMESSA DO PAINEL + RELATORIO "TUDO ENVIADO"
+- Envio de Obras: digitar o numero da NF (ex.: 7340) e sair do campo busca a remessa tambem entre as NFs importadas no Painel administrativo (produtos e quantidades lidos do PDF, obra e valor).
+- Novo botao "Tudo enviado as obras": relatorio linha a linha por obra e periodo (envios de Obras + saidas de material do estoque para a obra), com CSV e impressao.
+- A NF so aparece na busca depois de importada em Painel administrativo > Notas de remessa.
+
+VERSAO 3.61.2 - NEXA = VAZANTE/MG
+- A obra Nexa passa a ter cidade Vazante/MG (corrige cadastro antigo "Minas Gerais"), alem do apelido VAZANTE. Notas que citam so o endereco em Vazante sao reconhecidas.
+
+VERSAO 3.61.1 - PAINEL ADMIN: NF DE REMESSA PARA NEXA/VAZANTE
+- A NF 7340 (remessa para o canteiro de obras da Nexa) era descartada porque a nota cita so o endereco (Av. Tancredo Neves, Vazante-MG), nao o nome "Nexa".
+- A obra Nexa agora tambem e reconhecida pelo apelido VAZANTE (acrescentado automaticamente, sem apagar apelidos ja editados).
+- Depois de instalar, envie o PDF de novo em Painel administrativo > Notas de remessa.
+
+VERSAO 3.61.0 - COMPLETAR OS/EQUIPAMENTO DE SAIDA JA ASSINADA
+- Estoque > Saidas: saidas sem OS/equipamento mostram o aviso "sem OS/equipamento" e o link "completar".
+- Informe a OS e/ou o equipamento; vale para todos os itens da saida e aparece no Relatorio de saidas.
+- Nao altera saldo, itens nem a assinatura. Fica registrado quem alterou, quando e o motivo (campo "complementos").
+
+VERSAO 3.60.1 - REVISAO GERAL
+- Analise completa: sintaxe de todo PHP/JS, 262 rotas da API, permissoes, assinatura por link, e-mails, remessa e envio diario. Sem erros encontrados.
+- Ajuste: remessa em Obras com romaneio CANCELADO agora informa o motivo (antes dizia "nao encontrada").
+
+VERSAO 3.60.0 - OBRAS: APLICAR REMESSA
+- No envio de Obras, digite o numero da nota/remessa (ou ROM-0001) e clique em "Buscar remessa".
+- O sistema traz todos os materiais do Espelho de NF ou Romaneio, preenche itens, valor, tipo e obra.
+- Apenas registra o envio; nao movimenta estoque. Avisa se a nota nao foi emitida, ja foi usada em outro envio ou o destino e outra obra.
+
+v3.59.1 — E-mail do protocolo já vem ligado para o almoxarifado
+- Todo protocolo gerado envia e-mail automaticamente para almoxarifado@drilling.com.br (já vem cadastrado e ligado; não precisa configurar) e para até 3 e-mails opcionais, que se cadastram em Protocolo de NFs > "⚙ E-mail e assinatura". Todos recebem o mesmo e-mail (resumo + PDF + botão de assinatura eletrônica); o link é de uso único, então quem assinar primeiro vale.
+- Se já tinha salvo outra configuração na v3.59.0, ela é mantida.
+
+v3.59.0 — Protocolo de NFs: e-mail automático + assinatura eletrônica por link
+- Protocolo de NFs > "⚙ E-mail e assinatura": ligue o envio automático e cadastre o(s) e-mail(s) do Financeiro/Fiscal. Ao gerar o protocolo, o sistema envia na hora um e-mail com o resumo das NFs, o PDF em anexo e o botão "✍ Assinar eletronicamente".
+- O destinatário abre o link no celular ou computador (sem senha), confere as notas, digita o nome e assina na tela. O protocolo vira "Assinado", com nome, data/hora, IP, canal "link por e-mail" e código de verificação; o sistema manda a confirmação com o PDF assinado para os e-mails cadastrados.
+- Segurança: o link vale só para aquele protocolo, é de uso único, expira (padrão 7 dias) e não dá acesso a mais nada; gerar um link novo cancela o anterior; muitas tentativas inválidas são bloqueadas.
+- Em cada protocolo: botão "✉ Enviar por e-mail / Reenviar e-mail" (cria link novo). Continuam valendo imprimir 2 vias e "Assinar no sistema".
+- Usa o mesmo e-mail (SMTP) dos Alertas de estoque. Nada é obrigatório além do nome de quem assina.
+- Arquivos novos: protocolos_email_lib.php, protocolos_assinar_api.php e assinar_protocolo.html (páginas públicas por link — mantenha no servidor).
+
+v3.58.2 — E-mail diário das saídas com visual premium
+- Novo layout do e-mail: cabeçalho escuro com data por extenso, 4 indicadores (movimentos, OS, custo total, sem OS), um cartão por OS (maior custo primeiro) com obra/equipamento/solicitante e, em cada material, SKU, hora, aplicação, quantidade e valor; botão "Abrir relatório completo" e CSV em anexo. Funciona no celular, Gmail e Outlook.
+- Observação: "sem custo" aparece nos materiais sem custo médio cadastrado (valor entra como R$ 0,00) — o custo vem do inventário SAP/entradas com valor.
 
 v3.58.1 — Relatório só com OS/OM
 - Relatório gerencial: nova caixa "Somente com OS/OM" ao lado de Aplicar — a tela, o CSV e o PDF passam a trazer só as saídas que têm OS/OM (resumos por OS/obra/setor/material também).

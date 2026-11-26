@@ -18,7 +18,7 @@ const obPost = (a, b) => obFetch(a, { method: 'POST', headers: { 'Content-Type':
 
 async function obrasInit() {
   if (!obEl('page-obras')) return;
-  document.querySelectorAll('#page-obras .est-head-actions .button').forEach(b => { b.hidden = !obPode('criar'); });
+  document.querySelectorAll('#page-obras .est-head-actions .button:not([data-keep])').forEach(b => { b.hidden = !obPode('criar'); });
   try {
     OB.painel = await obGet('obras_painel');
     const t = OB.painel.totais;
@@ -61,7 +61,7 @@ function obThumb(a, envId, lista) {
 function obRenderEnvios(d) {
   if (!d.envios.length) return `<div class="ob-vazio"><span>📦</span><strong>Nenhum envio registrado para esta obra</strong><small>Clique em "Novo envio" e anexe a nota e as fotos.</small></div>`;
   return d.envios.map(e => `<article class="ob-envio">
-    <div class="ob-envio-top"><div><span class="ob-data">${obD(e.data)}</span> <span class="est-badge">${obH(e.tipo_label)}${e.numero ? ' ' + obH(e.numero) : ''}</span>${e.pc ? ` <span class="est-badge">PC ${obH(e.pc)}</span>` : ''}${e.valor ? ` <b>${obR(e.valor)}</b>` : ''}
+    <div class="ob-envio-top"><div><span class="ob-data">${obD(e.data)}</span> <span class="est-badge">${obH(e.tipo_label)}${e.numero ? ' ' + obH(e.numero) : ''}</span>${e.pc ? ` <span class="est-badge">PC ${obH(e.pc)}</span>` : ''}${e.remessa_ref ? ` <span class="est-badge" title="Materiais vieram desta remessa">Remessa ${obH(e.remessa_ref)}</span>` : ''}${e.valor ? ` <b>${obR(e.valor)}</b>` : ''}
       <small class="est-sub">${obH(e.id)}${e.transporte ? ' · ' + obH(e.transporte) : ''}${e.responsavel ? ' · resp. ' + obH(e.responsavel) : ''} · lançado por ${obH(e.criado_por)}</small></div>
       <div class="ob-envio-acoes">${obPode('criar') ? `<button class="button ghost small" onclick="obNovoEnvio('${obH(e.obra_id)}','${obH(e.id)}')">Editar / anexar</button>` : ''}${obPode('aprovar') ? `<button class="button ghost small" onclick="obExcluir('${obH(e.id)}')">Excluir</button>` : ''}</div></div>
     ${e.itens ? `<pre class="ob-itens">${obH(e.itens)}</pre>` : ''}${e.observacao ? `<p class="ob-obs">${obH(e.observacao)}</p>` : ''}
@@ -108,6 +108,7 @@ function obNovoEnvio(obraId, envioId) {
       <label>Documento<select name="tipo">${Object.entries(OB.painel.tipos).map(([k, v]) => `<option value="${k}" ${(e ? e.tipo : 'NF_REMESSA') === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
       <label>Número da nota / romaneio<input name="numero" value="${obH(e ? e.numero : '')}" placeholder="Ex.: 13685"></label>
       <label>Valor da nota (R$)<input name="valor" inputmode="decimal" value="${e && e.valor ? obH(String(e.valor).replace('.', ',')) : ''}" placeholder="opcional"></label>
+      <div class="full ob-rem"><span class="ob-rem-linha"><button type="button" class="button ghost small" data-rembuscar>🔎 Buscar remessa pelo número acima</button><button type="button" class="button ghost small" data-remlimpar hidden>Limpar remessa</button><small class="muted">traz todos os materiais da remessa (nota emitida no Espelho de NF, ou ROM-0001 do romaneio)</small></span><div class="ob-pc-box" data-rembox hidden></div></div>
       <label>Transporte<input name="transporte" value="${obH(e ? e.transporte : '')}" placeholder="Ex.: caminhão próprio, transportadora X, placa…"></label>
       <label>Responsável pelo envio<input name="responsavel" value="${obH(e ? e.responsavel : '')}"></label>
       <label class="full">Materiais enviados (um por linha)<textarea name="itens" rows="4" placeholder="Ex.:&#10;20 SC POLÍMERO GMUD&#10;2 UN CAÇAMBA Ø1300">${obH(e ? e.itens : '')}</textarea></label>
@@ -168,6 +169,47 @@ function obNovoEnvio(obraId, envioId) {
   campo('obra_id').addEventListener('change', () => { if (pcSel) pcDesenhar(); });
   pcLimpar.onclick = () => { pcSel = null; pcNum.value = ''; pcBox.hidden = true; pcBox.innerHTML = ''; pcLimpar.hidden = true; if (!itensManual) campo('itens').value = ''; };
   if (e && e.pc) { itensManual = true; pcCarregar(); }
+  /* v3.60.0 — remessa: digite o número e o sistema traz TODOS os materiais dela para este envio (só registro; não baixa estoque). */
+  const remBox = bg.querySelector('[data-rembox]'), remLimpar = bg.querySelector('[data-remlimpar]'); let remSel = e && e.remessa_ref ? { ref: e.remessa_ref } : null;
+  const remTexto = r => r.itens.map(i => `${obN(i.quantidade)} ${i.unidade} ${i.descricao}${i.sku ? ' (' + i.sku + ')' : ''}`).join('\n');
+  function remAplicar(r) {
+    remSel = { ref: r.ref }; campo('itens').value = remTexto(r); itensManual = true;
+    if (campo('tipo')) campo('tipo').value = r.tipo;
+    if (r.data && !e) campo('data').value = String(r.data).slice(0, 10);
+    if (r.obra_id && !campo('obra_id').value && [...campo('obra_id').options].some(o => o.value === r.obra_id)) campo('obra_id').value = r.obra_id;
+    if (!campo('valor').value && r.total > 0) campo('valor').value = String(r.total).replace('.', ',');
+    if (!campo('observacao').value) campo('observacao').value = `${r.origem} ${r.numero}${r.destino ? ' · ' + r.destino : ''}`.slice(0, 180);
+    remLimpar.hidden = false; remDesenhar(r, true);
+  }
+  function remDesenhar(r, aplicado) {
+    const obraSel = campo('obra_id').value, av = [];
+    if (r.status !== 'NF_EMITIDA' && r.origem === 'Espelho de NF') av.push('A nota deste espelho ainda não foi marcada como emitida (' + r.status_label + ').');
+    if (r.ja_aplicada.length) av.push('Esta remessa já foi registrada em: ' + r.ja_aplicada.map(v => `${v.id} (${obD(v.data)}${v.obra_nome ? ' · ' + v.obra_nome : ''})`).join('; ') + '.');
+    if (r.obra_id && obraSel && r.obra_id !== obraSel) av.push('Atenção: o destino desta remessa é "' + (r.destino || r.obra_id) + '", diferente da obra escolhida.');
+    remBox.hidden = false;
+    remBox.innerHTML = `<p><b>${obH(r.origem)} ${obH(r.numero)}</b> · ${obH(r.status_label)}${r.destino ? ' · destino <b>' + obH(r.destino) + '</b>' : ''} · <b>${r.itens.length}</b> item(ns)</p>
+      ${av.map(a => `<p class="ob-pc-aviso">⚠ ${obH(a)}</p>`).join('')}
+      <ul class="ob-ul">${r.itens.map(i => `<li><b>${obN(i.quantidade)} ${obH(i.unidade)}</b> ${obH(i.descricao)} ${i.sku ? '<small class="muted">' + obH(i.sku) + '</small>' : ''}</li>`).join('')}</ul>
+      ${aplicado ? '<p class="ob-nota">✔ Materiais aplicados a este envio. Confira a obra e salve.</p>' : `<button type="button" class="button primary small" data-remok>Aplicar todos os materiais a esta obra</button>`}`;
+    const ok = remBox.querySelector('[data-remok]'); if (ok) ok.onclick = () => remAplicar(r);
+  }
+  async function remCarregar() {
+    const n = campo('numero').value.trim();
+    if (!n) return obToast('Digite o número da remessa no campo "Número da nota / romaneio".', true);
+    remBox.hidden = false; remBox.innerHTML = '<p class="muted">Buscando a remessa…</p>';
+    try {
+      const r = await obGet('obras_remessa', { numero: n, ignorar: e ? e.id : '' });
+      if (r.status !== 'ok') { remBox.innerHTML = `<p class="ob-pc-aviso">⚠ ${obH(r.mensagem)}</p>`; return; }
+      if (r.remessas.length === 1) { remDesenhar(r.remessas[0], false); if (!campo('itens').value.trim()) remAplicar(r.remessas[0]); }
+      else remBox.innerHTML = '<p>Mais de uma remessa com esse número. Escolha:</p>' + r.remessas.map((x, i) => `<button type="button" class="button ghost small" data-remesc="${i}">${obH(x.origem)} ${obH(x.numero)} · ${x.itens.length} item(ns)</button>`).join(' ');
+      remBox.querySelectorAll('[data-remesc]').forEach(b => b.onclick = () => remDesenhar(r.remessas[b.dataset.remesc], false));
+    } catch (err) { remBox.innerHTML = `<p class="ob-pc-aviso">⚠ ${obH(err.message)}</p>`; }
+  }
+  bg.querySelector('[data-rembuscar]').onclick = remCarregar;
+  campo('numero').onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); remCarregar(); } };
+  campo('numero').onchange = () => { if (!e && campo('numero').value.trim() && !remSel && !campo('itens').value.trim()) remCarregar(); };   // v3.61.3: ao sair do campo, já busca a remessa (só em envio novo e sem materiais digitados)
+  remLimpar.onclick = () => { remSel = null; remBox.hidden = true; remBox.innerHTML = ''; remLimpar.hidden = true; };
+  if (remSel) remLimpar.hidden = false;
   bg.querySelectorAll('input[type=file]').forEach(inp => inp.onchange = () => {
     const l = inp.dataset.lista;
     for (const f of inp.files) { if (f.size > 15 * 1048576) { obToast(`${f.name}: maior que 15 MB.`, true); continue; } fila[l].push(f); }
@@ -186,6 +228,7 @@ function obNovoEnvio(obraId, envioId) {
       if (acima.length && !confirm('Quantidade acima do que consta disponível neste PC:\n' + acima.map(l => `• ${l.descricao}: ${obN(l.qtd)} (disponível ${obN(l.disponivel)})`).join('\n') + '\n\nSalvar mesmo assim?')) return;
       dados.pc = pcSel.info.pc; dados.linhas_pc = marc.map(l => ({ linha_id: l.linha_id, quantidade: Number(l.qtd) })); dados.fotos_pc = [...pcSel.fotos];
     } else { dados.pc = 0; dados.linhas_pc = []; }
+    dados.remessa_ref = remSel ? remSel.ref : '';
     btn.disabled = true; btn.textContent = 'Salvando…';
     try {
       const r = await obPost('obras_envio_salvar', dados);
@@ -214,4 +257,29 @@ async function obNovaObra() {
   const nome = prompt('Nome da obra:'); if (!nome) return;
   const cidade = prompt('Cidade/UF (opcional):') || '';
   try { const r = await obPost('obras_nova', { nome, cidade }); OB.atual = r.obra.id; await obrasInit(); obToast('Obra criada.'); } catch (e) { obToast(e.message, true); }
+}
+
+
+/* v3.61.3 — relatório: tudo que foi enviado às obras */
+function obRelQuery() { return { obra: obEl('obRelObra').value, ini: obEl('obRelIni').value, fim: obEl('obRelFim').value }; }
+async function obRelatorioAbrir() {
+  const sel = obEl('obRelObra');
+  if (!sel.options.length) sel.innerHTML = '<option value="">Todas as obras</option>' + ((OB.painel && OB.painel.obras) || []).map(o => `<option value="${obH(o.id)}">${obH(o.nome)}</option>`).join('');
+  obEl('obRelModal').classList.add('on'); obRelatorioCarregar();
+}
+let OB_REL = [];
+async function obRelatorioCarregar() {
+  obEl('obRelBody').innerHTML = '<tr><td colspan="8" class="empty">Carregando…</td></tr>';
+  try {
+    const r = await obGet('obras_relatorio', obRelQuery()); OB_REL = r.linhas;
+    obEl('obRelResumo').textContent = `${r.total} linha(s) em ${r.obras} obra(s).`;
+    obEl('obRelBody').innerHTML = r.linhas.map(l => `<tr><td>${obD(l.data)}</td><td>${obH(l.obra)}</td><td>${obH(l.origem)}</td><td>${obH(l.documento)}</td><td>${obH(l.os)}</td><td>${obH(l.material)}</td><td>${l.quantidade === null ? '' : obN(l.quantidade)}</td><td>${obH(l.unidade)}</td></tr>`).join('') || '<tr><td colspan="8" class="empty">Nada enviado neste filtro.</td></tr>';
+  } catch (e) { obEl('obRelBody').innerHTML = `<tr><td colspan="8" class="empty">${obH(e.message)}</td></tr>`; }
+}
+function obRelatorioCsv() { const q = new URLSearchParams({ action: 'obras_relatorio', csv: '1', ...obRelQuery() }); window.location.href = 'api.php?' + q.toString(); }
+function obRelatorioImprimir() {
+  const w = window.open('', '_blank'); if (!w) return obToast('Libere pop-ups para imprimir.', true);
+  const o = obEl('obRelObra'), tit = o.options[o.selectedIndex] ? o.options[o.selectedIndex].text : 'Todas as obras';
+  w.document.write(`<!doctype html><meta charset="utf-8"><title>Enviado às obras</title><style>body{font:12px Arial;margin:18px}h1{font-size:16px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #999;padding:3px 5px;text-align:left}th{background:#eee}</style><h1>Material enviado às obras — ${obH(tit)}</h1><p>${obH(obEl('obRelResumo').textContent)} Emitido em ${new Date().toLocaleString('pt-BR')}.</p><table><tr><th>Data</th><th>Obra</th><th>Origem</th><th>Documento</th><th>OS</th><th>Material</th><th>Qtd</th><th>Un</th></tr>${OB_REL.map(l => `<tr><td>${obD(l.data)}</td><td>${obH(l.obra)}</td><td>${obH(l.origem)}</td><td>${obH(l.documento)}</td><td>${obH(l.os)}</td><td>${obH(l.material)}</td><td>${l.quantidade === null ? '' : obN(l.quantidade)}</td><td>${obH(l.unidade)}</td></tr>`).join('')}</table>`);
+  w.document.close(); w.focus(); setTimeout(() => w.print(), 300);
 }

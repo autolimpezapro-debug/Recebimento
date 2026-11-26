@@ -101,6 +101,8 @@ async function terForm(id) {
       <label>Veículo<input name="veiculo" maxlength="40" placeholder="Ex.: Caminhão baú" value="${v('veiculo')}"></label>
       <label>Placa<input name="placa" maxlength="12" value="${v('placa')}"></label></div>
     <h4 style="margin:12px 0 6px">Itens do romaneio</h4>
+    ${posEmissao ? '' : `<div class="panel" style="padding:8px 12px;margin:0 0 8px"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end"><label style="margin:0">Pedido (PC)<input id="terPcNum" inputmode="numeric" maxlength="10" placeholder="Ex.: 4391" style="max-width:130px"></label><label style="margin:0">SKU ou nome do material<input id="terSkuBusca" maxlength="60" placeholder="Ex.: MA000138" style="max-width:220px"></label><button type="button" class="button ghost" data-pcbuscar>🔎 Buscar e pré-visualizar</button></div>
+      <small class="muted" id="terPcMsg">Opcional. Só o PC = todos os itens do pedido. PC + SKU = só aquele item do pedido. Só o SKU = busca no estoque. Você vê uma pré-visualização e escolhe o que adicionar. Também pode digitar tudo à mão.</small><div id="terPrev" hidden></div></div>`}
     <div class="prt-scroll"><table class="ter-itens"><thead><tr><th>SKU</th><th>Material*</th><th>Un.</th><th>Qtd*</th><th>Obs.</th><th></th></tr></thead><tbody id="terItens">${((r && r.itens.length) ? r.itens : [{}, {}, {}]).map(terLinha).join('')}</tbody></table></div>
     <button type="button" class="button ghost" data-add>＋ Adicionar item</button>
     <div class="rd-ass-campos"><label>Observações<input name="obs" maxlength="600" value="${v('obs')}"></label>
@@ -109,7 +111,88 @@ async function terForm(id) {
   const tb = bg.querySelector('#terItens');
   const ligar = () => tb.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { if (tb.querySelectorAll('.ter-it').length > 1) b.closest('tr').remove(); });
   ligar();
-  bg.querySelector('[data-add]').onclick = () => { tb.insertAdjacentHTML('beforeend', terLinha()); ligar(); tb.lastElementChild.querySelector('input').focus(); };
+  // v3.62.1 — motorista, placa, veículo, transportadora, solicitante e responsável sugeridos do histórico (opcional; pode digitar qualquer coisa)
+  (async () => {
+    let S; try { S = await terApi('romaneios_sugestoes'); } catch { return; }
+    const campo = k => bg.querySelector(`[name="${k}"]`), norm = t => String(t || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const dl = (id, opts) => { let d = bg.querySelector('#' + id); if (!d) { d = document.createElement('datalist'); d.id = id; bg.appendChild(d); } d.innerHTML = opts.map(o => `<option value="${terH(o[0])}">${terH(o[1] || '')}</option>`).join(''); };
+    dl('terSMot', S.motoristas.map(m => [m.nome, [m.placa, m.transportadora].filter(Boolean).join(' · ')]));
+    dl('terSPla', S.placas.map(p => [p.placa, [p.motorista, p.transportadora].filter(Boolean).join(' · ')]));
+    dl('terSVei', S.veiculos.map(v => [v]));
+    dl('terSTra', S.transportadoras.map(t => [t]));
+    dl('terSCol', S.colaboradores.map(c => [c.nome, c.funcao]));
+    [['motorista', 'terSMot'], ['placa', 'terSPla'], ['veiculo', 'terSVei'], ['transportadora', 'terSTra'], ['solicitante', 'terSCol'], ['responsavel_patio', 'terSCol']].forEach(([k, l]) => { const i = campo(k); if (i) i.setAttribute('list', l); });
+    const vazio = k => campo(k) && !campo(k).value.trim(), pôr = (k, v) => { if (v && vazio(k)) campo(k).value = v; };
+    campo('motorista').addEventListener('change', () => { const m = S.motoristas.find(x => norm(x.nome) === norm(campo('motorista').value)); if (m) { pôr('placa', m.placa); pôr('veiculo', m.veiculo); pôr('transportadora', m.transportadora); } });
+    campo('placa').addEventListener('change', () => { const p = S.placas.find(x => norm(x.placa) === norm(campo('placa').value)); if (p) { pôr('motorista', p.motorista); pôr('veiculo', p.veiculo); pôr('transportadora', p.transportadora); } });
+    const sol = campo('solicitante'); if (sol) sol.title = 'Escolha na lista ou digite. A função aparece ao lado do nome.';
+  })();
+  // v3.62.0 — ajuda opcional: itens do PC e preenchimento por SKU/nome. Tudo continua editável; nada disso é obrigatório.
+  const terGetQ = (a, q) => terApi(a + '&' + new URLSearchParams(q).toString());
+  const linhaVazia = tr => ![...tr.querySelectorAll('[data-f]')].some(i => i.value.trim());
+  const preencher = (tr, c) => { const set = (k, v) => { const i = tr.querySelector(`[data-f="${k}"]`); if (i && v !== undefined && v !== null) i.value = v; }; set('sku', c.sku); set('descricao', c.descricao); set('unidade', c.unidade); if (c.quantidade != null) set('quantidade', String(c.quantidade).replace('.', ',')); };
+  const pcBtn = bg.querySelector('[data-pcbuscar]'), pcMsg = bg.querySelector('#terPcMsg'), pcNum = bg.querySelector('#terPcNum'), skuIn = bg.querySelector('#terSkuBusca'), prev = bg.querySelector('#terPrev');
+  if (pcBtn) {
+    const nk = t => String(t || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const desenhar = (cands, origem) => {
+      prev.hidden = false;
+      prev.innerHTML = `<div class="prt-scroll" style="margin-top:8px"><table class="ter-itens"><thead><tr><th><input type="checkbox" data-pvall checked></th><th>SKU</th><th>Material</th><th>Un.</th><th>Qtd*</th><th>Origem</th></tr></thead><tbody>${cands.map((c, k) => `<tr><td><input type="checkbox" data-pvk="${k}" checked></td><td>${terH(c.sku)}</td><td>${terH(c.descricao)}</td><td>${terH(c.unidade)}</td><td><input data-pvq="${k}" inputmode="decimal" style="width:80px" value="${c.quantidade != null ? terH(String(c.quantidade).replace('.', ',')) : ''}" placeholder="Qtd"></td><td><small>${terH(c.origem || origem)}${c.saldo != null ? ' · saldo ' + terQtd(c.saldo) : ''}</small></td></tr>`).join('')}</tbody></table></div>
+        <div style="display:flex;gap:8px;margin-top:8px"><button type="button" class="button primary" data-pvadd>＋ Adicionar selecionados ao romaneio</button><button type="button" class="button ghost" data-pvx>Descartar</button></div>`;
+      prev.querySelector('[data-pvall]').onchange = e => prev.querySelectorAll('[data-pvk]').forEach(c => c.checked = e.target.checked);
+      prev.querySelector('[data-pvx]').onclick = () => { prev.hidden = true; prev.innerHTML = ''; };
+      prev.querySelector('[data-pvadd]').onclick = () => {
+        const esc = cands.map((c, k) => ({ c, k })).filter(({ k }) => prev.querySelector(`[data-pvk="${k}"]`).checked);
+        if (!esc.length) { pcMsg.textContent = 'Marque ao menos um item.'; return; }
+        tb.querySelectorAll('.ter-it').forEach(tr => { if (linhaVazia(tr)) tr.remove(); });
+        esc.forEach(({ c, k }) => tb.insertAdjacentHTML('beforeend', terLinha({ sku: c.sku, descricao: c.descricao, unidade: c.unidade, quantidade: prev.querySelector(`[data-pvq="${k}"]`).value.replace(',', '.') || null })));
+        ligar(); ligarSku(); prev.hidden = true; prev.innerHTML = ''; pcMsg.textContent = `✔ ${esc.length} item(ns) adicionado(s). Confira as quantidades abaixo.`;
+        const ob = bg.querySelector('[name="obra_nome"]'); if (ob && !ob.value.trim() && prev.dataset.obra) ob.value = prev.dataset.obra;
+      };
+    };
+    const buscar = async () => {
+      const n = (pcNum.value || '').replace(/\D/g, ''), q = (skuIn.value || '').trim();
+      if (!n && q.length < 2) { pcMsg.textContent = 'Digite o número do PC e/ou o SKU (ou parte do nome).'; return; }
+      pcMsg.textContent = 'Buscando…'; prev.hidden = true; prev.dataset.obra = '';
+      try {
+        let cands = [], aviso = '';
+        if (n) {
+          const x = await terGetQ('romaneios_buscar_pc', { pc: n });
+          if (x.status === 'nao_encontrado' || !x.linhas.length) { aviso = x.mensagem || `PC ${n} não encontrado.`; }
+          else {
+            prev.dataset.obra = x.obra || ''; if (x.mensagem) aviso = x.mensagem;
+            cands = x.linhas.map(l => ({ ...l, origem: `PC ${n}${x.fornecedor ? ' · ' + x.fornecedor : ''}` }));
+            if (q) { const k = nk(q); const f = cands.filter(c => nk(c.sku) === k || nk(c.descricao).includes(k)); if (f.length) cands = f; else { aviso = `Nenhum item do PC ${n} bate com "${q}". Mostrando a busca no estoque.`; cands = []; } }
+          }
+        }
+        if (!cands.length && q.length >= 2) {
+          const y = await terGetQ('romaneios_buscar_sku', { q });
+          cands = (y.candidatos || []).map(c => ({ sku: c.sku, descricao: c.descricao, unidade: c.unidade, quantidade: null, saldo: c.saldo, origem: c.exato ? 'Estoque (código exato)' : 'Estoque' }));
+        }
+        if (!cands.length) { pcMsg.textContent = '⚠ ' + (aviso ? aviso + ' ' : '') + 'Nada encontrado — preencha à mão.'; return; }
+        pcMsg.textContent = `${cands.length} item(ns) encontrado(s). Confira e escolha o que adicionar.` + (aviso ? ' ⚠ ' + aviso : '');
+        desenhar(cands, 'Busca');
+      } catch (e) { pcMsg.textContent = '⚠ ' + e.message; }
+    };
+    pcBtn.onclick = buscar; [pcNum, skuIn].forEach(i => i.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); buscar(); } });
+  }
+  const sug = document.createElement('datalist'); sug.id = 'terSug'; bg.appendChild(sug); let sugMap = {}, sugT = null;
+  function ligarSku() {
+    tb.querySelectorAll('.ter-it').forEach(tr => {
+      if (tr.dataset.lig) return; tr.dataset.lig = '1';
+      const sku = tr.querySelector('[data-f="sku"]'), desc = tr.querySelector('[data-f="descricao"]'); desc.setAttribute('list', 'terSug');
+      sku.addEventListener('change', async () => {
+        if (!sku.value.trim() || desc.value.trim()) return;
+        try { const x = await terGetQ('romaneios_buscar_sku', { q: sku.value.trim() }); const c = (x.candidatos || []).find(k => k.exato); if (c) preencher(tr, { sku: c.sku, descricao: c.descricao, unidade: c.unidade }); } catch { /* digitação livre */ }
+      });
+      desc.addEventListener('input', () => {
+        clearTimeout(sugT); const q = desc.value.trim(); if (q.length < 4) return;
+        sugT = setTimeout(async () => { try { const x = await terGetQ('romaneios_buscar_sku', { q }); sugMap = {}; (x.candidatos || []).forEach(c => { sugMap[c.descricao] = c; }); sug.innerHTML = Object.keys(sugMap).map(d => `<option value="${terH(d)}">${terH(sugMap[d].sku)}${sugMap[d].saldo != null ? ' · saldo ' + terQtd(sugMap[d].saldo) : ''}</option>`).join(''); } catch { /* ok */ } }, 300);
+      });
+      desc.addEventListener('change', () => { const c = sugMap[desc.value]; if (c) { if (!sku.value.trim()) sku.value = c.sku; const un = tr.querySelector('[data-f="unidade"]'); if (!un.value.trim()) un.value = c.unidade; } });
+    });
+  }
+  ligarSku();
+  bg.querySelector('[data-add]').onclick = () => { tb.insertAdjacentHTML('beforeend', terLinha()); ligar(); ligarSku(); tb.lastElementChild.querySelector('input').focus(); };
   tb.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('[data-f="obs"]') && e.target.closest('tr') === tb.lastElementChild) { e.preventDefault(); bg.querySelector('[data-add]').click(); } });
   const coletar = () => {
     const o = { id: r ? r.id : '', itens: [...tb.querySelectorAll('.ter-it')].map(tr => Object.fromEntries([...tr.querySelectorAll('[data-f]')].map(i => [i.dataset.f, i.value]))) };
@@ -127,7 +210,16 @@ async function terForm(id) {
     } catch (e) { terToast(e.message, true); bs.forEach(b => b.disabled = false); }
   };
   const bsv = bg.querySelector('[data-salvar]'), bem = bg.querySelector('[data-emitir]'), bal = bg.querySelector('[data-alterar]');
-  if (bsv) bsv.onclick = () => gravar(false); if (bem) bem.onclick = () => gravar(true); if (bal) bal.onclick = () => gravar(false);
+  if (bsv) bsv.onclick = () => gravar(false); if (bem) bem.onclick = () => {   // v3.62.2: pré-visualização antes de emitir
+    const o = coletar(), its = o.itens.filter(i => (i.descricao || '').trim() || (i.quantidade || '').trim());
+    const falta = []; if (!o.obra_nome.trim()) falta.push('obra de destino'); if (!its.length) falta.push('ao menos um item'); its.forEach((i, k) => { if (!(i.descricao || '').trim() || !(String(i.quantidade || '').replace(',', '.') > 0)) falta.push(`item ${k + 1} (material e quantidade)`); });
+    const pv = terModal('Pré-visualização do romaneio', `<div class="panel" style="padding:8px 12px"><b>Obra:</b> ${terH(o.obra_nome) || '—'} · <b>Data:</b> ${terD(o.data)} · <b>Origem:</b> ${terH(o.origem)}<br>
+      <b>Solicitante:</b> ${terH(o.solicitante) || '—'} · <b>Responsável pátio:</b> ${terH(o.responsavel_patio) || '—'}<br><b>Transporte:</b> ${[o.transportadora, o.motorista, o.veiculo, o.placa].filter(x => (x || '').trim()).map(terH).join(' · ') || '—'}</div>
+      <div class="prt-scroll"><table class="ter-itens"><thead><tr><th>#</th><th>SKU</th><th>Material</th><th>Un.</th><th>Qtd</th><th>Obs.</th></tr></thead><tbody>${its.map((i, k) => `<tr><td>${k + 1}</td><td>${terH(i.sku) || '—'}</td><td>${terH(i.descricao)}</td><td>${terH(i.unidade) || 'UN'}</td><td>${terH(i.quantidade)}</td><td>${terH(i.obs)}</td></tr>`).join('')}</tbody></table></div>
+      ${falta.length ? `<p style="color:#f5b544">⚠ Falta: ${falta.map(terH).join('; ')}.</p>` : `<p class="muted">${its.length} item(ns). Ao emitir, o romaneio ganha número e pode ser impresso.</p>`}
+      <div class="rd-ass-acoes"><button type="button" class="button ghost" data-x2>Voltar e corrigir</button><button type="button" class="button primary" data-pvok ${falta.length ? 'disabled' : ''}>Confirmar e emitir</button></div>`, 760);
+    pv.querySelector('[data-pvok]').onclick = () => { pv.remove(); gravar(true); };
+  }; if (bal) bal.onclick = () => gravar(false);
 }
 function terPronto(r) {
   const bg = terModal(`${r.revisao ? 'Romaneio ' + terH(r.id) + ' alterado' : 'Romaneio ' + terH(r.id) + ' emitido'}`, `<p>Imprima 2 vias (Obra e Arquivo) ou baixe o arquivo.${r.revisao ? ' Esta é a <b>revisão ' + r.revisao + '</b>: substitua as vias antigas.' : ''}</p><div class="prt-pronto">

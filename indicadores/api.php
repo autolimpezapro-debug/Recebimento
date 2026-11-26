@@ -142,13 +142,28 @@ function kpi_obras_padrao(): array {
         ['id' => 'agaspar-grauna', 'name' => 'Construtora Agaspar – Ponte Graúna', 'city' => 'São Paulo/SP', 'aliases' => ['AGASPAR', 'GRAUNA']],
         ['id' => 'telar-blumenau', 'name' => 'Telar Blumenau', 'city' => 'Blumenau/SC', 'aliases' => ['TELAR', 'BLUMENAU', 'BLUMENAL']],
         ['id' => 'penedo', 'name' => 'Ponte Penedo – Neópolis', 'city' => 'Penedo/AL', 'aliases' => ['PENEDO', 'NEOPOLIS']],
-        ['id' => 'nexa', 'name' => 'Nexa', 'city' => 'Minas Gerais', 'aliases' => ['NEXA']],
+        ['id' => 'nexa', 'name' => 'Nexa', 'city' => 'Vazante/MG', 'aliases' => ['NEXA']],
         ['id' => 'sogel', 'name' => 'Sogel', 'city' => 'Minas Gerais', 'aliases' => ['SOGEL']],
         ['id' => 'aterpa-vale', 'name' => 'Aterpa (Vale)', 'city' => 'Minas Gerais', 'aliases' => ['ATERPA', 'VALE']],
         ['id' => 'rivoli', 'name' => 'Rivoli', 'city' => 'BA', 'aliases' => ['RIVOLI']],
         ['id' => 'conartes', 'name' => 'Conartes', 'city' => '', 'aliases' => ['CONARTES']],
         ['id' => 'governador-valadares', 'name' => 'Governador Valadares', 'city' => 'Governador Valadares/MG', 'aliases' => ['GOVERNADOR VALADARES', 'VALADARES']],
     ];
+}
+/** v3.61.1: apelidos que o leitor de DANFE precisa para reconhecer o destino pelo ENDEREÇO (a NF nem sempre cita o nome da obra). Acrescenta aos cadastrados, sem remover os que a pessoa já editou. */
+function kpi_obras_efetivas(): array {
+    $obras = kpi_base()['obras'] ?? kpi_obras_padrao();
+    $extra = ['nexa' => ['VAZANTE']];
+    $cidades = ['nexa' => 'Vazante/MG'];   // a Nexa fica em Vazante/MG; corrige cadastro antigo que ficou só com "Minas Gerais"
+    foreach ($obras as $i => $o) {
+        $c = $cidades[$o['id'] ?? ''] ?? null;
+        if ($c !== null && in_array(mb_strtoupper(trim((string)($o['city'] ?? ''))), ['', 'MINAS GERAIS', 'MG'], true)) $obras[$i]['city'] = $c;
+        foreach ($extra[$o['id'] ?? ''] ?? [] as $a) {
+            $tem = array_map(fn($x) => mb_strtoupper((string)$x), (array)($o['aliases'] ?? []));
+            if (!in_array($a, $tem, true)) $obras[$i]['aliases'][] = $a;
+        }
+    }
+    return $obras;
 }
 function kpi_base(): array { $b = kpi_json_file(KPI_METAS_FILE, []); return $b; }
 function kpi_gravar_base(array $b): void {
@@ -437,7 +452,7 @@ function kpi_dados(): array {
 
     return ['records' => $records, 'targets' => kpi_metas(), 'criticalItems' => array_slice($crit, 0, 60),
         'stages' => $stages, 'delayReasons' => $reasons,
-        'obras' => kpi_base()['obras'] ?? kpi_obras_padrao(), 'movements' => kpi_base()['movimentos'] ?? [], 'purchaseOrders' => $orders];
+        'obras' => kpi_obras_efetivas(), 'movements' => kpi_base()['movimentos'] ?? [], 'purchaseOrders' => $orders];
 }
 
 /* ------------------------------------------------------------------ */

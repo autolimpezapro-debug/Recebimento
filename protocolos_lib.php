@@ -84,6 +84,8 @@ function prt_view(array $p): array {
     $total = 0.0; $semValor = 0;
     foreach ($p['linhas'] as $l) { $v = prt_valor($l['valorNF'] ?? ''); if ($v > 0) $total += $v; else $semValor++; }
     $p['total_valor'] = round($total, 2); $p['linhas_sem_valor'] = $semValor; $p['qtd_nfs'] = count($p['linhas']);
+    $ativo = null; foreach ($p['links'] ?? [] as $l) if (empty($l['usado_em']) && empty($l['revogado']) && strtotime((string)$l['expira_em']) > time()) $ativo = $l['expira_em'];
+    $p['link_ativo_ate'] = $ativo; unset($p['links']);   // nunca expor hashes dos links
     $p['status_label'] = PRT_STATUS[$p['status'] ?? ''] ?? ($p['status'] ?? '');
     $p['documentos'] = array_values(array_map(fn($a, $i) => $a + ['idx' => $i, 'url' => 'api.php?action=protocolos_arquivo&id=' . rawurlencode($p['id']) . '&i=' . $i],
         $p['documentos'] ?? [], array_keys($p['documentos'] ?? [])));

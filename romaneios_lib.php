@@ -256,3 +256,97 @@ function rom_csv(array $r): string {
     foreach ($r['itens'] as $i => $it) $o .= ($i + 1) . ';' . $q($it['sku']) . ';' . $q($it['descricao']) . ';' . $q($it['unidade']) . ';' . str_replace('.', ',', (string)$it['quantidade']) . ';' . $q($it['obs']) . "\r\n";
     return $o;
 }
+
+
+/** v3.62.0 — AJUDA OPCIONAL no romaneio: traz os itens de um PC pelo número. Só leitura; o operador pode editar tudo ou digitar tudo à mão. */
+function rom_buscar_pc(int $pc): array {
+    $out = ['status' => 'nao_encontrado', 'mensagem' => 'PC ' . $pc . ' não encontrado.', 'linhas' => []];
+    if ($pc <= 0 || !function_exists('read_items')) return $out;
+    $it = null; foreach (read_items() as $p) if ((int)($p['pc'] ?? 0) === $pc) { $it = $p; break; }
+    if (!$it) return $out;
+    $ins = array_values(array_filter((array)($it['insumos'] ?? []), 'is_array')); $rec = false;
+    foreach ($ins as $l) if ((float)($l['quantidade_recebida'] ?? 0) > 0) { $rec = true; break; }
+    foreach ($ins as $l) {
+        $q = $rec ? (float)($l['quantidade_recebida'] ?? 0) : (float)($l['quantidade_pedida'] ?? 0);
+        if ($q <= 0) continue;
+        $out['linhas'][] = ['sku' => (string)($l['sku'] ?? ''), 'descricao' => (string)($l['descricao'] ?? ''), 'unidade' => (string)(($l['unidade'] ?? '') ?: 'UN'), 'quantidade' => $q];
+    }
+    $out += ['pc' => $pc, 'fornecedor' => (string)($it['fornecedor'] ?? ''), 'obra' => (string)($it['obra'] ?? '')];
+    $out['status'] = $out['linhas'] ? 'ok' : 'sem_linhas';
+    $out['mensagem'] = !$out['linhas'] ? 'Este PC não tem itens com quantidade.' : ($rec ? '' : 'Este PC ainda não teve material recebido: trouxe as quantidades PEDIDAS. Confira.');
+    return $out;
+}
+/** v3.62.0 — procura material pelo código (SKU) no estoque e nos pedidos; se não achar o código, sugere por parte do nome. */
+function rom_buscar_sku(string $q): array {
+    $q = trim($q); $out = ['status' => 'nao_encontrado', 'candidatos' => []];
+    if (mb_strlen($q) < 2) return $out;
+    $u = mb_strtoupper($q);
+    $est = json_decode((string)@file_get_contents(DATA_DIR . '/estoque.json'), true) ?: [];
+    foreach ((array)($est['itens'] ?? []) as $k => $i) {
+        $cods = array_filter([(string)$k, (string)($i['codigo'] ?? ''), (string)($i['sku'] ?? ''), (string)($i['sku_origem'] ?? '')]);
+        $desc = (string)($i['nome_planilha'] ?? $i['descricao'] ?? '');
+        $exato = false; foreach ($cods as $c) if (mb_strtoupper($c) === $u) $exato = true;
+        if ($exato || (mb_strlen($u) >= 4 && mb_stripos($desc, $q) !== false)) {
+            $c = ['sku' => (string)($i['codigo'] ?? $k), 'descricao' => $desc, 'unidade' => (string)(($i['unidade'] ?? '') ?: 'UN'), 'saldo' => isset($i['saldo']) ? (float)$i['saldo'] : null, 'exato' => $exato];
+            if ($exato) { array_unshift($out['candidatos'], $c); } elseif (count($out['candidatos']) < 8) $out['candidatos'][] = $c;
+        }
+    }
+    if (!$out['candidatos'] && function_exists('read_items')) {
+        foreach (read_items() as $p) foreach ((array)($p['insumos'] ?? []) as $l) {
+            if (is_array($l) && mb_strtoupper((string)($l['sku'] ?? '')) === $u) { $out['candidatos'][] = ['sku' => (string)$l['sku'], 'descricao' => (string)($l['descricao'] ?? ''), 'unidade' => (string)(($l['unidade'] ?? '') ?: 'UN'), 'saldo' => null, 'exato' => true]; break 2; }
+        }
+    }
+    if ($out['candidatos']) $out['status'] = 'ok';
+    return $out;
+}
+
+
+/** v3.62.1 — sugestões para o formulário (motorista, placa, veículo, transportadora, colaborador e função), montadas SÓ do que o sistema já registrou:
+ *  romaneios, DANFEs lidas no Painel, remessas do Painel, motoristas cadastrados, usuários, saídas/requisições do estoque e empréstimos de ferramentas.
+ *  Só leitura; o formulário continua aceitando qualquer texto digitado. */
+function rom_sugestoes(): array {
+    $lerJ = fn(string $f) => json_decode((string)@file_get_contents(DATA_DIR . '/' . $f), true) ?: [];
+    $kn = fn($t) => preg_replace('/\s+/u', ' ', mb_strtoupper(trim((string)$t)));
+    $kp = fn($t) => preg_replace('/[^A-Z0-9]/', '', mb_strtoupper((string)$t));
+    $mot = []; $pla = []; $trn = []; $pes = [];
+    $melhor = function (array $cont) { arsort($cont); return (string)array_key_first($cont); };
+    $reg = function (string $nome, string $placa, string $veic, string $transp, string $dia) use (&$mot, &$pla, &$trn, $kn, $kp) {
+        $nome = trim($nome); $placa = trim($placa); $veic = trim($veic); $transp = trim($transp);
+        if ($nome !== '' && mb_strlen($nome) >= 2) {
+            $k = $kn($nome); $m = &$mot[$k]; $m['nome'][$nome] = ($m['nome'][$nome] ?? 0) + 1; $m['usos'] = ($m['usos'] ?? 0) + 1; if ($dia > ($m['ultimo'] ?? '')) $m['ultimo'] = $dia;
+            foreach (['placa' => $placa, 'veiculo' => $veic, 'transportadora' => $transp] as $c => $v) if ($v !== '') $m[$c][$v] = ($m[$c][$v] ?? 0) + 1; unset($m);
+        }
+        if ($placa !== '' && $kp($placa) !== '') {
+            $k = $kp($placa); $p = &$pla[$k]; $p['placa'][$placa] = ($p['placa'][$placa] ?? 0) + 1; $p['usos'] = ($p['usos'] ?? 0) + 1;
+            foreach (['motorista' => $nome, 'veiculo' => $veic, 'transportadora' => $transp] as $c => $v) if ($v !== '') $p[$c][$v] = ($p[$c][$v] ?? 0) + 1; unset($p);
+        }
+        if ($transp !== '') { $k = $kn($transp); $trn[$k][$transp] = ($trn[$k][$transp] ?? 0) + 1; }
+    };
+    foreach ((array)($lerJ('romaneios.json')['romaneios'] ?? []) as $r) {
+        if (($r['status'] ?? '') === 'CANCELADO') continue;
+        $reg((string)($r['motorista'] ?? ''), (string)($r['placa'] ?? ''), (string)($r['veiculo'] ?? ''), (string)($r['transportadora'] ?? ''), (string)($r['data'] ?? ''));
+    }
+    foreach ((array)$lerJ('indicadores_danfe.json') as $n) if (is_array($n)) $reg((string)($n['motorista'] ?? ''), (string)($n['placa'] ?? ''), '', (string)($n['carrier'] ?? ''), (string)($n['emissao'] ?? ''));
+    foreach ((array)($lerJ('indicadores.json')['movimentos'] ?? []) as $m) $reg((string)($m['driver'] ?? ''), (string)($m['plate'] ?? ''), '', (string)($m['carrier'] ?? ''), (string)($m['month'] ?? '') . '-01');
+    $ma = $lerJ('motorista_acesso.json'); if (!empty($ma['nome']) && empty($ma['revogado'])) $reg((string)$ma['nome'], '', '', '', '');
+    // colaboradores + função
+    $pe = function (string $nome, string $funcao = '') use (&$pes, $kn) {
+        $nome = trim($nome); if (mb_strlen($nome) < 2) return; $k = $kn($nome);
+        $x = &$pes[$k]; $x['nome'][$nome] = ($x['nome'][$nome] ?? 0) + 1; if (trim($funcao) !== '') $x['funcao'][trim($funcao)] = ($x['funcao'][trim($funcao)] ?? 0) + 1; unset($x);
+    };
+    foreach ((array)($lerJ('permissoes.json')['usuarios'] ?? []) as $u) if (($u['status'] ?? 'ativo') === 'ativo') $pe((string)($u['nome'] ?? ''), (string)(($u['cargo'] ?? '') ?: ($u['setor'] ?? '')));
+    $est = $lerJ('estoque.json');
+    foreach ((array)($est['requisicoes'] ?? []) as $q) { $pe((string)($q['solicitante'] ?? ''), (string)($q['setor'] ?? '')); if (!empty($q['assinatura']['nome'])) $pe((string)$q['assinatura']['nome'], (string)($q['setor'] ?? '')); }
+    foreach ((array)($est['movimentos'] ?? []) as $m) if (!empty($m['solicitante'])) $pe((string)$m['solicitante']);
+    foreach ((array)($lerJ('ferramentas.json')['emprestimos'] ?? []) as $e) if (!empty($e['responsavel'])) $pe((string)$e['responsavel']);
+    foreach ((array)($lerJ('romaneios.json')['romaneios'] ?? []) as $r) { $pe((string)($r['responsavel_patio'] ?? '')); $pe((string)($r['solicitante'] ?? '')); }
+    // saída
+    $outM = []; foreach ($mot as $m) $outM[] = ['nome' => $melhor($m['nome']), 'placa' => isset($m['placa']) ? $melhor($m['placa']) : '', 'veiculo' => isset($m['veiculo']) ? $melhor($m['veiculo']) : '', 'transportadora' => isset($m['transportadora']) ? $melhor($m['transportadora']) : '', 'usos' => $m['usos'] ?? 0, 'ultimo' => $m['ultimo'] ?? ''];
+    $outP = []; foreach ($pla as $p) $outP[] = ['placa' => $melhor($p['placa']), 'motorista' => isset($p['motorista']) ? $melhor($p['motorista']) : '', 'veiculo' => isset($p['veiculo']) ? $melhor($p['veiculo']) : '', 'transportadora' => isset($p['transportadora']) ? $melhor($p['transportadora']) : '', 'usos' => $p['usos'] ?? 0];
+    $outT = []; foreach ($trn as $t) $outT[] = $melhor($t);
+    $outV = []; foreach ($mot as $m) foreach (array_keys($m['veiculo'] ?? []) as $v) $outV[$kn($v)] = $v;
+    $outC = []; foreach ($pes as $x) $outC[] = ['nome' => $melhor($x['nome']), 'funcao' => isset($x['funcao']) ? $melhor($x['funcao']) : ''];
+    $ord = fn($a, $b) => strcmp(mb_strtoupper((string)($a['nome'] ?? $a['placa'] ?? $a)), mb_strtoupper((string)($b['nome'] ?? $b['placa'] ?? $b)));
+    usort($outM, $ord); usort($outP, $ord); usort($outC, $ord); sort($outT); $outV = array_values($outV); sort($outV);
+    return ['motoristas' => $outM, 'placas' => $outP, 'transportadoras' => $outT, 'veiculos' => $outV, 'colaboradores' => $outC];
+}

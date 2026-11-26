@@ -32,6 +32,7 @@ const prtToast = (m, e) => (typeof toast === 'function' ? toast(m, e) : alert(m)
 async function protocolosInit() {
   try {
     PRT.p = await prtApi('protocolos_painel');
+    try { PRT.cfg = (await prtApi('protocolos_email_config')).config; } catch { PRT.cfg = null; }
     const ativos = new Set(PRT.p.candidatos.map(prtKey));
     PRT.sel = new Set([...PRT.sel].filter(k => ativos.has(k)));
     prtRender();
@@ -105,6 +106,7 @@ function prtGerar() {
   const bg = prtModal('Gerar protocolo de NFs', `<p><b>${sel.length}</b> nota(s) fiscal(is) de <b>${new Set(sel.map(c => c.fornecedor)).size}</b> fornecedor(es).</p>
     <div class="rd-ass-campos"><label>Entregar para<input name="destinatario" value="Financeiro" maxlength="80"></label>
     <label>Observações (opcional)<input name="obs" maxlength="600" placeholder="Ex.: NFs de material de manutenção da semana"></label></div>
+    ${prtEmailNota()}
     <p class="muted" style="font-size:12px">Depois de gerar, as NFs saem da lista de pendentes e o protocolo abre para impressão em 2 vias (Financeiro e Recebimento).</p>
     <div class="rd-ass-acoes"><button type="button" class="button ghost" data-x2>Cancelar</button><button type="button" class="button primary" data-ok>Gerar e imprimir</button></div>`);
   bg.querySelector('[data-ok]').onclick = async function () {
@@ -113,13 +115,14 @@ function prtGerar() {
       const r = await prtPost('protocolos_criar', { destinatario: prtVal(bg, 'destinatario'), obs: prtVal(bg, 'obs'), linhas: sel.map(c => ({ pc: c.pc })) });
       bg.remove(); PRT.sel.clear(); prtToast(`Protocolo ${r.protocolo.id} gerado`);
       PRT.aba = 'protocolos'; document.querySelectorAll('[data-prt-aba]').forEach(b => b.classList.toggle('active', b.dataset.prtAba === 'protocolos'));
-      await protocolosInit(); prtPronto(r.protocolo);
+      await protocolosInit(); prtPronto(r.protocolo, r.email);
     } catch (e) { prtToast(e.message, true); this.disabled = false; }
   };
 }
-function prtPronto(p) {
+function prtPronto(p, em) {
   const id = encodeURIComponent(p.id);
   const bg = prtModal(`Protocolo ${prtH(p.id)} gerado`, `<p><b>${p.qtd_nfs}</b> nota(s)${p.total_valor ? ' · ' + prtR(p.total_valor) : ''}. Imprima em 2 vias para o ${prtH(p.destinatario)} assinar, ou baixe o arquivo.</p>
+    ${prtEmailRes(em)}
     <div class="prt-pronto"><button type="button" class="button primary" data-imp>🖨 Imprimir (2 vias)</button>
     <a class="button ghost" href="api.php?action=protocolos_pdf&id=${id}" download>⬇ Baixar PDF</a>
     <a class="button ghost" href="api.php?action=protocolos_csv&id=${id}" download>⬇ Excel (CSV)</a></div>
@@ -139,7 +142,7 @@ function prtRenderLista() {
 function prtCard(p) {
   const [rot, cls] = PRT_ST[p.status] || [p.status, ''];
   const atraso = p.dias_aberto != null && p.dias_aberto >= 3 ? `<span class="prt-atraso">há ${p.dias_aberto} dias sem fechar</span>` : '';
-  return `<article class="panel prt-card ${p.status === 'CANCELADO' ? 'prt-cancelado' : ''}"><div class="prt-top"><div><h3>${prtH(p.id)} <span class="prt-badge ${cls}">${prtH(rot)}</span> ${atraso}</h3>
+  return `<article class="panel prt-card ${p.status === 'CANCELADO' ? 'prt-cancelado' : ''}"><div class="prt-top"><div><h3>${prtH(p.id)} <span class="prt-badge ${cls}">${prtH(rot)}</span> ${atraso} ${p.link_ativo_ate ? '<span class="prt-badge warn" title="Link de assinatura ativo">✉ link ativo até ' + prtD(p.link_ativo_ate) + '</span>' : ''}</h3>
     <p class="muted">${prtD(p.criado_em)} · ${prtH(p.criado_por)} → <b>${prtH(p.destinatario)}</b> · ${p.qtd_nfs} NF(s)${p.total_valor ? ' · ' + prtR(p.total_valor) : ''}${p.recebido_por ? ' · recebido por <b>' + prtH(p.recebido_por) + '</b>' : ''}${p.entregue_em ? ' em ' + prtD(p.entregue_em) : ''}</p></div>
     <div class="prt-acoes">${p.status !== 'CANCELADO' ? `<button class="button ghost" onclick="prtImprimir('${p.id}')">🖨 Imprimir</button><a class="button ghost" href="api.php?action=protocolos_pdf&id=${encodeURIComponent(p.id)}" download>⬇ Baixar PDF</a><a class="button ghost" href="api.php?action=protocolos_csv&id=${encodeURIComponent(p.id)}" download>⬇ Excel (CSV)</a>` : ''}${prtAcoes(p)}</div></div>
     <details class="prt-det"><summary>Ver as ${p.qtd_nfs} nota(s)</summary><div class="prt-scroll"><table class="orders-table"><thead><tr><th>NF</th><th>PC</th><th>Fornecedor</th><th>Emissão</th><th>Valor</th></tr></thead><tbody>
@@ -154,6 +157,7 @@ function prtAcoes(p) {
   const b = [];
   if (p.status === 'GERADO' && prtPode('editar')) b.push(`<button class="button primary" onclick="prtEntregar('${p.id}')">Marcar entregue</button>`);
   if (['GERADO', 'ENTREGUE'].includes(p.status) && prtPode('editar')) b.push(`<button class="button primary" onclick="prtAssinarDigital('${p.id}')">✍ Assinar no sistema</button>`);
+  if (['GERADO', 'ENTREGUE'].includes(p.status) && prtPode('editar')) b.push(`<button class="button ghost" onclick="prtEnviarEmail('${p.id}')">✉ ${p.email_enviado_em ? 'Reenviar e-mail' : 'Enviar por e-mail'}</button>`);
   if (['GERADO', 'ENTREGUE'].includes(p.status) && prtPode('anexar')) b.push(`<label class="button ghost prt-up">📎 Anexar via assinada<input type="file" accept="application/pdf,image/*" hidden onchange="prtUpload('${p.id}',this)"></label>`);
   if (['GERADO', 'ENTREGUE'].includes(p.status) && prtPode('editar') && (p.documentos || []).length) b.push(`<button class="button primary" onclick="prtAssinar('${p.id}')">Arquivar como assinado</button>`);
   if (p.status === 'ASSINADO' && prtPode('editar')) b.push(`<button class="button ghost" onclick="prtMotivo('${p.id}','reabrir','Reabrir protocolo')">Reabrir</button>`);
@@ -216,5 +220,53 @@ function prtAssinarDigital(id) {
   bg.querySelector('[data-ok]').onclick = () => {
     if (!bg.querySelector('[name=ciente]').checked) return prtToast('Marque a confirmação de recebimento.', true);
     prtStatus(bg, { id, acao: 'assinar_digital', recebido_por: prtVal(bg, 'recebido_por'), cargo: prtVal(bg, 'cargo'), tracos }, 'Protocolo assinado e arquivado');
+  };
+}
+
+/* v3.59.0 — e-mail automático + assinatura eletrônica por link */
+function prtEmailNota() {
+  const c = PRT.cfg;
+  if (c && c.ativo && (c.emails || []).length) return `<p class="muted" style="font-size:12px">✉ Será enviado por e-mail para <b>${prtH(c.emails.join(', '))}</b>, com o PDF e o botão de assinatura eletrônica.</p>`;
+  return `<p class="muted" style="font-size:12px">✉ Envio por e-mail desligado. ${prtPode('aprovar') ? 'Ative em "E-mail e assinatura".' : ''}</p>`;
+}
+function prtEmailRes(em) {
+  if (!em) return '';
+  if (em.enviado) return `<p class="prt-emailok">✉ E-mail enviado para <b>${prtH((em.para || []).join(', '))}</b> com o link de assinatura eletrônica.</p>`;
+  if (em.motivo === 'sem_config') return '<p class="muted">✉ E-mail automático desligado (Protocolos › ⚙ E-mail e assinatura).</p>';
+  return `<p class="prt-emailerro">⚠ O e-mail não foi enviado: ${prtH(em.motivo || 'erro')}. Use "✉ Enviar por e-mail" no protocolo para tentar de novo.</p>`;
+}
+function prtEnviarEmail(id) {
+  const pad = ((PRT.cfg && PRT.cfg.emails) || []).join(', ');
+  const bg = prtModal('Enviar protocolo por e-mail', `<p class="muted">Será criado um link novo de assinatura; o anterior deixa de valer.</p>
+    <div class="rd-ass-campos"><label>E-mail(s) — separe por vírgula<input name="emails" value="${prtH(pad)}" maxlength="300" placeholder="financeiro@empresa.com"></label></div>
+    <div class="rd-ass-acoes"><button type="button" class="button ghost" data-x2>Cancelar</button><button type="button" class="button primary" data-ok>✉ Enviar</button></div>`, 480);
+  bg.querySelector('[data-ok]').onclick = async function () {
+    this.disabled = true;
+    try {
+      const r = await prtPost('protocolos_email_enviar', { id, emails: prtVal(bg, 'emails') });
+      if (!r.email.enviado) throw new Error(r.email.motivo || 'Não foi possível enviar.');
+      bg.remove(); prtToast('E-mail enviado para ' + r.email.para.join(', ')); await protocolosInit();
+    } catch (e) { prtToast(e.message, true); this.disabled = false; }
+  };
+}
+function prtConfigEmail() {
+  const c = PRT.cfg || { ativo: true, emails: ['almoxarifado@drilling.com.br'], validade_dias: 7, anexar_pdf: true, confirmar: true };
+  const bg = prtModal('E-mail e assinatura eletrônica', `<p class="muted">Ao gerar um protocolo, o sistema envia ao(s) e-mail(s) abaixo o resumo, o PDF e um botão para assinar eletronicamente (sem senha). Usa o mesmo e-mail (SMTP) dos Alertas de estoque.</p>
+    <div class="rd-ass-campos"><label style="flex-direction:row;gap:8px;align-items:center"><input type="checkbox" name="ativo" ${c.ativo ? 'checked' : ''}> Enviar automaticamente ao gerar o protocolo</label>
+    <label>E-mail principal<input name="e0" type="email" value="${prtH((c.emails || [])[0] || 'almoxarifado@drilling.com.br')}" maxlength="120"></label>
+    <label>E-mail opcional 2<input name="e1" type="email" value="${prtH((c.emails || [])[1] || '')}" maxlength="120" placeholder="(opcional)"></label>
+    <label>E-mail opcional 3<input name="e2" type="email" value="${prtH((c.emails || [])[2] || '')}" maxlength="120" placeholder="(opcional)"></label>
+    <label>E-mail opcional 4<input name="e3" type="email" value="${prtH((c.emails || [])[3] || '')}" maxlength="120" placeholder="(opcional)"></label>
+    <label>Validade do link (dias)<input name="validade_dias" type="number" min="1" max="60" value="${c.validade_dias || 7}"></label>
+    <label style="flex-direction:row;gap:8px;align-items:center"><input type="checkbox" name="anexar_pdf" ${c.anexar_pdf ? 'checked' : ''}> Anexar o PDF do protocolo</label>
+    <label style="flex-direction:row;gap:8px;align-items:center"><input type="checkbox" name="confirmar" ${c.confirmar ? 'checked' : ''}> Avisar por e-mail (com o PDF assinado) quando for assinado</label></div>
+    <div class="rd-ass-acoes"><button type="button" class="button ghost" data-x2>Cancelar</button><button type="button" class="button primary" data-ok>Salvar</button></div>`, 520);
+  const ck = n => bg.querySelector(`[name="${n}"]`).checked;
+  bg.querySelector('[data-ok]').onclick = async function () {
+    this.disabled = true;
+    try {
+      PRT.cfg = (await prtPost('protocolos_email_config_salvar', { ativo: ck('ativo'), emails: [0, 1, 2, 3].map(i => prtVal(bg, 'e' + i)).filter(Boolean), validade_dias: prtVal(bg, 'validade_dias'), anexar_pdf: ck('anexar_pdf'), confirmar: ck('confirmar') })).config;
+      bg.remove(); prtToast('Configuração salva.');
+    } catch (e) { prtToast(e.message, true); this.disabled = false; }
   };
 }
