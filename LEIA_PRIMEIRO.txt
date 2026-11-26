@@ -1,3 +1,9 @@
+v3.64.0 — Terceiros: painel de gestão de RASTREIOS
+- Nova aba "Rastreios" dentro de Terceiros: em trânsito, atrasados (prazo configurável), entregues no mês, a conferir, prazo médio por transportadora.
+- Cadastro de envio (fornecedor, PC, produto, transportadora, código, datas, recebedor), botão "Rastrear" que abre o site da transportadora/Correios, "Entregue", CSV.
+- Importar da planilha: cole as linhas do Excel (PROTOCOLO NOTAS) — há prévia antes de gravar e duplicados são ignorados.
+- Dados em data/rastreios.json (não vai no zip). Não consulta as transportadoras automaticamente.
+
 v3.63.0 — Junção das duas linhas do sistema (servidor 3.60.3 + melhorias 3.58.2 → 3.62.2)
 - Base: o backup do servidor (3.60.3), com a Caixa de NFs por e-mail (nfmail) e "Corrigir número do PC".
 - Acrescentado sobre ele: e-mail diário das saídas com layout premium (mantendo SKU do PC, setor e valor unitário do servidor);

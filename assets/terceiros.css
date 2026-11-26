@@ -17,3 +17,10 @@
 #page-contagens .orders-table{min-width:0;width:100%}
 #page-contagens .cnt-in{min-height:40px;font-size:16px}
 @media(max-width:600px){#page-contagens .orders-table th:nth-child(4),#page-contagens .orders-table td:nth-child(4){display:none}#page-contagens .orders-table td,#page-contagens .orders-table th{padding:8px 6px}#page-contagens .est-head-actions{flex-wrap:wrap}}
+/* Rastreios (v3.64.0) */
+#terTabs{display:flex;gap:6px;margin:0 0 12px}
+.rtr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+.rtr-grid label,#terRastreios .rd-ass label{display:block}
+.rtr-conf{color:#b42318}
+.rtr-ac{white-space:nowrap}.rtr-ac .button{padding:4px 8px;margin:1px}
+.rtr-det{margin:14px 0}.rtr-det summary{cursor:pointer;padding:6px 0}
