@@ -143,13 +143,15 @@ function ob_remessa_info(array $d, string $numero, string $ignorar = ''): array 
     }
     if (preg_match('/^ROM-?\d+$/', $q)) {
         $id = 'ROM-' . str_pad($zero($q) ?: '0', 4, '0', STR_PAD_LEFT);
-        foreach (rom_read()['romaneios'] as $r) if ($r['id'] === $id && ($r['status'] ?? '') !== 'CANCELADO') {
+        foreach (rom_read()['romaneios'] as $r) if ($r['id'] === $id && ($r['status'] ?? '') === 'CANCELADO') { $out['mensagem'] = "O romaneio $id está CANCELADO e não pode ser aplicado."; }
+        elseif ($r['id'] === $id) {
             $out['remessas'][] = ['ref' => $r['id'], 'origem' => 'Romaneio', 'tipo' => 'ROMANEIO', 'numero' => $r['id'], 'status' => $r['status'], 'status_label' => ROM_STATUS[$r['status']] ?? $r['status'],
                 'data' => (string)($r['data'] ?? ''), 'destino' => (string)($r['obra_nome'] ?? ''), 'obra_id' => (string)($r['obra_id'] ?? ''), 'obs' => (string)($r['obs'] ?? ''),
                 'itens' => array_map($nome, (array)$r['itens']), 'total' => 0.0, 'ja_aplicada' => $usada((string)$r['id'])];
         }
     }
     if ($out['remessas']) { $out['status'] = 'ok'; $out['mensagem'] = ''; }
+    elseif ($out['mensagem'] !== '' && str_contains($out['mensagem'], 'CANCELADO')) { /* mantém */ }
     elseif (preg_match('/^\d+$/', $q)) $out['mensagem'] = 'Nenhuma nota de remessa com o número ' . $numero . ' no Espelho de NF. Confira se o espelho foi marcado como "Nota emitida". Para romaneio, digite ROM-0001.';
     return $out;
 }

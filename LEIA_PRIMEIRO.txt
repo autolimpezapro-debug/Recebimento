@@ -1,3 +1,7 @@
+VERSAO 3.60.1 - REVISAO GERAL
+- Analise completa: sintaxe de todo PHP/JS, 262 rotas da API, permissoes, assinatura por link, e-mails, remessa e envio diario. Sem erros encontrados.
+- Ajuste: remessa em Obras com romaneio CANCELADO agora informa o motivo (antes dizia "nao encontrada").
+
 VERSAO 3.60.0 - OBRAS: APLICAR REMESSA
 - No envio de Obras, digite o numero da nota/remessa (ou ROM-0001) e clique em "Buscar remessa".
 - O sistema traz todos os materiais do Espelho de NF ou Romaneio, preenche itens, valor, tipo e obra.
