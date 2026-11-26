@@ -143,14 +143,12 @@ function us_matriz($perm): array {
 
 /** Grava em operational_users.json preservando os campos que já existiam. */
 function us_grava_user(string $name, array $campos): void {
-    $fp = @fopen(RD_USER_FILE, 'c+');
-    if (!$fp || !flock($fp, LOCK_EX)) respond(['ok' => false, 'error' => 'Não foi possível gravar o usuário'], 503);
-    $list = json_decode((string)(stream_get_contents($fp) ?: '{}'), true);
-    if (!is_array($list)) $list = [];
-    $list[$name] = array_merge(is_array($list[$name] ?? null) ? $list[$name] : [], $campos, ['updated_at' => date('c')]);
-    rewind($fp); ftruncate($fp, 0);
-    fwrite($fp, json_encode($list, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-    fflush($fp); flock($fp, LOCK_UN); fclose($fp); @chmod(RD_USER_FILE, 0600);
+    // v3.59.1 (auditoria): gravação atômica e recusa se o arquivo estiver ilegível (antes virava lista vazia e apagava todos).
+    $ok = rd_user_update(function ($list) use ($name, $campos) {
+        $list[$name] = array_merge(is_array($list[$name] ?? null) ? $list[$name] : [], $campos, ['updated_at' => date('c')]);
+        return $list;
+    });
+    if (!$ok) respond(['ok' => false, 'error' => 'Não foi possível gravar o usuário (data/operational_users.json ocupado ou ilegível — restaure o backup).'], 503);
 }
 
 /** O usuário é o último com acesso administrativo (pode administrar usuários)? */

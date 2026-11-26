@@ -117,7 +117,7 @@ function ob_obra(array $d, string $id): array {
     }
     $loc = json_decode((string)@file_get_contents(DATA_DIR . '/locacoes.json'), true) ?: [];
     foreach ((array)($loc['locacoes'] ?? []) as $l) {
-        if (($l['status'] ?? '') === 'DEVOLVIDO' || !ob_bate((string)($l['local_atual'] ?? ''), $ch)) continue;
+        if (in_array(($l['status'] ?? ''), ['DEVOLVIDA', 'DEVOLVIDO'], true) || !ob_bate((string)($l['local_atual'] ?? ''), $ch)) continue;
         $sis['locacoes'][] = ['equipamento' => $l['equipamento'] ?? '', 'patrimonio' => $l['patrimonio'] ?? '', 'fornecedor' => $l['fornecedor'] ?? '', 'desde' => $l['inicio'] ?? ''];
     }
     return ['obra' => $o, 'envios' => $envios, 'sistema' => $sis, 'chaves' => $ch, 'tipos' => OB_TIPOS];
@@ -176,7 +176,7 @@ function ob_envio_salvar(array &$d, array $in, string $usuario): array {
     $oid = (string)($in['obra_id'] ?? '');
     if (!isset($obras[$oid])) ob_fail('Escolha a obra.');
     $data = (string)($in['data'] ?? '');
-    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $data) || !strtotime($data)) ob_fail('Informe a data do envio.');
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $data, $dm) || !checkdate((int)$dm[2], (int)$dm[3], (int)$dm[1])) ob_fail('Informe uma data de envio válida.');   // v3.59.1: strtotime aceitava 2026-02-31 (virava 03/03)
     $id = (string)($in['id'] ?? '');
     if ($id !== '' && !isset($d['envios'][$id])) ob_fail('Envio não encontrado.', 404);
     // v3.33.0: origem em pedido de compra (opcional). Só registra — NÃO movimenta estoque.

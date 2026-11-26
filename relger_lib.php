@@ -16,6 +16,33 @@ function rg_relatorio(string $ini, string $fim, bool $soComOs = false): array { 
     $db = est_read(); $itens = $db['itens'] ?? [];
     $custoInv = [];
     foreach ($db['movimentos'] ?? [] as $m) if (($m['tipo'] ?? '') === 'INVENTARIO_SAP' && (float)($m['custo_unitario'] ?? 0) > 0) $custoInv[$m['codigo']] = (float)$m['custo_unitario'];
+    // v3.60.1: SKU e preço vindos do PC — índice dos pedidos (linhas e itens da NF)
+    $pcsIdx = [];
+    foreach ((function_exists('read_items') ? read_items() : (json_decode((string)@file_get_contents(DATA_DIR . '/items.json'), true) ?: [])) as $p) {
+        $n = (int)($p['pc'] ?? 0); if ($n <= 0) continue;
+        $nf = [];
+        foreach (preg_split('/\r?\n/', (string)($p['itensNF'] ?? '')) as $l) {
+            $c = array_map('trim', explode('|', $l)); if (count($c) < 5) continue;
+            $qt = (float)str_replace(',', '.', $c[2]); $vt = (float)str_replace(',', '.', $c[4]);
+            if ($qt > 0 && $vt > 0) $nf[] = ['desc' => mb_strtoupper($c[1]), 'unit' => $vt / $qt];
+        }
+        $pcsIdx[$n] = ['linhas' => array_values((array)($p['insumos'] ?? [])), 'nf' => $nf, 'nfnum' => (string)($p['numeroNF'] ?? '')];
+    }
+    $rgPcLinha = function ($pc, string $linhaId, string $desc) use ($pcsIdx): ?array {
+        $P = $pcsIdx[(int)$pc] ?? null; if (!$P) return null;
+        foreach ($P['linhas'] as $l) if ($linhaId !== '' && strtolower((string)($l['id'] ?? '')) === strtolower($linhaId)) return $l;
+        $d = mb_strtoupper(trim($desc));
+        foreach ($P['linhas'] as $l) if ($d !== '' && mb_strtoupper(trim((string)($l['descricao'] ?? ''))) === $d) return $l;
+        return count($P['linhas']) === 1 ? $P['linhas'][0] : null;
+    };
+    $rgPcPreco = function ($pc, string $desc) use ($pcsIdx): float {   // preço unitário pela NF vinculada ao PC
+        $P = $pcsIdx[(int)$pc] ?? null; if (!$P || !$P['nf']) return 0.0;
+        if (count($P['nf']) === 1) return $P['nf'][0]['unit'];
+        $w = array_filter(preg_split('/[^A-Z0-9]+/', mb_strtoupper($desc)), fn($x) => strlen($x) > 2);
+        $melhor = 0.0; $pts = 0;
+        foreach ($P['nf'] as $l) { $k = 0; foreach ($w as $x) if (strpos($l['desc'], $x) !== false) $k++; if ($k > $pts) { $pts = $k; $melhor = $l['unit']; } }
+        return $pts >= 2 ? $melhor : 0.0;
+    };
     $saidas = []; $entradas = [];
     foreach ($db['movimentos'] ?? [] as $m) {
         $dia = substr((string)($m['em'] ?? ''), 0, 10); if ($dia < $ini || $dia > $fim) continue;
@@ -26,12 +53,17 @@ function rg_relatorio(string $ini, string $fim, bool $soComOs = false): array { 
             $sinal = $t === 'SAIDA' ? 1 : -1;
             $cu = (float)($it['custo_medio'] ?? 0); $fonte = 'custo médio';
             if ($cu <= 0 && isset($custoInv[$cod])) { $cu = $custoInv[$cod]; $fonte = 'inventário SAP'; }
+            $descM = (string)($it['descricao'] ?? ($m['descricao_origem'] ?? $cod));
+            $linhaPc = !empty($m['pc']) ? $rgPcLinha($m['pc'], (string)($m['linha_id'] ?? ''), (string)($m['descricao_origem'] ?? $descM)) : null;
+            $skuPc = $linhaPc ? trim((string)($linhaPc['sku'] ?? '')) : '';
+            if ($cu <= 0 && !empty($m['pc'])) { $pp = $rgPcPreco($m['pc'], (string)($m['descricao_origem'] ?? $descM)); if ($pp > 0) { $cu = $pp; $fonte = 'NF do PC ' . (int)$m['pc']; } }
             if ($cu <= 0) $fonte = 'sem custo';
             $os = trim((string)($m['os'] ?? ''));
             $saidas[] = ['em' => (string)$m['em'], 'dia' => $dia, 'mov' => (string)($m['id'] ?? ''), 'documento' => (string)($m['documento'] ?? ''), 'tipo' => $t,
-                'sku' => preg_match('/^EST-/', $cod) ? '' : $cod, 'codigo' => $cod, 'descricao' => (string)($it['descricao'] ?? ($m['descricao_origem'] ?? $cod)), 'unidade' => (string)($it['unidade'] ?? 'UN'),
+                'sku' => preg_match('/^EST-/', $cod) ? $skuPc : $cod, 'sku_pc' => $skuPc, 'codigo' => $cod, 'descricao' => $descM, 'unidade' => (string)($it['unidade'] ?? 'UN'),
                 'quantidade' => round($sinal * $q, 4), 'os' => $os, 'equipamento' => trim((string)($m['equipamento'] ?? '')), 'obra' => trim((string)($m['obra'] ?? '')), 'setor' => trim((string)($m['setor'] ?? '')),
                 'finalidade' => (string)($m['finalidade'] ?? ($m['situacao'] ?? '')), 'solicitante' => (string)($m['solicitante'] ?? ''), 'recebedor' => (string)($m['recebedor'] ?? ''), 'pc' => $m['pc'] ?? null,
+                'aplicacao' => trim(implode(' — ', array_filter([trim((string)($m['equipamento'] ?? '')), trim((string)($m['finalidade'] ?? ''))], fn($x) => $x !== ''))),
                 'custo_unit' => round($cu, 4), 'valor' => round($sinal * $q * $cu, 2), 'valor_fonte' => $fonte, 'origem_planilha' => !empty($m['origem_planilha'])];
         } elseif ($t === 'ENTRADA_RECEBIMENTO') {
             $entradas[] = ['dia' => $dia, 'pc' => $m['pc'] ?? null, 'fornecedor' => (string)($m['fornecedor'] ?? ''), 'nf' => (string)($m['numero_nf'] ?? ''), 'sku' => preg_match('/^EST-/', $cod) ? '' : $cod,
@@ -72,11 +104,11 @@ function rg_relatorio(string $ini, string $fim, bool $soComOs = false): array { 
         'nota' => 'OS só existe nas saídas feitas pelo sistema (requisição/saída com OS). Saídas importadas da planilha antiga não trazem OS e aparecem como "(sem OS)".',
     ];
 }
-function rg_csv(array $r): string {
-    $q = fn($v) => '"' . str_replace('"', '""', (string)$v) . '"'; $n = fn($v) => str_replace('.', ',', (string)$v);
+function rg_csv(array $r): string {   // texto que começa com = + - @ ganha ' na frente (não vira fórmula no Excel)
+    $q = fn($v) => '"' . str_replace('"', '""', preg_match('/^[=+\-@\t\r]/', (string)$v) ? "'" . $v : (string)$v) . '"';   $n = fn($v) => str_replace('.', ',', (string)$v);
     $o = "\xEF\xBB\xBF" . 'Periodo;' . $q($r['periodo']['ini'] . ' a ' . $r['periodo']['fim']) . "\r\n";
-    $o .= "Data;Movimento;Documento;SKU;Material;Un;Quantidade;OS;Equipamento;Obra;Setor;Finalidade;Solicitante;Recebedor;PC;Custo unit;Valor;Fonte do custo\r\n";
-    foreach ($r['saidas'] as $s) $o .= implode(';', [$q(substr($s['dia'], 8, 2) . '/' . substr($s['dia'], 5, 2) . '/' . substr($s['dia'], 0, 4)), $q($s['mov']), $q($s['documento']), $q($s['sku']), $q($s['descricao']), $q($s['unidade']), $n($s['quantidade']),
-        $q($s['os'] !== '' ? $s['os'] : '(sem OS)'), $q($s['equipamento']), $q($s['obra']), $q($s['setor']), $q($s['finalidade']), $q($s['solicitante']), $q($s['recebedor']), $q($s['pc']), $n($s['custo_unit']), $n(number_format($s['valor'], 2, '.', '')), $q($s['valor_fonte'])]) . "\r\n";
+    $o .= "Data;Hora;PC;SKU do PC;SKU;Material;Un;Quantidade;Aplicacao;Setor;OS;Valor unit;Valor total;Fonte do valor;Equipamento;Obra;Finalidade;Solicitante;Recebedor;Movimento;Documento\r\n";
+    foreach ($r['saidas'] as $s) $o .= implode(';', [$q(substr($s['dia'], 8, 2) . '/' . substr($s['dia'], 5, 2) . '/' . substr($s['dia'], 0, 4)), $q(substr($s['em'], 11, 5)), $q($s['pc']), $q($s['sku_pc'] ?? ''), $q($s['sku']), $q($s['descricao']), $q($s['unidade']), $n($s['quantidade']),
+        $q($s['aplicacao'] ?? ''), $q($s['setor']), $q($s['os'] !== '' ? $s['os'] : '(sem OS)'), $n($s['custo_unit']), $n(number_format($s['valor'], 2, '.', '')), $q($s['valor_fonte']), $q($s['equipamento']), $q($s['obra']), $q($s['finalidade']), $q($s['solicitante']), $q($s['recebedor']), $q($s['mov']), $q($s['documento'])]) . "\r\n";
     return $o;
 }

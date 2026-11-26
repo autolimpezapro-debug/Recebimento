@@ -108,7 +108,12 @@ function colPreencherMotivos() {
 async function colMontarMapa() {
   const el = colEl('colMap');
   if (!el || typeof L === 'undefined' || COL.mapa) return;
-  COL.mapa = L.map(el, { zoomControl: true, attributionControl: true }).setView([-19.6986, -43.9586], 8);
+  // Tablet/celular: 1 dedo rola a PÁGINA (antes o mapa grande "prendia" o dedo e a tela não descia); 2 dedos movem/zoom no mapa.
+  const toque = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
+  COL.mapa = L.map(el, { zoomControl: true, attributionControl: true, dragging: !toque }).setView([-19.6986, -43.9586], 8);
+  // Desktop: a roda do mouse rola a página; o zoom pela roda só liga depois de clicar no mapa (desliga ao sair dele).
+  COL.mapa.scrollWheelZoom.disable(); COL.mapa.on('click focus', () => COL.mapa.scrollWheelZoom.enable()); COL.mapa.on('mouseout blur', () => COL.mapa.scrollWheelZoom.disable());
+  if (toque) { const dica = L.control({ position: 'bottomleft' }); dica.onAdd = () => { const d = L.DomUtil.create('div', 'leaflet-bar'); d.style.cssText = 'background:#0b131fcc;color:#dbe6f5;padding:3px 8px;font-size:11px'; d.textContent = 'Use 2 dedos para mover o mapa'; return d; }; dica.addTo(COL.mapa); }
   // Testa a camada preferida antes de desenhar: se exigir chave, usa OSM.
   const pref = COL.tiles;
   const ok = await colTestarTiles(pref);

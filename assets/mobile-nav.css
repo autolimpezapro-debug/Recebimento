@@ -58,3 +58,11 @@
 @media (min-width: 1031px) {
   .sidebar { height: 100vh; height: 100dvh; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; scrollbar-width: thin; }
 }
+
+/* Auditoria tablet: a barra superior fixa (.sidebar, z-index 60) ficava POR CIMA da gaveta do pedido (z 30) e dos modais (z 50):
+   o botão ✕ da gaveta não recebia o toque, a gaveta não fechava e o body continuava com overflow:hidden — a página não rolava. */
+@media (max-width: 1030px) {
+  .drawer-mask { z-index: 61; }
+  .drawer { z-index: 62; }
+  .modal-bg:not(.attachment-modal) { z-index: 64; }
+}

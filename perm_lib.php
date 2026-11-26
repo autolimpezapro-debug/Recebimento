@@ -375,7 +375,7 @@ function rd_rota(string $action): ?array {
             // núcleo de pedidos
             'list' => ['pedidos', 'listar'], 'obras_lista' => ['pedidos', 'listar'], 'stats' => ['dashboard', 'ver'], 'events' => ['notificacoes', 'listar'],
             'save' => ['pedidos', 'editar'], 'pc_devolucao' => ['pedidos', 'editar'], 'pc_destino' => ['pedidos', 'editar'], 'pc_avisar' => ['pedidos', 'editar'], 'pc_avisar_info' => ['pedidos', 'detalhe'], 'avisar_pendencias' => ['pedidos', 'listar'], 'pc_create' => ['pedidos', 'criar'], 'start_receipt' => ['pedidos', 'iniciar'], 'finish_receipt' => ['pedidos', 'finalizar'],
-            'correct_partial' => ['pedidos', 'aprovar'], 'admin_corrigir_recebimento' => ['administracao', 'admin'], 'reset' => ['administracao', 'admin'],
+            'correct_partial' => ['pedidos', 'aprovar'], 'admin_corrigir_recebimento' => ['administracao', 'admin'], 'pc_renumerar' => ['administracao', 'admin'], 'reset' => ['administracao', 'admin'],
             'upload_photo' => ['pedidos', 'anexar'], 'upload_xml' => ['pedidos', 'anexar'], 'nf_ler_danfe' => ['pedidos', 'anexar'], 'remove_photo' => ['pedidos', 'anexar'],
             // importação
             'whatsapp_import_preview' => ['importacao', 'criar'], 'upload_parte' => ['importacao', 'criar'], 'upload_info' => ['importacao', 'ver'], 'upload_parte_coletas' => ['coletas', 'criar'], 'whatsapp_import_confirm' => ['importacao', 'criar'],
@@ -411,6 +411,9 @@ function rd_rota(string $action): ?array {
             'relger_dados' => ['estoque', 'listar'], 'relger_csv' => ['estoque', 'listar'], 'relger_envio_config' => ['estoque', 'admin'], 'relger_envio_salvar' => ['estoque', 'admin'], 'relger_envio_testar' => ['estoque', 'admin'],
             'espelhos_painel' => ['estoque', 'listar'], 'espelhos_itens_pc' => ['estoque', 'listar'], 'espelhos_sku' => ['estoque', 'listar'], 'espelhos_pdf' => ['estoque', 'listar'], 'espelhos_csv' => ['estoque', 'listar'], 'espelhos_imprimir' => ['estoque', 'listar'],
             'espelhos_salvar' => ['estoque', 'criar'], 'espelhos_status' => ['estoque', 'editar'],
+            'nfmail_painel' => ['pedidos', 'listar'], 'nfmail_nota' => ['pedidos', 'detalhe'], 'nfmail_arquivo' => ['pedidos', 'baixar'], 'nfmail_csv' => ['pedidos', 'exportar'],
+            'nfmail_config' => ['pedidos', 'admin'], 'nfmail_config_salvar' => ['pedidos', 'admin'], 'nfmail_testar' => ['pedidos', 'admin'],
+            'nfmail_sincronizar' => ['pedidos', 'anexar'], 'nfmail_vincular' => ['pedidos', 'anexar'], 'nfmail_desvincular' => ['pedidos', 'editar'], 'nfmail_ignorar' => ['pedidos', 'editar'],
             'locacoes_painel' => ['estoque', 'listar'], 'locacoes_csv' => ['estoque', 'listar'],
             'locacoes_salvar' => ['estoque', 'editar'], 'locacoes_transferir' => ['estoque', 'criar'], 'locacoes_desfazer_transferencia' => ['estoque', 'editar'],
             'locacoes_extra' => ['estoque', 'criar'], 'locacoes_devolver' => ['estoque', 'criar'], 'locacoes_reabrir' => ['estoque', 'editar'],
@@ -472,7 +475,7 @@ function rd_rota(string $action): ?array {
     // prefixos de segurança: qualquer rota nova desses módulos exige, no mínimo, 'ver'
     foreach ([['estoque_', 'estoque'], ['etiquetas_', 'etiquetas'], ['coletas_', 'coletas'],
               ['agenda_', 'agenda'], ['notify_', 'notificacoes'], ['backup_', 'administracao'],
-              ['usuarios_', 'usuarios'], ['permissoes_', 'usuarios']] as [$p, $m]) {
+              ['usuarios_', 'usuarios'], ['permissoes_', 'usuarios'], ['nfmail_', 'pedidos']] as [$p, $m]) {
         if (strncmp($action, $p, strlen($p)) === 0) return [$m, 'ver'];
     }
     return null;
@@ -557,11 +560,28 @@ function rd_sessao_sid(): string {
     return $sid === '' ? '' : substr(hash('sha256', $sid), 0, 32);
 }
 
+/** Ler-alterar-gravar sessoes.json com trava própria: sem ela, o "tocar" de uma requisição simultânea
+ *  regravava a lista antiga e desfazia o "Encerrar sessões" do administrador. $fn devolve a lista ou null (não grava). */
+function rd_sessoes_alterar(callable $fn) {
+    $lk = @fopen(DATA_DIR . '/.sessoes.lock', 'c');
+    if ($lk) flock($lk, LOCK_EX);
+    try {
+        $d = rd_sec_sessoes();
+        $novo = $fn($d);
+        if (is_array($novo)) {
+            $tmp = SESS_FILE . '.' . getmypid() . '.tmp';
+            if (@file_put_contents($tmp, json_encode(array_values($novo), JSON_UNESCAPED_SLASHES), LOCK_EX) !== false) { @chmod($tmp, 0600); if (!@rename($tmp, SESS_FILE)) @unlink($tmp); }
+        }
+    } finally { if ($lk) { flock($lk, LOCK_UN); fclose($lk); } }
+}
+
 /** Registra/atualiza a sessão do usuário logado. Chamado a cada requisição autenticada. */
 function rd_sessao_tocar(string $username, string $perfil): void {
     $sid = rd_sessao_sid();
     if ($sid === '') return;
-    $d = rd_sec_sessoes();
+    // caminho rápido sem trava: na maioria das requisições nada muda
+    foreach (rd_sec_sessoes() as $s0) if (($s0['sid'] ?? '') === $sid && time() - (int)($s0['ultima_vista'] ?? 0) < 60 && ($s0['usuario'] ?? '') === $username) return;
+    rd_sessoes_alterar(function (array $d) use ($sid, $username, $perfil) {
     $achou = false; $mudou = false;
     foreach ($d as &$s) {
         if (($s['sid'] ?? '') === $sid) {
@@ -572,13 +592,13 @@ function rd_sessao_tocar(string $username, string $perfil): void {
         }
     }
     unset($s);
-    if ($achou && !$mudou) return;   // não reescreve o arquivo a cada requisição
+    if ($achou && !$mudou) return null;   // não reescreve o arquivo a cada requisição
     if (!$achou) $d[] = ['sid' => $sid, 'usuario' => $username, 'perfil' => $perfil,
         'inicio' => time(), 'ultima_vista' => time(), 'invalidada' => false,
         'ip' => substr(hash('sha256', (string)($_SERVER['REMOTE_ADDR'] ?? '')), 0, 16)];
     if (count($d) > 500) $d = array_slice($d, -500);
-    $tmp = SESS_FILE . '.tmp';
-    if (@file_put_contents($tmp, json_encode($d, JSON_UNESCAPED_SLASHES), LOCK_EX) !== false) { @chmod($tmp, 0600); @rename($tmp, SESS_FILE); }
+    return $d;
+    });
 }
 
 /** A sessão atual foi encerrada pelo administrador? */
@@ -590,11 +610,12 @@ function rd_sessao_invalidada(): bool {
 }
 
 function rd_sec_terminar_sessoes(string $username, string $por): int {
-    $d = rd_sec_sessoes(); $n = 0;
-    foreach ($d as &$s) if (($s['usuario'] ?? '') === $username) { $s['invalidada'] = true; $s['invalidada_por'] = $por; $n++; }
-    unset($s);
-    $tmp = SESS_FILE . '.tmp';
-    if (@file_put_contents($tmp, json_encode($d, JSON_UNESCAPED_SLASHES), LOCK_EX) !== false) { @chmod($tmp, 0600); @rename($tmp, SESS_FILE); }
+    $n = 0;
+    rd_sessoes_alterar(function (array $d) use ($username, $por, &$n) {
+        foreach ($d as &$s) if (($s['usuario'] ?? '') === $username) { $s['invalidada'] = true; $s['invalidada_por'] = $por; $n++; }
+        unset($s);
+        return $d;
+    });
     return $n;
 }
 

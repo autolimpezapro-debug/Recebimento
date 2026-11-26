@@ -76,8 +76,15 @@ function est_empty_db() {
 }
 
 /** Lê o banco. Nunca recria por cima de um arquivo corrompido. */
+/** v3.59.1: assinaturas (PNG) são privadas — as telas as recebem embutidas pelo PHP (data:), nunca por URL direta.
+ *  Instalações antigas criaram a pasta sem o .htaccess; cria quando faltar. */
+function est_ass_proteger(): void {
+    $d = DATA_DIR . '/assinaturas';
+    if (is_dir($d) && !is_file($d . '/.htaccess')) @file_put_contents($d . '/.htaccess', "Require all denied\nOptions -Indexes\n");
+}
 function est_read() {
     est_backup_once();
+    est_ass_proteger();
     if (!is_file(ESTOQUE_FILE)) return est_empty_db();
     $raw = @file_get_contents(ESTOQUE_FILE);
     if ($raw === false || $raw === '') return est_empty_db();
@@ -589,27 +596,97 @@ function est_save_entrada(array &$db, array $input, $usuario) {
     return $doc;
 }
 
-/** Importa as linhas de um pedido de compra (items.json) como entrada pendente. */
-function est_entrada_from_pedido(array &$db, array $pedido, $usuario) {
-    $linhas = [];
-    foreach (($pedido['insumos'] ?? []) as $i => $ins) {
-        $linhas[] = [
-            'id'         => (string)($ins['id'] ?? ('l' . ($i + 1))),
-            'codigo'     => '',
-            'descricao'  => (string)($ins['descricao'] ?? ''),
-            'unidade'    => (string)($ins['unidade'] ?? 'UN'),
-            'quantidade' => (float)($ins['quantidade_pedida'] ?? 0),
-        ];
+/**
+ * Importa as linhas de um pedido de compra (items.json) como entrada pendente.
+ * v3.59.1 (auditoria): a entrada leva só o que JÁ CHEGOU no pedido e ainda não foi lançado no estoque
+ * (recebido no pedido − já recebido nesta entrada), linha a linha. Antes usava a quantidade PEDIDA (conferir
+ * aceitava lançar 10 quando só 4 tinham chegado) e, depois da 1ª entrega recebida no estoque, as entregas
+ * seguintes de um PC parcial nunca entravam (409 "já foi recebida").
+ * - Sem entrada: cria a entrada com o que falta lançar.
+ * - Entrada pendente/conferida (de pedido): ajusta as quantidades esperadas ao que falta lançar.
+ * - Entrada já recebida: reabre uma nova ETAPA só com a diferença (a anterior fica em 'etapas').
+ * Nunca duplica: o que já foi lançado (quantidade_recebida acumulada da linha) é descontado.
+ * $silencioso: quando não há nada novo a lançar devolve null em vez de responder 409.
+ */
+function est_entrada_from_pedido(array &$db, array $pedido, $usuario, bool $silencioso = false) {
+    $pc = (int)($pedido['pc'] ?? 0);
+    $key = 'PC-' . $pc;
+    $doc = $db['recebimentos'][$key] ?? null;
+    if ($doc && ($doc['origem'] ?? '') !== 'PEDIDO_COMPRA' && ($doc['status'] ?? '') === 'recebido') {
+        if ($silencioso) return null;
+        est_fail('A entrada do PC ' . $pc . ' foi lançada manualmente e já recebida. Lance o complemento como entrada manual.', 409);
     }
-    if (!$linhas) est_fail('O PC ' . (int)($pedido['pc'] ?? 0) . ' não possui insumos detalhados. Cadastre os itens antes de gerar a entrada.', 409);
-    return est_save_entrada($db, [
-        'pc'         => (int)$pedido['pc'],
-        'fornecedor' => (string)($pedido['fornecedor'] ?? ''),
-        'numero_nf'  => (string)($pedido['numeroNF'] ?? ''),
-        'origem'     => 'PEDIDO_COMPRA',
-        'observacao' => 'Entrada gerada a partir dos insumos do pedido de compra.',
-        'linhas'     => $linhas,
-    ], $usuario);
+    $lancado = [];
+    if ($doc) foreach (($doc['linhas'] ?? []) as $l) $lancado[strtolower((string)$l['id'])] = (float)($l['quantidade_recebida'] ?? 0);
+    $falta = []; $linhasPedido = [];
+    foreach (($pedido['insumos'] ?? []) as $i => $ins) {
+        $id = strtolower(preg_replace('/[^A-Za-z0-9_-]/', '', (string)($ins['id'] ?? ('l' . ($i + 1))))) ?: ('l' . ($i + 1));
+        $f = round((float)($ins['quantidade_recebida'] ?? 0) - ($lancado[$id] ?? 0), 4);
+        $falta[$id] = $f > 0.00001 ? $f : 0.0;
+        $linhasPedido[$id] = ['id' => $id, 'codigo' => '', 'descricao' => (string)($ins['descricao'] ?? ''), 'unidade' => (string)($ins['unidade'] ?? 'UN'), 'quantidade' => $falta[$id]];
+    }
+    if (!$linhasPedido) est_fail('O PC ' . $pc . ' não possui insumos detalhados. Cadastre os itens antes de gerar a entrada.', 409);
+    $temNovo = array_sum($falta) > 0;
+
+    if (!$doc) {
+        if (!$temNovo) {
+            if ($silencioso) return null;
+            est_fail('Nada chegou ainda no PC ' . $pc . ' (nenhuma quantidade recebida nos insumos). Finalize o recebimento do pedido antes de gerar a entrada.', 409);
+        }
+        return est_save_entrada($db, [
+            'pc'         => $pc,
+            'fornecedor' => (string)($pedido['fornecedor'] ?? ''),
+            'numero_nf'  => (string)($pedido['numeroNF'] ?? ''),
+            'origem'     => 'PEDIDO_COMPRA',
+            'observacao' => 'Entrada gerada a partir das quantidades recebidas no pedido de compra.',
+            'linhas'     => array_values(array_filter($linhasPedido, fn($l) => $l['quantidade'] > 0)),
+        ], $usuario);
+    }
+    if (($doc['origem'] ?? '') !== 'PEDIDO_COMPRA') {   // entrada manual ainda pendente: comportamento antigo
+        if ($silencioso) return null;
+        return est_save_entrada($db, ['pc' => $pc, 'fornecedor' => (string)($pedido['fornecedor'] ?? ''), 'numero_nf' => (string)($pedido['numeroNF'] ?? ''),
+            'origem' => 'PEDIDO_COMPRA', 'linhas' => array_values(array_filter($linhasPedido, fn($l) => $l['quantidade'] > 0)) ?: est_fail('Nada recebido para lançar.', 409)], $usuario);
+    }
+    $recebida = ($doc['status'] ?? '') === 'recebido';
+    if ($recebida && !$temNovo) {
+        if ($silencioso) return null;
+        est_fail('Tudo o que chegou no PC ' . $pc . ' já entrou no estoque. Não há entrega nova para lançar.', 409);
+    }
+    $agora = est_now();
+    if ($recebida) {   // guarda a etapa recebida e abre a próxima
+        $doc['etapas'] = (array)($doc['etapas'] ?? []);
+        $doc['etapas'][] = ['recebido_em' => $doc['recebido_em'] ?? null, 'recebido_por' => $doc['recebido_por'] ?? '',
+            'linhas' => array_map(fn($l) => ['id' => $l['id'], 'codigo' => $l['codigo'] ?? '', 'quantidade_conferida' => (float)($l['quantidade_conferida'] ?? 0),
+                'quantidade_recebida_acumulada' => (float)($l['quantidade_recebida'] ?? 0), 'movimento_id' => $l['movimento_id'] ?? null], $doc['linhas'])];
+        $doc['recebido_em'] = null; $doc['reaberta_em'] = $agora;
+    }
+    $porId = [];
+    foreach ($doc['linhas'] as $i => $l) $porId[strtolower((string)$l['id'])] = $i;
+    $mudou = false;
+    foreach ($linhasPedido as $id => $lp) {
+        $f = $falta[$id];
+        if (!isset($porId[$id])) {
+            if ($f <= 0) continue;
+            $n = est_normalize_line($lp, count($doc['linhas']));
+            $n += ['quantidade_recebida' => 0.0, 'quantidade_pendente' => $f, 'conferido' => false, 'conferido_em' => null, 'divergencia_motivo' => '', 'recebido_em' => null];
+            $doc['linhas'][] = $n; $mudou = true; continue;
+        }
+        $l = &$doc['linhas'][$porId[$id]];
+        $alvoAntes = (float)($l['quantidade'] ?? 0);
+        if ($recebida || abs($alvoAntes - $f) > 0.00001) {
+            $l['quantidade'] = $f; $l['quantidade_pendente'] = $f;
+            if ($f > 0) { $l['conferido'] = false; $l['conferido_em'] = null; unset($l['quantidade_conferida']); $l['divergencia_motivo'] = ''; unset($l['sem_entrega_na_etapa']); }
+            else { $l['conferido'] = true; $l['quantidade_conferida'] = 0.0; $l['conferido_em'] = $agora; $l['divergencia_motivo'] = ''; $l['sem_entrega_na_etapa'] = true; }
+            $mudou = true;
+        }
+        unset($l);
+    }
+    if (!$mudou && !$recebida) return $silencioso ? null : $doc;
+    if (!empty($pedido['numeroNF'])) $doc['numero_nf'] = (string)$pedido['numeroNF'];
+    $doc['status'] = $temNovo ? (est_doc_all_confirmed($doc) ? 'conferido' : 'pendente') : 'pendente';
+    $doc['atualizado_em'] = $agora;
+    $db['recebimentos'][$key] = $doc;
+    return $doc;
 }
 
 /* ------------------------------------------------------------------ */
@@ -638,7 +715,7 @@ function est_confere(array &$db, array $input, $usuario) {
         $alvo = (float)$doc['linhas'][$i]['quantidade'];
         if ($q < 0) est_fail('Quantidade conferida não pode ser negativa');
         if ($q > $alvo + 0.00001) {
-            est_fail(sprintf('Quantidade conferida (%s) maior que a pedida (%s) em "%s". Registre o excedente como entrada manual.',
+            est_fail(sprintf('Quantidade conferida (%s) maior que a esperada nesta entrada (%s) em "%s" — o que chegou no pedido e ainda não foi lançado. Registre o excedente como entrada manual.',
                 est_num($q), est_num($alvo), $doc['linhas'][$i]['descricao']), 422);
         }
         $motivo = est_str($given['divergencia_motivo'] ?? '', 400);
@@ -682,8 +759,10 @@ function est_receber(array &$db, $pc, $usuario, $localizacao = '') {
     $agora = est_now();
     foreach ($doc['linhas'] as $i => $line) {
         $q = round((float)($line['quantidade_conferida'] ?? 0), 4);
+        // v3.59.1: quantidade_recebida da linha é ACUMULADA entre as etapas (entregas parciais do PC).
+        $acum = round((float)($line['quantidade_recebida'] ?? 0), 4);
         if ($q <= 0) {
-            $doc['linhas'][$i]['quantidade_recebida'] = 0.0;
+            $doc['linhas'][$i]['quantidade_recebida'] = $acum;
             $doc['linhas'][$i]['quantidade_pendente'] = round((float)$line['quantidade'], 4);
             $doc['linhas'][$i]['recebido_em'] = $agora;
             continue; // "não chegou": nada entra no estoque
@@ -712,7 +791,7 @@ function est_receber(array &$db, $pc, $usuario, $localizacao = '') {
         $db['itens'][$code]['ultima_entrada_em'] = $mov['em'];
         $db['itens'][$code]['ultima_entrada_nf'] = $doc['numero_nf'] ?? '';
         $doc['linhas'][$i]['codigo'] = $code;
-        $doc['linhas'][$i]['quantidade_recebida'] = $q;
+        $doc['linhas'][$i]['quantidade_recebida'] = round($acum + $q, 4);
         $doc['linhas'][$i]['quantidade_pendente'] = round(max(0, (float)$line['quantidade'] - $q), 4);
         $doc['linhas'][$i]['recebido_em'] = $agora;
         $doc['linhas'][$i]['movimento_id'] = $mov['id'];
@@ -1700,9 +1779,11 @@ function est_importados_view(array $db, $codigo = null) {
         $acao = !empty($it['fabricavel']) ? 'FABRICAR' : 'COMPRAR';
         $status = $saldo <= 0 ? 'SEM ESTOQUE' : ($disparo > 0 && $saldo <= $disparo ? $acao : (($cobDias !== null && $cobDias < $lead) ? 'ATENÇÃO' : 'OK'));
         arsort($obras);
+        // foto padrão sempre pelo nome atual do arquivo (itens antigos guardaram .jpg de uma foto que hoje é .png)
+        $fotoPadrao = !empty(EST_IMP_FOTOS[$it['nome_planilha'] ?? '']) ? 'assets/importados/' . EST_IMP_FOTOS[$it['nome_planilha']] : (string)($it['foto_padrao'] ?? '');
         $v = ['codigo' => $c, 'nome' => $it['descricao'], 'nome_planilha' => $it['nome_planilha'] ?? '', 'saldo' => $saldo, 'unidade' => $it['unidade'],
             'disparo' => $disparo, 'recomendado' => $rec, 'lead_time_dias' => $lead, 'fabricavel' => !empty($it['fabricavel']),
-            'foto' => $it['foto'] ?? ($it['foto_padrao'] ?? ''), 'foto_original' => $it['foto_padrao'] ?? '', 'foto_trocada' => !empty($it['foto']),
+            'foto' => $it['foto'] ?? $fotoPadrao, 'foto_original' => $fotoPadrao, 'foto_trocada' => !empty($it['foto']),
             'localizacao' => $it['localizacao'] ?? '', 'par' => $it['par'] ?? null, 'custo_medio' => (float)$it['custo_medio'],
             'consumo' => $cons, 'media_mensal' => $media, 'cobertura_dias' => $cobDias, 'status' => $status, 'acao' => $acao,
             'sugestao' => max(0, round($rec - $saldo, 2)), 'ruptura_prevista' => $cobDias !== null ? date('Y-m-d', $hoje + $cobDias * 86400) : null,
@@ -1809,7 +1890,8 @@ function est_assinatura_salvar(array &$db, array $a, $documento, $usuario) {
     $png = base64_decode($m[1], true);
     $info = $png !== false ? @getimagesizefromstring($png) : false;
     if (!$info || $info[2] !== IMAGETYPE_PNG || strlen($png) > 700 * 1024 || strlen($png) < 900) est_fail('Assinatura inválida ou em branco. Assine novamente.', 422);
-    if (!is_dir(EST_ASS_DIR)) { @mkdir(EST_ASS_DIR, 0750, true); @file_put_contents(EST_ASS_DIR . '/.htaccess', "Require all denied\nOptions -Indexes\n"); }
+    if (!is_dir(EST_ASS_DIR)) @mkdir(EST_ASS_DIR, 0750, true);
+    est_ass_proteger();
     $db['sequencia']['ass'] = (int)($db['sequencia']['ass'] ?? 0) + 1;
     $id = 'ASS-' . date('Y') . '-' . str_pad((string)$db['sequencia']['ass'], 5, '0', STR_PAD_LEFT);
     $arq = $id . '-' . bin2hex(random_bytes(4)) . '.png';

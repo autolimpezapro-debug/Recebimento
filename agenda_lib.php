@@ -54,7 +54,11 @@ function ag_read() {
     $raw = @file_get_contents(AG_FILE);
     if ($raw === false || $raw === '') return ag_empty();
     $d = json_decode($raw, true);
-    if (!is_array($d)) return ag_empty();
+    if (!is_array($d)) {
+        // Nunca devolver base vazia para um arquivo corrompido: a próxima gravação apagaria tudo.
+        if (function_exists('rd_db_recuperar') && rd_db_recuperar(basename(AG_FILE))) { $d = json_decode((string)@file_get_contents(AG_FILE), true); if (is_array($d)) return array_merge(ag_empty(), $d); }
+        respond(['ok' => false, 'error' => 'Falha ao ler data/' . basename(AG_FILE) . '. Preserve o arquivo e restaure o backup; não houve reinicialização automática.'], 500);
+    }
     return array_merge(ag_empty(), $d);
 }
 

@@ -47,7 +47,7 @@ define('MAX_PRODUCT_PHOTOS', 3);
 define('MAX_UPLOAD_BYTES', 4 * 1024 * 1024);
 define('EVENTS_FILE', DATA_DIR . '/events.json');
 define('XML_DIR', DATA_DIR . '/xml');
-define('APP_VERSION', '3.58.1');
+define('APP_VERSION', '3.60.3');
 
 if (!is_dir(DATA_DIR)) mkdir(DATA_DIR, 0755, true);
 if (!is_dir(PHOTOS_DIR)) mkdir(PHOTOS_DIR, 0755, true);
@@ -334,6 +334,14 @@ function find_index($items, $pc) {
  * conteúdo de observações nem fotos para reduzir exposição.
  */
 function append_event($pc, $tipo, $mensagem) {
+    // Trava própria: os módulos (estoque, locações, protocolos...) chamam isto sob as SUAS travas, não a dos pedidos;
+    // sem ela, duas gravações simultâneas repetiam o mesmo id (o cursor da sincronização) e perdiam eventos.
+    $fpEv = @fopen(DATA_DIR . '/.events.lock', 'c');
+    if ($fpEv) flock($fpEv, LOCK_EX);
+    try { append_event_sem_trava($pc, $tipo, $mensagem); }
+    finally { if ($fpEv) { flock($fpEv, LOCK_UN); fclose($fpEv); } }
+}
+function append_event_sem_trava($pc, $tipo, $mensagem) {
     $log = ['last_id' => 0, 'events' => []];
     if (is_file(EVENTS_FILE)) {
         $decoded = json_decode(@file_get_contents(EVENTS_FILE), true);
@@ -518,6 +526,7 @@ if ($action === 'notify_heartbeat') {
         try { require_once __DIR__ . '/alertas_lib.php'; alt_tick(); } catch (Throwable $e) {}
         try { require_once __DIR__ . '/locacoes_lib.php'; require_once __DIR__ . '/locacoes_alertas_lib.php'; lal_tick(); } catch (Throwable $e) {}
         try { require_once __DIR__ . '/relger_envio_lib.php'; rge_tick(); } catch (Throwable $e) {}   // v3.58.1: envio diário das saídas
+        try { if (is_file(DATA_DIR . '/nfmail_config.json')) { require_once __DIR__ . '/nfmail_lib.php'; nfm_tick(); } } catch (Throwable $e) { error_log('Caixa de NFs: ' . $e->getMessage()); }   // v3.59.0
         // v3.51.3: escoa pushes pendentes (tentativas que falharam) mesmo sem cron.
         try { if (is_file(DATA_DIR . '/push-queue.json') && filesize(DATA_DIR . '/push-queue.json') > 4) { require_once __DIR__ . '/push_lib.php'; push_process_queue(10, 3); } } catch (Throwable $e) {}
     });
@@ -562,6 +571,10 @@ if (strncmp((string)$action, 'protocolos_', 11) === 0) {
 // Romaneio de Terceiros (v3.51.3).
 if (strncmp((string)$action, 'romaneios_', 10) === 0) {
     require __DIR__.'/romaneios_api.php';
+}
+// Caixa de NFs por e-mail (v3.59.0).
+if (strncmp((string)$action, 'nfmail_', 7) === 0) {
+    require __DIR__.'/nfmail_api.php';
 }
 // Relatório gerencial (v3.58.1).
 if (strncmp((string)$action, 'contagens_', 10) === 0) {
@@ -712,7 +725,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_SERVER['HTTP_ORIGIN'])) {
 // O arquivo JSON é compartilhado entre operadores. Serializar gravações evita
 // perda de atualização quando duas requisições PHP chegam ao mesmo tempo.
 if ($_SERVER['REQUEST_METHOD'] === 'POST'
-    && in_array($action, ['save', 'upload_photo', 'upload_xml', 'remove_photo', 'start_receipt', 'finish_receipt', 'correct_partial', 'admin_corrigir_recebimento', 'pc_create', 'pc_devolucao', 'pc_destino', 'pc_avisar'], true)) {
+    && in_array($action, ['save', 'upload_photo', 'upload_xml', 'remove_photo', 'start_receipt', 'finish_receipt', 'correct_partial', 'admin_corrigir_recebimento', 'pc_renumerar', 'pc_create', 'pc_devolucao', 'pc_destino', 'pc_avisar'], true)) {
     $lockFile = @fopen(DATA_DIR . '/.write.lock', 'c');
     if (!$lockFile || !flock($lockFile, LOCK_EX)) {
         respond(['ok' => false, 'error' => 'Não foi possível bloquear os dados para gravação'], 503);
@@ -802,8 +815,9 @@ if (in_array($action, ['start_receipt', 'finish_receipt'], true) && $_SERVER['RE
                 est_with_lock(function () use ($pc, $item) {
                     $db = est_read();
                     $key = 'PC-' . (int)$pc;
-                    if (!isset($db['recebimentos'][$key]) && !empty($item['insumos'])) {
-                        est_entrada_from_pedido($db, $item, 'sistema:finalizacao_recebimento');
+                    // v3.59.1: cada entrega (inclusive a 2ª, 3ª... de um PC parcial) cria ou complementa a entrada
+                    // pendente só com o que chegou e ainda não foi lançado no estoque (nunca duplica).
+                    if (!empty($item['insumos']) && est_entrada_from_pedido($db, $item, 'sistema:finalizacao_recebimento', true) !== null) {
                         est_write($db);
                     }
                 });
@@ -963,6 +977,15 @@ if ($action === 'correct_partial' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // v3.51.3 — Correção de quantidade pelo ADMINISTRADOR em qualquer entrega (parcial ou integral).
 // Recalcula os acumulados das entregas seguintes, o status e os saldos; guarda o antes/depois no histórico.
+// v3.59.1: corrigir o número do PC (administrador). Já roda dentro do lock de gravação acima.
+if ($action === 'pc_renumerar' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_once __DIR__ . '/pc_renumerar_lib.php';
+    $input = json_decode(file_get_contents('php://input'), true);
+    if (!is_array($input)) respond(['ok' => false, 'error' => 'Dados inválidos'], 400);
+    $quem = (function_exists('rd_login_info') && is_array(rd_login_info())) ? rd_login_info()['username'] : 'operador-local';
+    respond(pcr_executar((int)($input['pc_atual'] ?? 0), (int)($input['pc_novo'] ?? 0), (string)($input['motivo'] ?? ''), $quem, !empty($input['simular'])));
+}
+
 if ($action === 'admin_corrigir_recebimento' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $input=json_decode(file_get_contents('php://input'),true);
     if(!is_array($input)) respond(['ok'=>false,'error'=>'Corpo JSON inválido'],400);

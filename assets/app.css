@@ -371,3 +371,10 @@ body.attachment-viewer-open{overflow:hidden}
 .imp-os-sw{display:flex!important;gap:8px;align-items:center;grid-column:1/-1}.imp-os-sw input{width:16px;height:16px}
 .ct-tab input{width:100%;min-width:150px}.ct-tab td{padding:6px}.ct-teste{margin-top:16px;padding:12px;border-radius:12px;background:#0f1b2e;border:1px solid #22344f}
 .ct-envios{list-style:none;padding:0;margin:0;display:grid;gap:5px;font-size:12px}.ct-envios small{color:#8ea6c6}
+
+/* Auditoria tablet: modais cujo corpo fica dentro de um <form> (.modal > form > .modal-body) não encolhiam até o max-height
+   do .modal — o conteúdo vazava para fora da tela e os botões do rodapé (Salvar/Registrar) ficavam inalcançáveis no tablet. */
+.modal{min-height:0}
+.modal>.modal-head,.modal>form>.modal-actions,.modal>.modal-actions{flex:0 0 auto}
+.modal>form{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+.modal>.modal-body,.modal>form>.modal-body{flex:1 1 auto;min-height:0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}

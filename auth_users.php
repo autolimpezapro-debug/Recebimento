@@ -13,6 +13,27 @@ function rd_auth_session():void {
  if(!session_start())rd_auth_send(['ok'=>false,'error'=>'Não foi possível iniciar sessão'],503);
 }
 function rd_user_data():array { $raw=@file_get_contents(RD_USER_FILE);$data=$raw?json_decode($raw,true):null;return is_array($data)?$data:[]; }
+/**
+ * Ler-alterar-gravar operational_users.json com trava própria e gravação atômica (tmp+rename).
+ * Antes era reescrito no lugar (ftruncate+fwrite): um leitor simultâneo via arquivo vazio (usuário "inexistente")
+ * e um arquivo corrompido virava lista vazia — a gravação seguinte apagava todos os usuários.
+ * $fn recebe a lista e devolve a nova lista (ou null para não gravar). Retorna false se o arquivo estiver ilegível.
+ */
+function rd_user_update(callable $fn):bool {
+ $lk=@fopen(__DIR__.'/data/.operational_users.lock','c');if(!$lk||!flock($lk,LOCK_EX))return false;
+ try{
+  $raw=is_file(RD_USER_FILE)?@file_get_contents(RD_USER_FILE):'';
+  if($raw===false)return false;
+  $list=trim($raw)===''?[]:json_decode($raw,true);
+  if(!is_array($list)){error_log('operational_users.json ilegível: gravação recusada para não apagar os usuários');return false;}
+  $novo=$fn($list);if(!is_array($novo))return true;
+  $tmp=RD_USER_FILE.'.tmp';$j=json_encode($novo,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE);
+  if($j===false||@file_put_contents($tmp,$j,LOCK_EX)===false)return false;
+  @chmod($tmp,0600);
+  if(!@rename($tmp,RD_USER_FILE)){@unlink($tmp);return false;}
+  return true;
+ }finally{flock($lk,LOCK_UN);fclose($lk);}
+}
 function rd_admin_data():array {$raw=@file_get_contents(RD_ADMIN_FILE);$data=$raw?json_decode($raw,true):null;return is_array($data)?$data:[];}
 function rd_login_info():?array {
  rd_auth_session();$s=$_SESSION['rd_login']??null;
@@ -88,10 +109,7 @@ function rd_auth_route(string $action):never {
    elseif(!empty($users[$name]['enabled'])&&is_string($users[$name]['hash']??null)&&password_verify($pw,$users[$name]['hash']))$role=(string)$users[$name]['role'];}
   if(!$role){$log[$key][]=$now;}else{unset($log[$key]);
   if($role!=='gestor'||$name!==(string)($admin['username']??'adm')){
-   $fp2=@fopen(RD_USER_FILE,'c+');
-   if($fp2&&flock($fp2,LOCK_EX)){$l2=json_decode((string)(stream_get_contents($fp2)?:'{}'),true);
-    if(is_array($l2)&&isset($l2[$name])){$l2[$name]['ultimo_acesso']=date('c');
-     rewind($fp2);ftruncate($fp2,0);fwrite($fp2,json_encode($l2,JSON_PRETTY_PRINT));fflush($fp2);}flock($fp2,LOCK_UN);fclose($fp2);}
+   rd_user_update(function($l2)use($name){if(!isset($l2[$name]))return null;$l2[$name]['ultimo_acesso']=date('c');return $l2;});
   }}
   rewind($fp);ftruncate($fp,0);fwrite($fp,json_encode($log));fflush($fp);flock($fp,LOCK_UN);fclose($fp);
   if(!$role)rd_auth_send(['ok'=>false,'error'=>$blocked?'Muitas tentativas; tente após 15 minutos':'Usuário ou senha incorretos; para primeiro acesso ative Administração e troque a senha temporária'], $blocked?429:401);
@@ -103,14 +121,16 @@ function rd_auth_route(string $action):never {
  if($action==='auth_user_save'){
   rd_auth_gate('admin');$body=json_decode((string)file_get_contents('php://input'),true);$name=trim((string)($body['username']??''));$role=(string)($body['role']??'');$pw=(string)($body['password']??'');
   if(!preg_match('/^[a-zA-Z0-9_.@-]{3,60}$/D',$name)||$name===(string)(rd_admin_data()['username']??'adm')||!in_array($role,['conferente','consulta','importador','gestor'],true)||strlen($pw)<12||strlen($pw)>128)rd_auth_send(['ok'=>false,'error'=>'Usuário, perfil ou senha inválidos (mínimo 12 caracteres)'],422);
-  $fp=@fopen(RD_USER_FILE,'c+');if(!$fp||!flock($fp,LOCK_EX))rd_auth_send(['ok'=>false,'error'=>'Não foi possível gravar usuário'],503);$list=json_decode(stream_get_contents($fp)?:'{}',true);if(!is_array($list))$list=[];
-  $list[$name]=['role'=>$role,'hash'=>password_hash($pw,PASSWORD_DEFAULT),'enabled'=>true,'updated_at'=>date('c')];rewind($fp);ftruncate($fp,0);fwrite($fp,json_encode($list,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE));fflush($fp);flock($fp,LOCK_UN);fclose($fp);@chmod(RD_USER_FILE,0600);rd_auth_send(['ok'=>true]);
+  $hash=password_hash($pw,PASSWORD_DEFAULT);
+  if(!rd_user_update(function($list)use($name,$role,$hash){$list[$name]=['role'=>$role,'hash'=>$hash,'enabled'=>true,'updated_at'=>date('c')];return $list;}))rd_auth_send(['ok'=>false,'error'=>'Não foi possível gravar usuário'],503);
+  rd_auth_send(['ok'=>true]);
  }
  if($action==='auth_user_disable'){
   rd_auth_gate('admin');$body=json_decode((string)file_get_contents('php://input'),true);$name=trim((string)($body['username']??''));
-  $fp=@fopen(RD_USER_FILE,'c+');if(!$fp||!flock($fp,LOCK_EX))rd_auth_send(['ok'=>false,'error'=>'Falha ao alterar acesso'],503);
-  $all=json_decode(stream_get_contents($fp)?:'{}',true);if(!is_array($all)||!isset($all[$name])){flock($fp,LOCK_UN);fclose($fp);rd_auth_send(['ok'=>false,'error'=>'Usuário inexistente'],404);}
-  $all[$name]['enabled']=false;rewind($fp);ftruncate($fp,0);fwrite($fp,json_encode($all,JSON_PRETTY_PRINT));fflush($fp);flock($fp,LOCK_UN);fclose($fp);rd_auth_send(['ok'=>true]);
+  $achou=false;
+  if(!rd_user_update(function($all)use($name,&$achou){if(!isset($all[$name]))return null;$achou=true;$all[$name]['enabled']=false;return $all;}))rd_auth_send(['ok'=>false,'error'=>'Falha ao alterar acesso'],503);
+  if(!$achou)rd_auth_send(['ok'=>false,'error'=>'Usuário inexistente'],404);
+  rd_auth_send(['ok'=>true]);
  }
  rd_auth_send(['ok'=>false,'error'=>'Ação desconhecida'],404);
 }

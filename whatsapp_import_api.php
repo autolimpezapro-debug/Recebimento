@@ -1,4 +1,5 @@
 <?php
+if (!defined('DATA_DIR')) { http_response_code(403); exit; }
 /** Ações AJAX, incluídas por api.php depois das funções de dados. */
 require_once __DIR__.'/whatsapp_import_lib.php';
 $importDir=DATA_DIR.'/imports';

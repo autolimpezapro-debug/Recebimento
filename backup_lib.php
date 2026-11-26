@@ -108,6 +108,10 @@ function bc_allowed(string $rel): bool {
     if ($rel === 'data/notifications.json' || $rel === 'data/devices.json' || $rel === 'data/coletas.json') return true;
     if (preg_match('~^data/(?:backups/|imports/|backup_admin_auth\.json$|backup_setup\.key$|backup_auth_attempts\.json$|gemini_config\.json$|\.write\.lock$|\.push\.lock$|\.notify\.lock$|\.estoque\.lock$|\.backup\.lock$|\.maintenance$|\.restore)~', $rel)) return false;
     if (preg_match('~^data/(?:[a-zA-Z0-9_.-]+\.json|(?:photos|xml|order_pdfs|estoque|obras|assinaturas)/[a-zA-Z0-9_.\-/]+\.(?:jpe?g|png|webp|gif|pdf|xml|json))$~D', $rel)) return true;
+    // v3.59.1 (auditoria): documentos que ficavam FORA do backup — locações (NF/contrato), vias de protocolo,
+    // fotos de chegada e a Caixa de NFs (XML/PDF recebidos por e-mail) — e as travas .htaccess dessas pastas.
+    if (preg_match('~^data/(?:locacoes_docs|protocolos_docs|chegadas_fotos|nfmail)/[a-zA-Z0-9_.-]+\.(?:jpe?g|png|webp|pdf|xml)$~D', $rel)) return true;
+    if (preg_match('~^data/(?:order_pdfs|locacoes_docs|protocolos_docs|chegadas_fotos|nfmail|obras|assinaturas|estoque/fotos_saida)/\.htaccess$~D', $rel)) return true;
     if ($rel === 'data/.htaccess' || $rel === 'data/seed.php' || $rel === 'data/order_pdfs/.htaccess') return true;
     return false;
 }

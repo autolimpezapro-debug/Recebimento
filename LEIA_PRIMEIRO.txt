@@ -1,3 +1,57 @@
+v3.60.3 — Caixa de NFs abre com o histórico completo
+- A Caixa de NFs abria no filtro "Falta o PC" e parecia que as notas já lançadas tinham sumido. Agora abre em "Todas",
+  com as notas que ainda precisam de PC no topo. Nenhum dado tinha sido perdido.
+- Nota antiga/incompleta não derruba mais a tela da Caixa.
+- Obras: locação já devolvida não aparece mais no painel da obra (o painel comparava "DEVOLVIDO" e a locação grava "DEVOLVIDA").
+
+v3.60.2 — Revisão final
+- Importados: a foto da "Broca especial modelo Bauer - dente" não aparecia (o item guardava o nome antigo .jpg; a foto é .png). A tela agora usa sempre o nome atual das fotos do catálogo.
+- Revisão completa do pacote: sintaxe de todos os PHP/JS, 524 testes de API/fluxos/segurança/PWA e 340 testes de tela em computador, tablet (em pé e deitado) e celular — sem falhas do sistema.
+
+v3.60.1 — Saídas de estoque: SKU do PC, aplicação, setor, OS e valor unitário
+- Relatório gerencial > "Materiais que saíram", CSV e e-mail diário das saídas agora trazem:
+  Data/Hora · PC · SKU do PC · Material · Quantidade · Aplicação (equipamento — finalidade) · Setor · OS · Valor unitário · Valor total.
+- SKU do PC: vem da linha do pedido de onde o material saiu (inclusive itens sem código no estoque).
+- Valor unitário: custo médio do estoque → inventário SAP → preço da NF (XML) vinculada ao PC → "sem custo".
+- CSV: texto que começa com = + - @ não vira fórmula no Excel.
+
+v3.60.0 — Auditoria completa (backend, frontend, PWA, QA)
+TABLET / TELA
+- Rolagem no tablet: a barra superior ficava por cima da gaveta do pedido e das janelas; o "✕" não recebia o toque, a gaveta não fechava e a página ficava travada sem rolar. Corrigido (camadas).
+- Janelas longas (formulários) agora rolam por dentro no tablet; os botões Salvar/Registrar ficam sempre alcançáveis.
+- Coletas: o mapa não "prende" mais o dedo — 1 dedo rola a página, 2 dedos movem o mapa; no computador a roda do mouse rola a página (zoom só depois de clicar no mapa).
+- Histórico do pedido mostra "Número do PC corrigido: X → Y" nas correções de número.
+- Caixa de NFs: perfil sem permissão não dispara a leitura automática nem vê "Acesso negado".
+ESTOQUE
+- Entrega parcial: cada entrega gera/complementa a entrada no estoque só com o que chegou e ainda não foi lançado (antes a 2ª entrega não entrava e a entrada vinha com a quantidade pedida).
+BACKUP / DADOS
+- Restaurar backup voltou a aceitar os backups automáticos/diários (antes recusava todos).
+- O backup passa a incluir documentos de locações, anexos de protocolos, fotos de chegadas e a Caixa de NFs.
+- Usuários, coletas e agenda: não apagam mais tudo se o arquivo corromper; gravação atômica com trava.
+- Eventos, sessões e correção de número de PC com travas próprias (sem perda em gravações simultâneas).
+OUTROS
+- Push por usuário passa a funcionar (warning "Undefined variable $usuario").
+- Caixa de NFs: e-mail com codificação estranha não trava mais a caixa; "Testar conexão" exige a senha se mudar servidor/usuário; leitura no máximo 1x/min por tela.
+- Obras: data inválida (31/02) recusada. Assinaturas protegidas contra acesso direto. Avisos do log PHP corrigidos (coletas, locações).
+- QA: 524 testes automáticos de API/fluxos/segurança/PWA + rolagem em 20 páginas × tablet/celular — todos passando.
+
+v3.59.1 — Corrigir número do PC
+- NOVO (administrador): no pedido, botão "🔢 Corrigir número do PC". Para quando um pedido foi lançado no número errado.
+  Leva o pedido inteiro (recebimento, NF, XML, fotos, insumos) para o número certo e troca o número em tudo que aponta para ele:
+  entradas e movimentos do estoque, coletas, avisos de chegada, notificações, protocolos de NF, Caixa de NFs, locações, obras.
+- Simula antes e mostra o que vai mudar; recusa se o número novo já existir; faz cópia de segurança em data/retificacoes/ (com LEIA.txt de como desfazer).
+- Fica registrado no histórico de retificações do pedido e no histórico de eventos.
+
+v3.59.0 — Caixa de NFs (notas recebidas por e-mail)
+- NOVO menu "Caixa de NFs": o sistema lê uma caixa de e-mail só para notas (drilling@recebimento.autolimpezapro.com.br) e baixa TODA NF-e (XML) e DANFE (PDF) que chegar — também dentro de .zip e em e-mail encaminhado como anexo. Nada é apagado na caixa.
+- De cada XML lê chave, número, série, emissão, fornecedor/CNPJ, destinatário, valor e itens, e acha o PC pelo campo "pedido" do XML, pelas observações da nota (O.C., OC, PC, S/PED, PEDIDO DE COMPRA, ORDEM DE COMPRA…) e pelo assunto do e-mail.
+- PC claro = vincula sozinho: o pedido recebe XML, chave, número, série, emitente, emissão, valor, itens e o DANFE. Só PREENCHE o que está vazio; se o PC já tem outra NF (entrega parcial) nada é alterado nele e a nota fica registrada na Caixa com aviso.
+- PC não claro = fica em "Falta o PC" com sugestões (mesmo fornecedor, PC sem NF); um clique vincula. Também: arquivar sem PC (com motivo), desvincular, histórico.
+- Controles: só PDF (sem XML), canceladas (o XML de cancelamento é lido e avisa se a nota já estava num PC), notas para outro CNPJ, NF de entrada/devolução, CT-e de frete guardado à parte, e-mails que chegaram sem nota, aba "Por fornecedor" e exportação em CSV.
+- Sem duplicidade: NF pela chave, PDF pelo conteúdo, e-mail pelo Message-ID.
+- Configuração (perfil com Pedidos > Administrar): servidor IMAP, e-mail e senha da caixa (a senha fica cifrada), CNPJs da empresa, intervalo. Botão "Testar conexão".
+- Leitura automática: a tela aberta e qualquer tela do sistema (a cada poucos minutos) verificam a caixa no intervalo configurado. Para ler mesmo com tudo fechado, crie no cPanel o cron */10 * * * *: php -q /CAMINHO/nfmail_worker.php (o caminho exato aparece na aba Configuração). O alertas_worker.php também já inclui a leitura.
+
 v3.58.1 — Relatório só com OS/OM
 - Relatório gerencial: nova caixa "Somente com OS/OM" ao lado de Aplicar — a tela, o CSV e o PDF passam a trazer só as saídas que têm OS/OM (resumos por OS/obra/setor/material também).
 - Envio diário por e-mail: nova opção "Somente saídas com OS/OM" (já vem marcada); o e-mail e o CSV anexo saem só com elas, e o dia sem saídas com OS não é enviado.

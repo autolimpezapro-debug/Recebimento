@@ -97,7 +97,11 @@ function col_read() {
     $raw = @file_get_contents(COL_FILE);
     if ($raw === false || $raw === '') return col_empty();
     $d = json_decode($raw, true);
-    if (!is_array($d)) return col_empty();
+    if (!is_array($d)) {
+        // Nunca devolver base vazia para um arquivo corrompido: a próxima gravação apagaria tudo.
+        if (function_exists('rd_db_recuperar') && rd_db_recuperar(basename(COL_FILE))) { $d = json_decode((string)@file_get_contents(COL_FILE), true); if (is_array($d)) return array_merge(col_empty(), $d); }
+        respond(['ok' => false, 'error' => 'Falha ao ler data/' . basename(COL_FILE) . '. Preserve o arquivo e restaure o backup; não houve reinicialização automática.'], 500);
+    }
     return array_merge(col_empty(), $d);
 }
 
@@ -698,11 +702,11 @@ function col_listar(array $q) {
         $out[] = col_view($c);
     }
     usort($out, function ($a, $b) {
-        $pa = $a['atrasada'] ? 0 : (($a['prioridade'] ?? 'NORMAL') === 'URGENTE' ? 1 : (($a['prioridade'] ?? '') === 'ALTA' ? 2 : 3));
-        $pb = $b['atrasada'] ? 0 : (($b['prioridade'] ?? 'NORMAL') === 'URGENTE' ? 1 : (($b['prioridade'] ?? '') === 'ALTA' ? 2 : 3));
+        $pa = !empty($a['atrasada']) ? 0 : (($a['prioridade'] ?? 'NORMAL') === 'URGENTE' ? 1 : (($a['prioridade'] ?? '') === 'ALTA' ? 2 : 3));
+        $pb = !empty($b['atrasada']) ? 0 : (($b['prioridade'] ?? 'NORMAL') === 'URGENTE' ? 1 : (($b['prioridade'] ?? '') === 'ALTA' ? 2 : 3));
         if ($pa !== $pb) return $pa <=> $pb;
-        $da = $a['agendada_data'] ?: '9999-12-31';
-        $dbb = $b['agendada_data'] ?: '9999-12-31';
+        $da = ($a['agendada_data'] ?? '') ?: '9999-12-31';
+        $dbb = ($b['agendada_data'] ?? '') ?: '9999-12-31';
         if ($da !== $dbb) return strcmp($da, $dbb);
         return strcmp((string)($a['fornecedor'] ?? ''), (string)($b['fornecedor'] ?? ''));
     });

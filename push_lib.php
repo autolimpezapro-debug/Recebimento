@@ -115,7 +115,7 @@ function push_destinos(string $modulo, array $subs): array {
 }
 function push_subscribe(array $data, string $usuario=''): array {
     $sub=push_validate_subscription($data);
-    return push_locked(function() use ($sub){
+    return push_locked(function() use ($sub,$usuario){
         $list=push_jsonread(PUSH_SUBS);
         $id=hash('sha256',$sub['endpoint']);
         if(!isset($list[$id]) && count($list)>=500) throw new RuntimeException('Limite de dispositivos inscritos atingido');

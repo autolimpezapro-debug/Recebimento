@@ -55,6 +55,17 @@ function est_json_body() {
     return $body;
 }
 
+/**
+ * v3.59.1 (auditoria): antes de conferir/receber uma entrada gerada de pedido ainda não recebida, alinha as
+ * quantidades esperadas ao que de fato chegou no pedido e ainda não foi lançado (entradas antigas usavam a
+ * quantidade pedida e deixavam lançar mais do que chegou).
+ */
+function est_api_sincronizar_pedido(array &$db, int $pc, string $user): void {
+    $doc = $db['recebimentos']['PC-' . $pc] ?? null;
+    if (!$doc || ($doc['origem'] ?? '') !== 'PEDIDO_COMPRA' || ($doc['status'] ?? '') === 'recebido' || !function_exists('read_items')) return;
+    foreach (read_items() as $p) if ((int)$p['pc'] === $pc) { est_entrada_from_pedido($db, $p, $user, true); return; }
+}
+
 /** Registra a movimentação no histórico compartilhado de atividades (events.json). */
 function est_log_event($tipo, $mensagem) {
     if (function_exists('append_event')) append_event(0, $tipo, $mensagem);
@@ -335,12 +346,14 @@ function est_handle() {
                 return ['removido' => $pc];
 
             case 'estoque_conferir':
+                est_api_sincronizar_pedido($db, (int)($body['pc'] ?? 0), $user);
                 $doc = est_confere($db, $body, $user);
                 est_write($db);
                 return ['entrada' => $doc];
 
             case 'estoque_receber':
                 $pc = (int)($body['pc'] ?? 0);
+                est_api_sincronizar_pedido($db, $pc, $user);
                 $doc = est_receber($db, $pc, $user, est_str($body['localizacao'] ?? '', 80));
                 est_write($db);
                 est_log_event('estoque', 'PC ' . $pc . ' recebido no estoque (' . count($doc['linhas']) . ' linha(s))');

@@ -62,8 +62,8 @@ $res = loc_with_lock(function () use ($action, $body, $locUser) {
 });
 if (function_exists('append_event') && isset($res['locacao'])) {
     $l = $res['locacao'];
-    $txt = ['locacoes_salvar' => 'Locação salva', 'locacoes_transferir' => 'Transferida para ' . $l['local_atual'], 'locacoes_devolver' => 'Devolvida à locadora',
-            'locacoes_extra' => 'Custo lançado', 'locacoes_reabrir' => 'Reaberta', 'locacoes_prorrogar' => 'Devolução prorrogada para ' . date('d/m/Y', strtotime($l['previsao_devolucao'])), 'locacoes_desfazer_transferencia' => 'Transferência desfeita'][$action] ?? $action;
+    $txt = ['locacoes_salvar' => 'Locação salva', 'locacoes_transferir' => 'Transferida para ' . ($l['local_atual'] ?? ''), 'locacoes_devolver' => 'Devolvida à locadora',
+            'locacoes_extra' => 'Custo lançado', 'locacoes_reabrir' => 'Reaberta', 'locacoes_prorrogar' => 'Devolução prorrogada' . (!empty($l['previsao_devolucao']) && strtotime((string)$l['previsao_devolucao']) ? ' para ' . date('d/m/Y', strtotime((string)$l['previsao_devolucao'])) : ''), 'locacoes_desfazer_transferencia' => 'Transferência desfeita'][$action] ?? $action;
     append_event(0, 'estoque', $l['id'] . ' · ' . $l['equipamento'] . ' (' . $l['fornecedor'] . '): ' . $txt);
 }
 respond(['ok' => true] + $res);

@@ -1,0 +1,28 @@
+RECEBIMENTO DRILLING v3.59.0 — INSTALAÇÃO NO SERVIDOR (HostGator)
+=================================================================
+Este pacote é o sistema COMPLETO (index.html, api.php, assets/, módulos .php...).
+Ele NÃO traz os seus dados (pedidos, estoque, usuários, fotos): a pasta data/ do servidor
+continua como está. Só vão dentro de data/ dois arquivos de proteção (.htaccess).
+
+1) BACKUP: cPanel > Gerenciador de Arquivos > pasta do sistema > botão direito em "data" > Compress > baixe o .zip.
+2) Na pasta do sistema (a que tem index.html, api.php e data), clique em Upload e envie este .zip.
+3) Botão direito no .zip > Extract > confirme sobrescrever. Apague o .zip depois.
+4) Abra o sistema com Ctrl+F5. No rodapé do menu: "v3.59.0". No menu: "📨 Caixa de NFs".
+   Conferência: abra  https://recebimento.autolimpezapro.com.br/versao_recebimento.php  — deve mostrar 3.59.0.
+
+CAIXA DE NFs — CONFIGURAR (perfil adm)
+5) Menu Caixa de NFs > aba Configuração:
+   E-mail: drilling@recebimento.autolimpezapro.com.br
+   Senha: a senha da caixa (a mesma do webmail Titan)
+   Servidor IMAP: imap.titan.email    Porta: 993    Segurança: SSL/TLS
+   Pasta: INBOX      CNPJ da empresa: 04.105.851/0001-50 (opcional)
+6) Testar conexão > deve aparecer "Conectado! A pasta INBOX tem N e-mail(s)".
+7) Marque "Ligar a leitura automática" > Salvar > Verificar agora.
+8) (Recomendado) cPanel > Cron Jobs > a cada 10 minutos (*/10 * * * *):
+   php -q CAMINHO/nfmail_worker.php      (o CAMINHO exato aparece na aba Configuração)
+
+NO E-MAIL CORPORATIVO
+9) Crie uma regra que encaminha para drilling@recebimento.autolimpezapro.com.br os e-mails com anexo
+   que tenham "NF-e", "Nota Fiscal", "DANFE" ou "XML" no assunto/corpo.
+
+VOLTAR ATRÁS: restaure o backup da data e reenvie a versão 3.58.1.

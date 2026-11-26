@@ -13,5 +13,6 @@ require __DIR__ . '/locacoes_lib.php';
 require __DIR__ . '/locacoes_alertas_lib.php';
 try { echo json_encode(['locacoes' => lal_verificar('cron')], JSON_UNESCAPED_UNICODE) . PHP_EOL; } catch (Throwable $e) { fwrite(STDERR, 'Locações: ' . $e->getMessage() . PHP_EOL); }
 try { require __DIR__ . '/relger_envio_lib.php'; echo json_encode(['envio_diario_saidas' => rge_verificar('cron')], JSON_UNESCAPED_UNICODE) . PHP_EOL; } catch (Throwable $e) { fwrite(STDERR, 'Envio diário: ' . $e->getMessage() . PHP_EOL); }
+try { if (is_file(DATA_DIR . '/nfmail_config.json')) { require __DIR__ . '/nfmail_lib.php'; echo json_encode(['caixa_nfs' => nfm_sincronizar('cron', false)], JSON_UNESCAPED_UNICODE) . PHP_EOL; } } catch (Throwable $e) { fwrite(STDERR, 'Caixa de NFs: ' . $e->getMessage() . PHP_EOL); }
 try { echo json_encode(alt_verificar('cron'), JSON_UNESCAPED_UNICODE) . PHP_EOL; }
 catch (Throwable $e) { fwrite(STDERR, 'Alertas: ' . $e->getMessage() . PHP_EOL); exit(1); }

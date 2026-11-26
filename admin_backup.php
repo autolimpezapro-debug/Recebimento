@@ -125,7 +125,7 @@ function rb_allowed(string $rel): bool {
     if(preg_match('~^(?:index\.html|sw\.js|manifest\.webmanifest|\.htaccess|(?:[a-zA-Z0-9_-]+\.(?:php|txt)))$~D',$rel))return true;
     if(preg_match('~^assets/[a-zA-Z0-9_.-]+\.(?:js|css)$~D',$rel))return true;
     if(preg_match('~^icons/[a-zA-Z0-9_.-]+\.(?:svg|png|webp|ico)$~D',$rel))return true;
-    if(!str_starts_with($rel,'data/'))return false;
+    if(!str_starts_with($rel,'data/'))return rb_allowed_extra($rel);
     // Módulo de notificações (v3.1) e backup completo (v3.2) também são dados do sistema.
     if($rel==='data/notifications.json'||$rel==='data/devices.json'||$rel==='data/coletas.json')return true;
     if(preg_match('~^data/(?:backups/|imports/|backup_admin_auth\.json$|backup_setup\.key$|backup_auth_attempts\.json$|gemini_config\.json$|\.write\.lock$|\.maintenance$|\.restore)~',$rel))return false;
@@ -134,6 +134,23 @@ function rb_allowed(string $rel): bool {
     if(preg_match('~^data/(?:[a-zA-Z0-9_.-]+\.json|(?:photos|xml)/[a-zA-Z0-9_./-]+\.(?:jpe?g|png|webp|gif|pdf|xml))$~D',$rel))return true;
     // Módulo de Estoque (v3.0.0): banco do estoque e cópia de segurança da base de pedidos.
     if(preg_match('~^data/estoque/[a-zA-Z0-9_.-]+\.json$~D',$rel))return true;
+    return rb_allowed_extra($rel);
+}
+/**
+ * v3.59.1 (auditoria): o backup automático (backup_lib.php) inclui pastas que este restaurador recusava
+ * (assinaturas, fotos de saída do estoque, obras, documentos de locação/protocolo, Caixa de NFs, README.md...),
+ * então restaurar um backup diário falhava inteiro com "Arquivo ou checksum não permitido".
+ * Estes caminhos são aceitos na restauração, mas NÃO entram na lista de arquivos atuais que a restauração apaga
+ * (um backup antigo, sem essas pastas, não remove assinaturas/documentos que já existem).
+ */
+function rb_allowed_extra(string $rel): bool {
+    if($rel===''||str_contains($rel,'\\')||str_contains($rel,"\0")||str_starts_with($rel,'/')||preg_match('~(^|/)\.\.?(/|$)~',$rel))return false;
+    if(preg_match('~^[a-zA-Z0-9_-]+\.(?:md|json)$~D',$rel))return true;
+    if(preg_match('~^testes/[a-zA-Z0-9_.-]+\.(?:py|js)$~D',$rel))return true;
+    if(preg_match('~^data/(?:backups/|imports/|backup_admin_auth\.json$|backup_setup\.key$|backup_auth_attempts\.json$|gemini_config\.json$)~',$rel))return false;
+    if(preg_match('~^data/(?:estoque|obras|assinaturas)/[a-zA-Z0-9_.\-/]+\.(?:jpe?g|png|webp|gif|pdf|xml|json)$~D',$rel))return true;
+    if(preg_match('~^data/(?:locacoes_docs|protocolos_docs|chegadas_fotos|nfmail)/[a-zA-Z0-9_.-]+\.(?:jpe?g|png|webp|pdf|xml)$~D',$rel))return true;
+    if(preg_match('~^data/(?:locacoes_docs|protocolos_docs|chegadas_fotos|nfmail|obras|assinaturas|estoque/fotos_saida)/\.htaccess$~D',$rel))return true;
     return false;
 }
 function rb_inventory(): array {
@@ -178,7 +195,7 @@ function rb_check_archive(string $path): array {
     if($zip->open($path,ZipArchive::RDONLY)!==true)throw new RuntimeException('ZIP inválido ou corrompido.');
     $raw=$zip->getFromName('RECEBIMENTO_BACKUP_MANIFEST.json');
     $manifest=is_string($raw)?json_decode($raw,true):null;
-    if(!is_array($manifest)||($manifest['type']??'')!=='recebimento-drilling-complete-backup'||($manifest['schema']??null)!==1||!is_array($manifest['files']??null)){
+    if(!is_array($manifest)||($manifest['type']??'')!=='recebimento-drilling-complete-backup'||!in_array($manifest['schema']??null,[1,2],true)||!is_array($manifest['files']??null)){
         $zip->close();throw new RuntimeException('O arquivo não é um backup completo do Recebimento Drilling.');
     }
     if(count($manifest['files'])>RB_MAX_FILES || count($manifest['files'])!==($manifest['file_count']??-1)){
@@ -266,6 +283,7 @@ function rb_restore(string $archive): array {
         $want=[];foreach($manifest['files'] as $row)$want[$row['path']]=true;
         $current=rb_inventory();
         $delete=array_diff_key($current,$want);
+        foreach(array_keys($delete) as $rel) if(rb_allowed_extra($rel)) unset($delete[$rel]);   // ver rb_allowed_extra()
         // Não substituir as regras de acesso do servidor a documentos privados.
         unset($want['data/.htaccess']);
         foreach($delete as $rel=>$src){
