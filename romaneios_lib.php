@@ -256,3 +256,46 @@ function rom_csv(array $r): string {
     foreach ($r['itens'] as $i => $it) $o .= ($i + 1) . ';' . $q($it['sku']) . ';' . $q($it['descricao']) . ';' . $q($it['unidade']) . ';' . str_replace('.', ',', (string)$it['quantidade']) . ';' . $q($it['obs']) . "\r\n";
     return $o;
 }
+
+
+/** v3.62.0 — AJUDA OPCIONAL no romaneio: traz os itens de um PC pelo número. Só leitura; o operador pode editar tudo ou digitar tudo à mão. */
+function rom_buscar_pc(int $pc): array {
+    $out = ['status' => 'nao_encontrado', 'mensagem' => 'PC ' . $pc . ' não encontrado.', 'linhas' => []];
+    if ($pc <= 0 || !function_exists('read_items')) return $out;
+    $it = null; foreach (read_items() as $p) if ((int)($p['pc'] ?? 0) === $pc) { $it = $p; break; }
+    if (!$it) return $out;
+    $ins = array_values(array_filter((array)($it['insumos'] ?? []), 'is_array')); $rec = false;
+    foreach ($ins as $l) if ((float)($l['quantidade_recebida'] ?? 0) > 0) { $rec = true; break; }
+    foreach ($ins as $l) {
+        $q = $rec ? (float)($l['quantidade_recebida'] ?? 0) : (float)($l['quantidade_pedida'] ?? 0);
+        if ($q <= 0) continue;
+        $out['linhas'][] = ['sku' => (string)($l['sku'] ?? ''), 'descricao' => (string)($l['descricao'] ?? ''), 'unidade' => (string)(($l['unidade'] ?? '') ?: 'UN'), 'quantidade' => $q];
+    }
+    $out += ['pc' => $pc, 'fornecedor' => (string)($it['fornecedor'] ?? ''), 'obra' => (string)($it['obra'] ?? '')];
+    $out['status'] = $out['linhas'] ? 'ok' : 'sem_linhas';
+    $out['mensagem'] = !$out['linhas'] ? 'Este PC não tem itens com quantidade.' : ($rec ? '' : 'Este PC ainda não teve material recebido: trouxe as quantidades PEDIDAS. Confira.');
+    return $out;
+}
+/** v3.62.0 — procura material pelo código (SKU) no estoque e nos pedidos; se não achar o código, sugere por parte do nome. */
+function rom_buscar_sku(string $q): array {
+    $q = trim($q); $out = ['status' => 'nao_encontrado', 'candidatos' => []];
+    if (mb_strlen($q) < 2) return $out;
+    $u = mb_strtoupper($q);
+    $est = json_decode((string)@file_get_contents(DATA_DIR . '/estoque.json'), true) ?: [];
+    foreach ((array)($est['itens'] ?? []) as $k => $i) {
+        $cods = array_filter([(string)$k, (string)($i['codigo'] ?? ''), (string)($i['sku'] ?? ''), (string)($i['sku_origem'] ?? '')]);
+        $desc = (string)($i['nome_planilha'] ?? $i['descricao'] ?? '');
+        $exato = false; foreach ($cods as $c) if (mb_strtoupper($c) === $u) $exato = true;
+        if ($exato || (mb_strlen($u) >= 4 && mb_stripos($desc, $q) !== false)) {
+            $c = ['sku' => (string)($i['codigo'] ?? $k), 'descricao' => $desc, 'unidade' => (string)(($i['unidade'] ?? '') ?: 'UN'), 'saldo' => isset($i['saldo']) ? (float)$i['saldo'] : null, 'exato' => $exato];
+            if ($exato) { array_unshift($out['candidatos'], $c); } elseif (count($out['candidatos']) < 8) $out['candidatos'][] = $c;
+        }
+    }
+    if (!$out['candidatos'] && function_exists('read_items')) {
+        foreach (read_items() as $p) foreach ((array)($p['insumos'] ?? []) as $l) {
+            if (is_array($l) && mb_strtoupper((string)($l['sku'] ?? '')) === $u) { $out['candidatos'][] = ['sku' => (string)$l['sku'], 'descricao' => (string)($l['descricao'] ?? ''), 'unidade' => (string)(($l['unidade'] ?? '') ?: 'UN'), 'saldo' => null, 'exato' => true]; break 2; }
+        }
+    }
+    if ($out['candidatos']) $out['status'] = 'ok';
+    return $out;
+}

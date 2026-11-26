@@ -101,6 +101,8 @@ async function terForm(id) {
       <label>Veículo<input name="veiculo" maxlength="40" placeholder="Ex.: Caminhão baú" value="${v('veiculo')}"></label>
       <label>Placa<input name="placa" maxlength="12" value="${v('placa')}"></label></div>
     <h4 style="margin:12px 0 6px">Itens do romaneio</h4>
+    ${posEmissao ? '' : `<div class="panel" style="padding:8px 12px;margin:0 0 8px"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end"><label style="margin:0">Pedido de compra (PC) — opcional<input id="terPcNum" inputmode="numeric" maxlength="10" placeholder="Ex.: 4391" style="max-width:150px"></label><button type="button" class="button ghost" data-pcbuscar>🔎 Trazer itens do PC</button></div>
+      <small class="muted" id="terPcMsg">Opcional: o PC preenche a lista (você pode editar). Também dá para digitar o SKU ou o nome na linha, ou preencher tudo à mão.</small></div>`}
     <div class="prt-scroll"><table class="ter-itens"><thead><tr><th>SKU</th><th>Material*</th><th>Un.</th><th>Qtd*</th><th>Obs.</th><th></th></tr></thead><tbody id="terItens">${((r && r.itens.length) ? r.itens : [{}, {}, {}]).map(terLinha).join('')}</tbody></table></div>
     <button type="button" class="button ghost" data-add>＋ Adicionar item</button>
     <div class="rd-ass-campos"><label>Observações<input name="obs" maxlength="600" value="${v('obs')}"></label>
@@ -109,7 +111,45 @@ async function terForm(id) {
   const tb = bg.querySelector('#terItens');
   const ligar = () => tb.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { if (tb.querySelectorAll('.ter-it').length > 1) b.closest('tr').remove(); });
   ligar();
-  bg.querySelector('[data-add]').onclick = () => { tb.insertAdjacentHTML('beforeend', terLinha()); ligar(); tb.lastElementChild.querySelector('input').focus(); };
+  // v3.62.0 — ajuda opcional: itens do PC e preenchimento por SKU/nome. Tudo continua editável; nada disso é obrigatório.
+  const terGetQ = (a, q) => terApi(a + '&' + new URLSearchParams(q).toString());
+  const linhaVazia = tr => ![...tr.querySelectorAll('[data-f]')].some(i => i.value.trim());
+  const preencher = (tr, c) => { const set = (k, v) => { const i = tr.querySelector(`[data-f="${k}"]`); if (i && v !== undefined && v !== null) i.value = v; }; set('sku', c.sku); set('descricao', c.descricao); set('unidade', c.unidade); if (c.quantidade != null) set('quantidade', String(c.quantidade).replace('.', ',')); };
+  const pcBtn = bg.querySelector('[data-pcbuscar]'), pcMsg = bg.querySelector('#terPcMsg'), pcNum = bg.querySelector('#terPcNum');
+  if (pcBtn) {
+    const buscarPc = async () => {
+      const n = (pcNum.value || '').replace(/\D/g, ''); if (!n) { pcMsg.textContent = 'Digite o número do PC.'; return; }
+      pcMsg.textContent = 'Buscando…';
+      try {
+        const x = await terGetQ('romaneios_buscar_pc', { pc: n });
+        if (x.status === 'nao_encontrado' || !x.linhas.length) { pcMsg.textContent = '⚠ ' + (x.mensagem || 'Nada encontrado.') + ' Preencha à mão.'; return; }
+        tb.querySelectorAll('.ter-it').forEach(tr => { if (linhaVazia(tr)) tr.remove(); });
+        x.linhas.forEach(l => { tb.insertAdjacentHTML('beforeend', terLinha(l)); });
+        ligar(); ligarSku();
+        const ob = bg.querySelector('[name="obra_nome"]'); if (ob && !ob.value.trim() && x.obra) ob.value = x.obra;
+        pcMsg.textContent = `✔ ${x.linhas.length} item(ns) do PC ${n}${x.fornecedor ? ' — ' + x.fornecedor : ''}. Confira as quantidades e remova o que não vai.` + (x.mensagem ? ' ⚠ ' + x.mensagem : '');
+      } catch (e) { pcMsg.textContent = '⚠ ' + e.message; }
+    };
+    pcBtn.onclick = buscarPc; pcNum.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); buscarPc(); } };
+  }
+  const sug = document.createElement('datalist'); sug.id = 'terSug'; bg.appendChild(sug); let sugMap = {}, sugT = null;
+  function ligarSku() {
+    tb.querySelectorAll('.ter-it').forEach(tr => {
+      if (tr.dataset.lig) return; tr.dataset.lig = '1';
+      const sku = tr.querySelector('[data-f="sku"]'), desc = tr.querySelector('[data-f="descricao"]'); desc.setAttribute('list', 'terSug');
+      sku.addEventListener('change', async () => {
+        if (!sku.value.trim() || desc.value.trim()) return;
+        try { const x = await terGetQ('romaneios_buscar_sku', { q: sku.value.trim() }); const c = (x.candidatos || []).find(k => k.exato); if (c) preencher(tr, { sku: c.sku, descricao: c.descricao, unidade: c.unidade }); } catch { /* digitação livre */ }
+      });
+      desc.addEventListener('input', () => {
+        clearTimeout(sugT); const q = desc.value.trim(); if (q.length < 4) return;
+        sugT = setTimeout(async () => { try { const x = await terGetQ('romaneios_buscar_sku', { q }); sugMap = {}; (x.candidatos || []).forEach(c => { sugMap[c.descricao] = c; }); sug.innerHTML = Object.keys(sugMap).map(d => `<option value="${terH(d)}">${terH(sugMap[d].sku)}${sugMap[d].saldo != null ? ' · saldo ' + terQtd(sugMap[d].saldo) : ''}</option>`).join(''); } catch { /* ok */ } }, 300);
+      });
+      desc.addEventListener('change', () => { const c = sugMap[desc.value]; if (c) { if (!sku.value.trim()) sku.value = c.sku; const un = tr.querySelector('[data-f="unidade"]'); if (!un.value.trim()) un.value = c.unidade; } });
+    });
+  }
+  ligarSku();
+  bg.querySelector('[data-add]').onclick = () => { tb.insertAdjacentHTML('beforeend', terLinha()); ligar(); ligarSku(); tb.lastElementChild.querySelector('input').focus(); };
   tb.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('[data-f="obs"]') && e.target.closest('tr') === tb.lastElementChild) { e.preventDefault(); bg.querySelector('[data-add]').click(); } });
   const coletar = () => {
     const o = { id: r ? r.id : '', itens: [...tb.querySelectorAll('.ter-it')].map(tr => Object.fromEntries([...tr.querySelectorAll('[data-f]')].map(i => [i.dataset.f, i.value]))) };
