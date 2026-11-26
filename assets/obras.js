@@ -18,7 +18,7 @@ const obPost = (a, b) => obFetch(a, { method: 'POST', headers: { 'Content-Type':
 
 async function obrasInit() {
   if (!obEl('page-obras')) return;
-  document.querySelectorAll('#page-obras .est-head-actions .button').forEach(b => { b.hidden = !obPode('criar'); });
+  document.querySelectorAll('#page-obras .est-head-actions .button:not([data-keep])').forEach(b => { b.hidden = !obPode('criar'); });
   try {
     OB.painel = await obGet('obras_painel');
     const t = OB.painel.totais;
@@ -207,6 +207,7 @@ function obNovoEnvio(obraId, envioId) {
   }
   bg.querySelector('[data-rembuscar]').onclick = remCarregar;
   campo('numero').onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); remCarregar(); } };
+  campo('numero').onchange = () => { if (!e && campo('numero').value.trim() && !remSel && !campo('itens').value.trim()) remCarregar(); };   // v3.61.3: ao sair do campo, já busca a remessa (só em envio novo e sem materiais digitados)
   remLimpar.onclick = () => { remSel = null; remBox.hidden = true; remBox.innerHTML = ''; remLimpar.hidden = true; };
   if (remSel) remLimpar.hidden = false;
   bg.querySelectorAll('input[type=file]').forEach(inp => inp.onchange = () => {
@@ -256,4 +257,29 @@ async function obNovaObra() {
   const nome = prompt('Nome da obra:'); if (!nome) return;
   const cidade = prompt('Cidade/UF (opcional):') || '';
   try { const r = await obPost('obras_nova', { nome, cidade }); OB.atual = r.obra.id; await obrasInit(); obToast('Obra criada.'); } catch (e) { obToast(e.message, true); }
+}
+
+
+/* v3.61.3 — relatório: tudo que foi enviado às obras */
+function obRelQuery() { return { obra: obEl('obRelObra').value, ini: obEl('obRelIni').value, fim: obEl('obRelFim').value }; }
+async function obRelatorioAbrir() {
+  const sel = obEl('obRelObra');
+  if (!sel.options.length) sel.innerHTML = '<option value="">Todas as obras</option>' + ((OB.painel && OB.painel.obras) || []).map(o => `<option value="${obH(o.id)}">${obH(o.nome)}</option>`).join('');
+  obEl('obRelModal').classList.add('on'); obRelatorioCarregar();
+}
+let OB_REL = [];
+async function obRelatorioCarregar() {
+  obEl('obRelBody').innerHTML = '<tr><td colspan="8" class="empty">Carregando…</td></tr>';
+  try {
+    const r = await obGet('obras_relatorio', obRelQuery()); OB_REL = r.linhas;
+    obEl('obRelResumo').textContent = `${r.total} linha(s) em ${r.obras} obra(s).`;
+    obEl('obRelBody').innerHTML = r.linhas.map(l => `<tr><td>${obD(l.data)}</td><td>${obH(l.obra)}</td><td>${obH(l.origem)}</td><td>${obH(l.documento)}</td><td>${obH(l.os)}</td><td>${obH(l.material)}</td><td>${l.quantidade === null ? '' : obN(l.quantidade)}</td><td>${obH(l.unidade)}</td></tr>`).join('') || '<tr><td colspan="8" class="empty">Nada enviado neste filtro.</td></tr>';
+  } catch (e) { obEl('obRelBody').innerHTML = `<tr><td colspan="8" class="empty">${obH(e.message)}</td></tr>`; }
+}
+function obRelatorioCsv() { const q = new URLSearchParams({ action: 'obras_relatorio', csv: '1', ...obRelQuery() }); window.location.href = 'api.php?' + q.toString(); }
+function obRelatorioImprimir() {
+  const w = window.open('', '_blank'); if (!w) return obToast('Libere pop-ups para imprimir.', true);
+  const o = obEl('obRelObra'), tit = o.options[o.selectedIndex] ? o.options[o.selectedIndex].text : 'Todas as obras';
+  w.document.write(`<!doctype html><meta charset="utf-8"><title>Enviado às obras</title><style>body{font:12px Arial;margin:18px}h1{font-size:16px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #999;padding:3px 5px;text-align:left}th{background:#eee}</style><h1>Material enviado às obras — ${obH(tit)}</h1><p>${obH(obEl('obRelResumo').textContent)} Emitido em ${new Date().toLocaleString('pt-BR')}.</p><table><tr><th>Data</th><th>Obra</th><th>Origem</th><th>Documento</th><th>OS</th><th>Material</th><th>Qtd</th><th>Un</th></tr>${OB_REL.map(l => `<tr><td>${obD(l.data)}</td><td>${obH(l.obra)}</td><td>${obH(l.origem)}</td><td>${obH(l.documento)}</td><td>${obH(l.os)}</td><td>${obH(l.material)}</td><td>${l.quantidade === null ? '' : obN(l.quantidade)}</td><td>${obH(l.unidade)}</td></tr>`).join('')}</table>`);
+  w.document.close(); w.focus(); setTimeout(() => w.print(), 300);
 }

@@ -124,6 +124,39 @@ function ob_obra(array $d, string $id): array {
     return ['obra' => $o, 'envios' => $envios, 'sistema' => $sis, 'chaves' => $ch, 'tipos' => OB_TIPOS];
 }
 
+/** v3.61.3 — Relatório: TUDO que foi enviado para as obras (envios registrados em Obras + saídas de material do estoque com a obra), linha a linha.
+ *  $obraId vazio = todas. Datas Y-m-d. Só leitura. */
+function ob_relatorio(array $d, string $obraId = '', string $ini = '', string $fim = ''): array {
+    $obras = ob_obras($d); if ($obraId !== '' && !isset($obras[$obraId])) ob_fail('Obra não encontrada.', 404);
+    $ok = fn($dia) => ($ini === '' || $dia >= $ini) && ($fim === '' || $dia <= $fim);
+    $rows = [];
+    foreach ($d['envios'] as $e) {
+        if (!empty($e['excluido']) || ($obraId !== '' && $e['obra_id'] !== $obraId) || !$ok((string)($e['data'] ?? ''))) continue;
+        $on = $obras[$e['obra_id']]['nome'] ?? $e['obra_id']; $doc = (OB_TIPOS[$e['tipo'] ?? ''] ?? '') . (($e['numero'] ?? '') !== '' ? ' ' . $e['numero'] : '');
+        $base = ['data' => (string)$e['data'], 'obra' => $on, 'origem' => 'Envio ' . $e['id'], 'documento' => trim($doc . (!empty($e['pc']) ? ' · PC ' . $e['pc'] : '')), 'os' => '', 'responsavel' => (string)($e['responsavel'] ?? '')];
+        if (!empty($e['remessa_itens'])) foreach ($e['remessa_itens'] as $i) $rows[] = $base + ['material' => (string)$i['descricao'], 'quantidade' => (float)$i['quantidade'], 'unidade' => (string)($i['unidade'] ?? '')];
+        else foreach (preg_split('/\R/u', (string)($e['itens'] ?? '')) as $ln) { $ln = trim($ln); if ($ln === '') continue;
+            $q = null; $un = ''; $mat = $ln;
+            if (preg_match('/^(\d+(?:[.,]\d+)?)\s*([A-Za-zÀ-ú]{1,4})?\s+(.+)$/u', $ln, $m)) { $q = (float)str_replace(',', '.', $m[1]); $un = mb_strtoupper($m[2] ?? ''); $mat = $m[3]; }
+            $rows[] = $base + ['material' => $mat, 'quantidade' => $q, 'unidade' => $un]; }
+    }
+    $est = json_decode((string)@file_get_contents(DATA_DIR . '/estoque.json'), true) ?: [];
+    $chs = []; foreach ($obras as $id => $o) if ($obraId === '' || $id === $obraId) $chs[$id] = ob_chaves($o);
+    foreach ($est['movimentos'] ?? [] as $m) {
+        if (($m['tipo'] ?? '') !== 'SAIDA' || !empty($m['cancelado'])) continue;
+        $dia = substr((string)($m['em'] ?? ''), 0, 10); if (!$ok($dia)) continue;
+        $txt = ($m['obra'] ?? '') . ' ' . ($m['setor'] ?? ''); if (trim($txt) === '') continue;
+        foreach ($chs as $id => $ch) if (ob_bate($txt, $ch)) {
+            $it = $est['itens'][$m['codigo']] ?? [];
+            $rows[] = ['data' => $dia, 'obra' => $obras[$id]['nome'], 'origem' => 'Saída de material', 'documento' => (string)($m['documento'] ?? ''), 'os' => (string)($m['os'] ?? ''), 'responsavel' => (string)($m['solicitante'] ?? ''),
+                'material' => (string)($it['nome_planilha'] ?? $it['descricao'] ?? $m['descricao_origem'] ?? ''), 'quantidade' => (float)$m['quantidade'], 'unidade' => (string)($it['unidade'] ?? '')];
+            break;
+        }
+    }
+    usort($rows, fn($a, $b) => [$b['data'], $a['obra']] <=> [$a['data'], $b['obra']]);
+    return ['linhas' => $rows, 'total' => count($rows), 'obras' => count(array_unique(array_column($rows, 'obra')))];
+}
+
 /** v3.60.0 — acha a remessa pelo número e devolve TODOS os materiais dela, para o envio à obra. Só leitura: não mexe no estoque.
  *  Aceita: nº da nota emitida no Espelho de NF (ex.: 13685), código do espelho (ESP-2026-0003) ou do romaneio de terceiros (ROM-0005). */
 function ob_remessa_info(array $d, string $numero, string $ignorar = ''): array {
@@ -150,9 +183,22 @@ function ob_remessa_info(array $d, string $numero, string $ignorar = ''): array 
                 'itens' => array_map($nome, (array)$r['itens']), 'total' => 0.0, 'ja_aplicada' => $usada((string)$r['id'])];
         }
     }
+    // v3.61.3: NF de remessa já importada no Painel administrativo (PDF/CSV do protocolo) — traz os produtos e a quantidade lidos da nota.
+    if (preg_match('/^(?:NF-?)?(\d+)$/', $q, $mq) && $zero($mq[1]) !== '') {
+        $qn = $zero($mq[1]); $arq = DATA_DIR . '/indicadores.json'; $ind = is_file($arq) ? (json_decode((string)@file_get_contents($arq), true) ?: []) : [];
+        $nomes = []; foreach ((array)($ind['obras'] ?? []) as $o) if (!empty($o['id'])) $nomes[$o['id']] = (string)($o['name'] ?? $o['id']);
+        foreach ((array)($ind['movimentos'] ?? []) as $m) {
+            if ($zero($m['nf'] ?? '') !== $qn) continue;
+            $it = []; foreach ((array)($m['items'] ?? []) as $i) if (trim((string)($i['description'] ?? '')) !== '') $it[] = ['sku' => '', 'descricao' => (string)$i['description'], 'unidade' => (string)(($i['unit'] ?? '') ?: 'UN'), 'quantidade' => (float)($i['qty'] ?? 0), 'valor_total' => 0.0];
+            $dest = (string)($m['destId'] ?? ''); $ref = 'NF-' . $qn;
+            $out['remessas'][] = ['ref' => $ref, 'origem' => 'NF de remessa (Painel)', 'tipo' => 'NF_REMESSA', 'numero' => (string)$m['nf'], 'status' => 'IMPORTADA', 'status_label' => 'NF importada no Painel',
+                'data' => '', 'destino' => $nomes[$dest] ?? ($dest !== '' ? $dest : ''), 'obra_id' => $dest, 'obs' => $it ? '' : 'Esta nota foi importada sem a lista de produtos (só CSV). Digite os materiais.',
+                'itens' => $it, 'total' => round((float)($m['value'] ?? 0), 2), 'ja_aplicada' => $usada($ref)];
+        }
+    }
     if ($out['remessas']) { $out['status'] = 'ok'; $out['mensagem'] = ''; }
     elseif ($out['mensagem'] !== '' && str_contains($out['mensagem'], 'CANCELADO')) { /* mantém */ }
-    elseif (preg_match('/^\d+$/', $q)) $out['mensagem'] = 'Nenhuma nota de remessa com o número ' . $numero . ' no Espelho de NF. Confira se o espelho foi marcado como "Nota emitida". Para romaneio, digite ROM-0001.';
+    elseif (preg_match('/^\d+$/', $q)) $out['mensagem'] = 'Nenhuma nota de remessa com o número ' . $numero . ' no Espelho de NF nem entre as notas importadas no Painel administrativo. Se a nota foi emitida fora do sistema, importe o PDF em Painel administrativo > Notas de remessa, ou confira se o espelho foi marcado como "Nota emitida". Para romaneio, digite ROM-0001.';
     return $out;
 }
 

@@ -1,3 +1,8 @@
+VERSAO 3.61.3 - OBRAS: REMESSA DO PAINEL + RELATORIO "TUDO ENVIADO"
+- Envio de Obras: digitar o numero da NF (ex.: 7340) e sair do campo busca a remessa tambem entre as NFs importadas no Painel administrativo (produtos e quantidades lidos do PDF, obra e valor).
+- Novo botao "Tudo enviado as obras": relatorio linha a linha por obra e periodo (envios de Obras + saidas de material do estoque para a obra), com CSV e impressao.
+- A NF so aparece na busca depois de importada em Painel administrativo > Notas de remessa.
+
 VERSAO 3.61.2 - NEXA = VAZANTE/MG
 - A obra Nexa passa a ter cidade Vazante/MG (corrige cadastro antigo "Minas Gerais"), alem do apelido VAZANTE. Notas que citam so o endereco em Vazante sao reconhecidas.
 

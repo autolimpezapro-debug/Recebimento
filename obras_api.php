@@ -11,6 +11,15 @@ if ($obMet === 'GET') {
         case 'obras_painel': respond(['ok' => true] + ob_painel(ob_read()));
         case 'obras_obra': respond(['ok' => true] + ob_obra(ob_read(), (string)($_GET['id'] ?? '')));
         case 'obras_arquivo': ob_servir(ob_read());
+        case 'obras_relatorio':   // v3.61.3
+            $rel = ob_relatorio(ob_read(), (string)($_GET['obra'] ?? ''), (string)($_GET['ini'] ?? ''), (string)($_GET['fim'] ?? ''));
+            if (!empty($_GET['csv'])) {
+                header('Content-Type: text/csv; charset=utf-8'); header('Content-Disposition: attachment; filename="enviado_para_obras.csv"'); echo "\xEF\xBB\xBF";
+                $o = fopen('php://output', 'w'); fputcsv($o, ['Data', 'Obra', 'Origem', 'Documento', 'OS', 'Material', 'Qtd', 'Un', 'Responsável/solicitante'], ';');
+                foreach ($rel['linhas'] as $l) fputcsv($o, [implode('/', array_reverse(explode('-', $l['data']))), $l['obra'], $l['origem'], $l['documento'], $l['os'], $l['material'], $l['quantidade'] === null ? '' : str_replace('.', ',', (string)$l['quantidade']), $l['unidade'], $l['responsavel']], ';');
+                exit;
+            }
+            respond(['ok' => true] + $rel);
         case 'obras_remessa': respond(['ok' => true] + ob_remessa_info(ob_read(), (string)($_GET['numero'] ?? ''), (string)($_GET['ignorar'] ?? '')));   // v3.60.0
         case 'obras_pc': respond(['ok' => true, 'pedido' => ob_pc_info(ob_read(), (int)($_GET['pc'] ?? 0), (string)($_GET['ignorar'] ?? ''))]);   // v3.33.0: só leitura
     }
