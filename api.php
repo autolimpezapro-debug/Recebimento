@@ -47,7 +47,7 @@ define('MAX_PRODUCT_PHOTOS', 3);
 define('MAX_UPLOAD_BYTES', 4 * 1024 * 1024);
 define('EVENTS_FILE', DATA_DIR . '/events.json');
 define('XML_DIR', DATA_DIR . '/xml');
-define('APP_VERSION', '3.61.3');
+define('APP_VERSION', '3.61.4');
 
 if (!is_dir(DATA_DIR)) mkdir(DATA_DIR, 0755, true);
 if (!is_dir(PHOTOS_DIR)) mkdir(PHOTOS_DIR, 0755, true);
@@ -517,7 +517,7 @@ if ($action === 'notify_heartbeat') {
         rd_liberar_cliente();
         try { require_once __DIR__ . '/alertas_lib.php'; alt_tick(); } catch (Throwable $e) {}
         try { require_once __DIR__ . '/locacoes_lib.php'; require_once __DIR__ . '/locacoes_alertas_lib.php'; lal_tick(); } catch (Throwable $e) {}
-        try { require_once __DIR__ . '/relger_envio_lib.php'; rge_tick(); } catch (Throwable $e) {}   // v3.61.3: envio diário das saídas
+        try { require_once __DIR__ . '/relger_envio_lib.php'; rge_tick(); } catch (Throwable $e) {}   // v3.61.4: envio diário das saídas
         // v3.51.3: escoa pushes pendentes (tentativas que falharam) mesmo sem cron.
         try { if (is_file(DATA_DIR . '/push-queue.json') && filesize(DATA_DIR . '/push-queue.json') > 4) { require_once __DIR__ . '/push_lib.php'; push_process_queue(10, 3); } } catch (Throwable $e) {}
     });
@@ -563,7 +563,7 @@ if (strncmp((string)$action, 'protocolos_', 11) === 0) {
 if (strncmp((string)$action, 'romaneios_', 10) === 0) {
     require __DIR__.'/romaneios_api.php';
 }
-// Relatório gerencial (v3.61.3).
+// Relatório gerencial (v3.61.4).
 if (strncmp((string)$action, 'contagens_', 10) === 0) {
     require __DIR__.'/contagens_api.php';
 }
@@ -573,7 +573,7 @@ if (strncmp((string)$action, 'chegadas_', 9) === 0) {
 if (strncmp((string)$action, 'relger_', 7) === 0) {
     require __DIR__.'/relger_api.php';
 }
-// Espelho de NF (v3.61.3).
+// Espelho de NF (v3.61.4).
 if (strncmp((string)$action, 'espelhos_', 9) === 0) {
     require __DIR__.'/espelhos_api.php';
 }

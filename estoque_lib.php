@@ -906,7 +906,9 @@ function est_req_complementar(array &$db, string $id, array $in, string $usuario
     }
     $q['complementos'][] = ['em' => date('c'), 'por' => $usuario, 'antes' => $antes, 'depois' => ['os' => $q['os'] ?? '', 'equipamento' => $q['equipamento'] ?? ''], 'motivo' => $motivo];
     $q['atualizado_em'] = date('c');
-    return ['requisicao' => $q, 'movimentos_atualizados' => $n];
+    $r = ['requisicao' => $q, 'movimentos_atualizados' => $n];
+    if ($n < count(array_filter($ids))) $r['aviso'] = 'Parte dos lançamentos desta saída já está no arquivo histórico e não foi alterada; a saída (requisição) foi atualizada.';
+    return $r;
 }
 
 /** Estorno auditado de um movimento de entrada (reverte o saldo com movimento contrário). */

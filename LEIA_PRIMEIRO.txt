@@ -1,3 +1,7 @@
+VERSAO 3.61.4 - VERIFICACAO DE CONTROLES
+- Conferido: completar OS/equipamento nao altera saldo, itens, assinaturas nem status; relatorio e busca de remessa so leem dados.
+- Se parte dos lancamentos da saida ja estiver no arquivo historico, o sistema avisa (a saida em si e atualizada).
+
 VERSAO 3.61.3 - OBRAS: REMESSA DO PAINEL + RELATORIO "TUDO ENVIADO"
 - Envio de Obras: digitar o numero da NF (ex.: 7340) e sair do campo busca a remessa tambem entre as NFs importadas no Painel administrativo (produtos e quantidades lidos do PDF, obra e valor).
 - Novo botao "Tudo enviado as obras": relatorio linha a linha por obra e periodo (envios de Obras + saidas de material do estoque para a obra), com CSV e impressao.
