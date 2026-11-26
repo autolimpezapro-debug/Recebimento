@@ -526,7 +526,7 @@ async function estLoadRequisicoes() {
       <tr><td><code>${estHtml(q.id)}</code></td><td>${estHtml(q.setor || '—')}<small class="est-sub">${estHtml(q.solicitante || '—')}${(() => { const p = [...new Set((q.linhas || []).map(l => l.pc).filter(Boolean))]; return p.length ? ' · PC ' + p.map(estHtml).join(', ') : ''; })()}${q.os ? ' · OS ' + estHtml(q.os) : ''}${q.equipamento ? ' · ' + estHtml(q.equipamento) : ''}</small></td>
       <td>${estNum((q.linhas || []).length)}</td>
       <td><span class="est-badge ${q.status === 'atendida' ? 'ok' : 'warn'}">${q.status === 'atendida' ? 'Atendida' : 'Rascunho'}</span></td>
-      <td>${estData(q.atendida_em || q.atualizado_em)}${q.status === 'atendida' ? `<br><a href="#" onclick="rdAbrirComprovante('${estHtml(q.id)}');return false">${q.assinatura ? '✍ ' + estHtml(q.assinatura.nome) : 'comprovante'}</a>` : ''}</td></tr>`).join('')
+      <td>${estData(q.atendida_em || q.atualizado_em)}${q.status === 'atendida' ? `<br><a href="#" onclick="rdAbrirComprovante('${estHtml(q.id)}');return false">${q.assinatura ? '✍ ' + estHtml(q.assinatura.nome) : 'comprovante'}</a>` : ''}${q.status === 'atendida' ? `<small class="est-sub">${q.os || q.equipamento ? 'OS ' + estHtml(q.os || '—') + ' · ' + estHtml(q.equipamento || '—') : '<b style="color:#b45309">⚠ sem OS/equipamento</b>'} · <a href="#" onclick="estCompletarSaida('${estHtml(q.id)}');return false">✎ ${q.os || q.equipamento ? 'alterar' : 'completar'}</a></small>` : ''}</td></tr>`).join('')
       || '<tr><td colspan="5" class="empty">Nenhuma requisição de saída registrada.</td></tr>';
   } catch (e) { estEl('estReqBody').innerHTML = `<tr><td colspan="5" class="empty">${estHtml(e.message)}</td></tr>`; }
 }
@@ -1342,4 +1342,31 @@ async function estDupIgnorar(i) {
   const p = EST_DUP.pares[i];
   try { await estPost('estoque_duplicado_ignorar', { a: p.a.codigo, b: p.b.codigo }); EST_DUP.pares.splice(i, 1); estDupRender(); }
   catch (e) { estToast(e.message, true); }
+}
+
+
+/* v3.61.0 — completar OS/equipamento de uma saída já assinada (não mexe em saldo nem assinatura; fica registrado quem alterou) */
+let EST_COMPL_ID = '';
+async function estCompletarSaida(id) {
+  EST_COMPL_ID = id;
+  estEl('estComplId').textContent = id;
+  estEl('estComplOs').value = ''; estEl('estComplEq').value = ''; estEl('estComplMotivo').value = '';
+  estEl('estComplModal').classList.add('on');
+  estCarregarEquipamentos('estEquipLista2');
+  try {
+    const r = await estApi('estoque_requisicoes', { query: { q: id } });
+    const q = (r.requisicoes || []).find(x => x.id === id);
+    if (q) { estEl('estComplOs').value = q.os || ''; estEl('estComplEq').value = q.equipamento || ''; }
+  } catch { /* digita livre */ }
+  setTimeout(() => estEl('estComplOs').focus(), 60);
+}
+async function estSalvarComplemento() {
+  const os = estEl('estComplOs').value.trim(), eq = estEl('estComplEq').value.trim();
+  if (!os && !eq) { estToast('Informe a OS e/ou o equipamento aplicado.', true); return; }
+  try {
+    await estPost('estoque_saida_complementar', { id: EST_COMPL_ID, os, equipamento: eq, motivo: estEl('estComplMotivo').value.trim() });
+    estEl('estComplModal').classList.remove('on');
+    estToast('Saída ' + EST_COMPL_ID + ' atualizada.');
+    estLoadRequisicoes(); if (typeof estLoadMovimentos === 'function') estLoadMovimentos();
+  } catch (e) { estToast(e.message, true); }
 }

@@ -1,3 +1,8 @@
+VERSAO 3.61.0 - COMPLETAR OS/EQUIPAMENTO DE SAIDA JA ASSINADA
+- Estoque > Saidas: saidas sem OS/equipamento mostram o aviso "sem OS/equipamento" e o link "completar".
+- Informe a OS e/ou o equipamento; vale para todos os itens da saida e aparece no Relatorio de saidas.
+- Nao altera saldo, itens nem a assinatura. Fica registrado quem alterou, quando e o motivo (campo "complementos").
+
 VERSAO 3.60.1 - REVISAO GERAL
 - Analise completa: sintaxe de todo PHP/JS, 262 rotas da API, permissoes, assinatura por link, e-mails, remessa e envio diario. Sem erros encontrados.
 - Ajuste: remessa em Obras com romaneio CANCELADO agora informa o motivo (antes dizia "nao encontrada").

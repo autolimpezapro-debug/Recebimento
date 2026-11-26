@@ -879,6 +879,36 @@ function est_execute_saida(array &$db, array $linhas, array $ctx) {
     return $movs;
 }
 
+/** v3.61.0: completa OS e/ou equipamento de uma saída JÁ efetivada/assinada (o conferente esqueceu). Não mexe em saldo, itens nem assinatura; deixa trilha de auditoria. */
+function est_req_complementar(array &$db, string $id, array $in, string $usuario) {
+    if (!isset($db['requisicoes'][$id])) est_fail('Saída não encontrada.', 404);
+    $q = &$db['requisicoes'][$id];
+    if (($q['status'] ?? '') !== 'atendida') est_fail('Só saídas já efetivadas podem ser complementadas.', 409);
+    $os = est_os($in['os'] ?? ''); $eq = est_str($in['equipamento'] ?? '', 120);
+    if ($os === '' && $eq === '') est_fail('Informe a OS e/ou o equipamento aplicado.');
+    $motivo = est_str($in['motivo'] ?? '', 200);
+    $antes = ['os' => (string)($q['os'] ?? ''), 'equipamento' => (string)($q['equipamento'] ?? '')];
+    if ($os !== '') $q['os'] = $os;
+    if ($eq !== '') $q['equipamento'] = $eq;
+    if ($q['os'] === $antes['os'] && $q['equipamento'] === $antes['equipamento']) est_fail('Nada mudou: esses dados já estão na saída.', 409);
+    $ids = [];
+    foreach ((array)($q['movimentos'] ?? []) as $k => $m) {
+        if (is_array($m)) { if ($os !== '') $q['movimentos'][$k]['os'] = $os; if ($eq !== '') $q['movimentos'][$k]['equipamento'] = $eq; $ids[] = (string)($m['id'] ?? ''); }
+        else $ids[] = (string)$m;
+    }
+    $n = 0;
+    foreach ($db['movimentos'] as $k => $m) {
+        if (($m['documento'] ?? '') === $id || in_array((string)($m['id'] ?? ''), $ids, true)) {
+            if ($os !== '') $db['movimentos'][$k]['os'] = $os;
+            if ($eq !== '') $db['movimentos'][$k]['equipamento'] = $eq;
+            $n++;
+        }
+    }
+    $q['complementos'][] = ['em' => date('c'), 'por' => $usuario, 'antes' => $antes, 'depois' => ['os' => $q['os'] ?? '', 'equipamento' => $q['equipamento'] ?? ''], 'motivo' => $motivo];
+    $q['atualizado_em'] = date('c');
+    return ['requisicao' => $q, 'movimentos_atualizados' => $n];
+}
+
 /** Estorno auditado de um movimento de entrada (reverte o saldo com movimento contrário). */
 function est_estorno(array &$db, $movId, $motivo, $usuario) {
     if (mb_strlen(trim((string)$motivo)) < 8) est_fail('Informe o motivo do estorno (mínimo 8 caracteres)');

@@ -444,6 +444,11 @@ function est_handle() {
                 $set = est_os_setores_salvar($db, $body);
                 est_write($db);
                 return ['setores' => $set];
+            case 'estoque_saida_complementar':   // v3.61.0
+                $r = est_req_complementar($db, (string)($body['id'] ?? ''), $body, $user);
+                est_write($db);
+                est_log_event('estoque', 'Saída ' . ($body['id'] ?? '') . ' complementada: OS ' . ($r['requisicao']['os'] ?? '—') . ' · equipamento ' . ($r['requisicao']['equipamento'] ?? '—'));
+                return $r;
             case 'estoque_saida':
                 $efetivar = !empty($body['efetivar']);
                 $req = est_save_requisicao($db, $body, $user, $efetivar);
