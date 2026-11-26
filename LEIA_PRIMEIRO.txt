@@ -1,3 +1,5 @@
+v3.64.1 — Rastreios: layout premium (cabeçalho com indicadores, gráficos por mês/transportadora, filtros em abas, cartões com linha do tempo).
+
 v3.64.0 — Terceiros: painel de gestão de RASTREIOS
 - Nova aba "Rastreios" dentro de Terceiros: em trânsito, atrasados (prazo configurável), entregues no mês, a conferir, prazo médio por transportadora.
 - Cadastro de envio (fornecedor, PC, produto, transportadora, código, datas, recebedor), botão "Rastrear" que abre o site da transportadora/Correios, "Entregue", CSV.

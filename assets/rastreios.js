@@ -24,39 +24,54 @@ function rtrFiltrados() {
     (!RTR.tr || r.transportadora === RTR.tr) &&
     (!q || [r.id, r.fornecedor, r.pedido, r.produto, r.codigo, r.transportadora, r.recebedor, r.romaneio].join(' ').toLowerCase().includes(q)));
 }
+const RTR_COR = { 'Correios': '#f8bf60', 'Azul Cargo': '#4c8dff', 'Satilog': '#22d3a7', 'Rodonaves': '#f17e89', 'Gontijo': '#a797fc', 'Andorinha Express': '#5ad0e6', 'Gollog': '#ff9f6b' };
+const rtrCor = t => RTR_COR[t] || '#92a3bb';
+const rtrMes = m => ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'][+m.slice(5, 7) - 1] + '/' + m.slice(2, 4);
 function rtrRender() {
   const L = RTR.d.rastreios, ab = L.filter(r => r.situacao === 'EM_TRANSITO'), at = L.filter(r => r.atrasado), conf = L.filter(r => r.conferir.length);
-  const mes = RTR.d.hoje.slice(0, 7), entm = L.filter(r => r.situacao === 'ENTREGUE' && (r.data_entrega || '').startsWith(mes));
-  const box = (n, t, cls = '') => `<div class="imp-kpi ${cls}"><b>${n}</b><span>${t}</span></div>`;
-  // por transportadora (somente entregues com dias válidos e <=30 para não distorcer)
+  const ent = L.filter(r => r.situacao === 'ENTREGUE'), mes = RTR.d.hoje.slice(0, 7), entm = ent.filter(r => (r.data_entrega || '').startsWith(mes));
+  const val = ent.filter(r => r.dias != null && r.dias >= 0 && r.dias <= 30), med = val.length ? (val.reduce((a, r) => a + r.dias, 0) / val.length) : null;
+  const pont = ent.length ? Math.round(100 * val.filter(r => r.dias <= RTR.d.config.prazo_alerta_dias).length / ent.length) : 0;
+  const kpi = (ic, n, t, sub, cls = '') => `<div class="rtr-kpi ${cls}"><i>${ic}</i><b>${n}</b><span>${t}</span><small>${sub}</small></div>`;
+  // volume por mês (últimos 6) e por transportadora
+  const meses = {}; L.forEach(r => { const m = (r.data_envio || '').slice(0, 7); if (m) meses[m] = (meses[m] || 0) + 1; });
+  const ms = Object.keys(meses).sort().slice(-6), mx = Math.max(1, ...ms.map(m => meses[m]));
   const por = {}; L.forEach(r => { const t = r.transportadora || '(sem transportadora)'; const o = por[t] = por[t] || { n: 0, ab: 0, soma: 0, k: 0 }; o.n++; if (r.situacao === 'EM_TRANSITO') o.ab++; else if (r.dias != null && r.dias >= 0 && r.dias <= 30) { o.soma += r.dias; o.k++; } });
-  const linhasT = Object.entries(por).sort((a, b) => b[1].n - a[1].n).map(([t, o]) => `<tr><td>${terH(t)}</td><td>${o.n}</td><td>${o.ab}</td><td>${o.k ? (o.soma / o.k).toFixed(1).replace('.', ',') + ' dias' : '—'}</td></tr>`).join('');
-  const pode = rtrPode('editar'), opt = (v, t) => `<option value="${v}" ${RTR.sit === v ? 'selected' : ''}>${t}</option>`;
+  const pt = Object.entries(por).sort((a, b) => b[1].n - a[1].n), mxt = Math.max(1, ...pt.map(x => x[1].n));
+  const sit = (v, t, n) => `<button class="${RTR.sit === v ? 'on' : ''}" data-sit="${v}">${t}<em>${n}</em></button>`;
   const trs = RTR.d.transportadoras.map(t => `<option ${RTR.tr === t ? 'selected' : ''}>${terH(t)}</option>`).join('');
-  const el = rtrEl('terRastreios');
-  el.innerHTML = `<div class="imp-kpis prt-kpis">${box(ab.length, 'em trânsito', ab.length ? 'warn' : '')}${box(at.length, `atrasados (+${RTR.d.config.prazo_alerta_dias} dias)`, at.length ? 'bad' : '')}${box(entm.length, 'entregues neste mês')}${box(conf.length, 'a conferir', conf.length ? 'warn' : '')}${box(L.length, 'total controlado')}</div>
-  <div class="filterrow"><div class="searchbox"><input id="rtrBusca" type="search" placeholder="Buscar código, fornecedor, pedido, produto, recebedor…" value="${terH(RTR.q)}"></div>
-    <select id="rtrSit">${opt('ABERTOS', 'Em trânsito')}${opt('ATRASADOS', 'Atrasados')}${opt('ENTREGUES', 'Entregues')}${opt('CONFERIR', 'A conferir')}${opt('TODOS', 'Todos')}</select>
-    <select id="rtrTr"><option value="">Todas as transportadoras</option>${trs}</select>
-    <button class="button ghost" onclick="rtrCsv()">⬇ CSV</button>${rtrPode('criar') ? `<button class="button ghost" onclick="rtrImportar()">📋 Importar da planilha</button><button class="button primary" onclick="rtrForm()">＋ Novo rastreio</button>` : ''}${rtrPode('admin') ? `<button class="button ghost" onclick="rtrConfig()">⚙ Configurar</button>` : ''}</div>
-  <div id="rtrLista"></div>
-  <details class="rtr-det"><summary><b>Por transportadora</b> — volume, abertos e prazo médio das entregas</summary><div class="tablewrap"><table class="table"><thead><tr><th>Transportadora</th><th>Envios</th><th>Em trânsito</th><th>Prazo médio</th></tr></thead><tbody>${linhasT || '<tr><td colspan="4">—</td></tr>'}</tbody></table></div><small>Prazo médio considera entregas de até 30 dias (acima disso a data provavelmente está errada — veja “A conferir”).</small></details>`;
+  rtrEl('terRastreios').innerHTML = `
+  <div class="rtr-hero"><div><div class="rtr-eyebrow">CENTRAL DE RASTREIOS</div><h2>${ab.length ? `${ab.length} envio${ab.length > 1 ? 's' : ''} a caminho` : 'Nenhum envio em trânsito'}</h2><p>${at.length ? `<b class="rtr-bad">${at.length} com atraso</b> · ` : ''}${L.length} envios controlados${med != null ? ` · prazo médio de entrega ${med.toFixed(1).replace('.', ',')} dias` : ''}</p></div>
+    <div class="rtr-ring" style="--p:${pont}"><div><b>${pont}%</b><small>entregues em até ${RTR.d.config.prazo_alerta_dias} dias</small></div></div></div>
+  <div class="rtr-kpis">${kpi('🚚', ab.length, 'Em trânsito', ab.length ? 'aguardando entrega' : 'tudo entregue', ab.length ? 'warn' : '')}${kpi('⏱', at.length, 'Atrasados', `mais de ${RTR.d.config.prazo_alerta_dias} dias`, at.length ? 'bad' : '')}${kpi('✔', entm.length, 'Entregues no mês', `${ent.length} no total`, 'ok')}${kpi('⌛', med != null ? med.toFixed(1).replace('.', ',') : '—', 'Prazo médio (dias)', 'envio → entrega')}${kpi('⚠', conf.length, 'A conferir', 'dados para revisar', conf.length ? 'warn' : '')}</div>
+  <div class="rtr-panels"><section class="rtr-panel"><h3>Envios por mês</h3><div class="rtr-bars">${ms.map(m => `<div><b>${meses[m]}</b><i style="height:${Math.max(6, 100 * meses[m] / mx)}%"></i><small>${rtrMes(m)}</small></div>`).join('')}</div></section>
+    <section class="rtr-panel"><h3>Por transportadora <small>envios · prazo médio</small></h3><div class="rtr-carr">${pt.map(([t, o]) => `<div><span><i style="background:${rtrCor(t)}"></i>${terH(t)}</span><div class="rtr-track"><i style="width:${100 * o.n / mxt}%;background:${rtrCor(t)}"></i></div><b>${o.n}</b><small>${o.k ? (o.soma / o.k).toFixed(1).replace('.', ',') + ' d' : '—'}${o.ab ? ` · ${o.ab} aberto${o.ab > 1 ? 's' : ''}` : ''}</small></div>`).join('')}</div><small class="rtr-note">Prazo médio considera entregas de até 30 dias.</small></section></div>
+  <div class="rtr-bar"><div class="rtr-seg">${sit('ABERTOS', 'Em trânsito', ab.length)}${sit('ATRASADOS', 'Atrasados', at.length)}${sit('ENTREGUES', 'Entregues', ent.length)}${sit('CONFERIR', 'A conferir', conf.length)}${sit('TODOS', 'Todos', L.length)}</div>
+    <div class="rtr-tools"><input id="rtrBusca" type="search" placeholder="🔎  Buscar código, fornecedor, PC, produto…" value="${terH(RTR.q)}"><select id="rtrTr"><option value="">Todas as transportadoras</option>${trs}</select>
+    <button class="button ghost" onclick="rtrCsv()">⬇ CSV</button>${rtrPode('criar') ? `<button class="button ghost" onclick="rtrImportar()">📋 Importar</button><button class="button primary" onclick="rtrForm()">＋ Novo rastreio</button>` : ''}${rtrPode('admin') ? `<button class="button ghost" onclick="rtrConfig()" title="Configurar">⚙</button>` : ''}</div></div>
+  <div id="rtrLista"></div>`;
   rtrEl('rtrBusca').oninput = e => { RTR.q = e.target.value; rtrLista(); };
-  rtrEl('rtrSit').onchange = e => { RTR.sit = e.target.value; rtrLista(); };
   rtrEl('rtrTr').onchange = e => { RTR.tr = e.target.value; rtrLista(); };
+  document.querySelectorAll('#terRastreios [data-sit]').forEach(b => b.onclick = () => { RTR.sit = b.dataset.sit; document.querySelectorAll('#terRastreios [data-sit]').forEach(x => x.classList.toggle('on', x === b)); rtrLista(); });
   rtrLista();
 }
 function rtrLista() {
   const L = rtrFiltrados(), pode = rtrPode('editar'), box = rtrEl('rtrLista');
-  if (!L.length) { box.innerHTML = '<div class="empty">Nenhum rastreio neste filtro.</div>'; return; }
-  box.innerHTML = `<div class="tablewrap"><table class="table"><thead><tr><th>Envio</th><th>Fornecedor / Pedido</th><th>Produto</th><th>Transportadora / Código</th><th>Dias</th><th>Situação</th><th></th></tr></thead><tbody>${L.map(r => {
-    const id = terH(r.id), sit = r.situacao === 'ENTREGUE' ? `<span class="badge ok">Entregue ${rtrData(r.data_entrega)}</span>${r.recebedor ? `<br><small>${terH(r.recebedor)}</small>` : ''}` : (r.atrasado ? '<span class="badge bad">Atrasado</span>' : '<span class="badge warn">Em trânsito</span>');
-    const cod = r.codigo ? `<code>${terH(r.codigo)}</code>` : '<em>sem código</em>';
-    const lk = r.link_final ? `<a class="button ghost" href="${terH(r.link_final)}" target="_blank" rel="noopener noreferrer" title="Abrir rastreio no site">🔎 Rastrear</a>` : '';
-    const cp = r.codigo ? `<button class="button ghost" onclick="navigator.clipboard&&navigator.clipboard.writeText('${terH(r.codigo)}');terToast('Código copiado')" title="Copiar código">⧉</button>` : '';
-    const ac = pode ? (r.situacao === 'ENTREGUE' ? `<button class="button ghost" onclick="rtrReabrir('${id}')">↩ Reabrir</button>` : `<button class="button primary" onclick="rtrEntregar('${id}')">✔ Entregue</button>`) + `<button class="button ghost" onclick="rtrForm('${id}')">✏</button>` : '';
-    return `<tr><td>${rtrData(r.data_envio)}<br><small>${terH(r.id)}</small></td><td>${terH(r.fornecedor) || '—'}<br><small>${r.pedido ? 'PC ' + terH(r.pedido) : ''}${r.romaneio ? ' · ' + terH(r.romaneio) : ''}</small></td><td>${terH(r.produto) || '—'}</td><td>${terH(r.transportadora) || '—'}<br>${cod}</td><td>${r.dias ?? '—'}</td><td>${sit}${r.conferir.length ? `<br><small class="rtr-conf">⚠ ${r.conferir.map(terH).join('; ')}</small>` : ''}</td><td class="rtr-ac">${lk}${cp}${ac}</td></tr>`;
-  }).join('')}</tbody></table></div>`;
+  if (!L.length) { box.innerHTML = '<div class="rtr-vazio"><b>🚚</b>Nenhum envio neste filtro.</div>'; return; }
+  const lim = RTR.d.config.prazo_alerta_dias;
+  box.innerHTML = L.map(r => {
+    const id = terH(r.id), ent = r.situacao === 'ENTREGUE', cor = rtrCor(r.transportadora);
+    const pct = ent ? 100 : Math.min(92, Math.max(8, 100 * (r.dias || 0) / lim * .8));
+    const st = ent ? '<span class="rtr-tag ok">Entregue</span>' : (r.atrasado ? '<span class="rtr-tag bad">Atrasado</span>' : '<span class="rtr-tag warn">Em trânsito</span>');
+    const lk = r.link_final ? `<a class="button ghost" href="${terH(r.link_final)}" target="_blank" rel="noopener noreferrer">🔎 Rastrear</a>` : '';
+    const ac = pode ? (ent ? `<button class="button ghost" onclick="rtrReabrir('${id}')" title="Reabrir">↩</button>` : `<button class="button primary" onclick="rtrEntregar('${id}')">✔ Entregue</button>`) + `<button class="button ghost" onclick="rtrForm('${id}')" title="Editar">✏</button>` : '';
+    return `<article class="rtr-card ${r.atrasado ? 'late' : ''} ${ent ? 'done' : ''}" style="--c:${cor}">
+      <div class="rtr-main"><div class="rtr-top">${st}<span class="rtr-carrier" style="--c:${cor}">${terH(r.transportadora) || 'sem transportadora'}</span>${r.codigo ? `<code class="rtr-code" title="Copiar" onclick="navigator.clipboard&&navigator.clipboard.writeText('${terH(r.codigo)}');terToast('Código copiado')">${terH(r.codigo)}</code>` : '<span class="rtr-nocode">sem código</span>'}</div>
+        <h4>${terH(r.produto) || '—'}</h4><p>${terH(r.fornecedor) || '—'}${r.pedido ? ` · PC ${terH(r.pedido)}` : ''}${r.romaneio ? ` · ${terH(r.romaneio)}` : ''} <small>${id}</small></p></div>
+      <div class="rtr-line"><div class="rtr-dates"><span>${rtrData(r.data_envio)}</span><b>${r.dias != null ? r.dias + (r.dias === 1 ? ' dia' : ' dias') : ''}</b><span>${ent ? rtrData(r.data_entrega) : 'a caminho'}</span></div><div class="rtr-prog"><i style="width:${pct}%"></i></div>${ent && r.recebedor ? `<small>Recebido por ${terH(r.recebedor)}</small>` : ''}</div>
+      <div class="rtr-ac">${lk}${ac}</div>
+      ${r.conferir.length ? `<div class="rtr-warn">⚠ ${r.conferir.map(terH).join(' · ')}</div>` : ''}</article>`;
+  }).join('');
 }
 function rtrCsv() { location.href = 'api.php?action=rastreios_csv'; }
 async function rtrAcao(a, b, msg) { try { await terPost(a, b); if (msg) terToast(msg); await rtrCarregar(); } catch (e) { terToast(e.message, true); } }
