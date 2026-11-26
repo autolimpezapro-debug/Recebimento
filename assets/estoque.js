@@ -1093,8 +1093,8 @@ async function estSapLer() {
     const cab = m[h].map(norm);
     const col = (...nomes) => cab.findIndex(c => nomes.some(n => c.startsWith(n)));
     const ix = { codigo: col('no do item', 'nº do item', 'n do item', 'codigo', 'item'), descricao: col('descricao'), unidade: col('unidade'),
-      em_estoque: col('em estoque'), pedido: col('pedido'), preco: col('preco'), total: col('total') };
-    if (ix.codigo < 0 || ix.em_estoque < 0) throw new Error('Colunas "Nº do item" e "Em estoque" não encontradas.');
+      em_estoque: col('em estoque', 'qtd.acumulada', 'qtd acumulada', 'quantidade acumulada', 'qtd'), pedido: col('pedido'), preco: col('preco'), total: col('total') };
+    if (ix.codigo < 0 || ix.em_estoque < 0) throw new Error('Colunas "Nº do item" e "Em estoque" (ou "Qtd.acumulada") não encontradas.');
     let deposito = '';
     const linhas = [];
     for (const r of m.slice(h + 1)) {

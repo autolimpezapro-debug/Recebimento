@@ -1,3 +1,5 @@
+v3.64.4 — Inventário SAP aceita a coluna "Qtd.acumulada" (além de "Em estoque"), para ajustar o saldo ao SAP com a planilha de saldo acumulado.
+
 v3.64.3 — Rastreios: previsão de entrega (atraso e 'no prazo' calculados pela previsão) e Relatório imprimível/PDF por período, transportadora e situação.
 
 v3.64.2 — Rastreios: adição rápida (campo ⚡ + tecla N), formulário guiado com transportadora por chips, detecção automática de Correios, autocompletar, 'Salvar e adicionar outro', Duplicar, faixa 'Precisa de atenção', detalhe com linha do tempo, ordenação.
