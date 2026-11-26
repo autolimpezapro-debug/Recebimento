@@ -142,7 +142,7 @@ function kpi_obras_padrao(): array {
         ['id' => 'agaspar-grauna', 'name' => 'Construtora Agaspar – Ponte Graúna', 'city' => 'São Paulo/SP', 'aliases' => ['AGASPAR', 'GRAUNA']],
         ['id' => 'telar-blumenau', 'name' => 'Telar Blumenau', 'city' => 'Blumenau/SC', 'aliases' => ['TELAR', 'BLUMENAU', 'BLUMENAL']],
         ['id' => 'penedo', 'name' => 'Ponte Penedo – Neópolis', 'city' => 'Penedo/AL', 'aliases' => ['PENEDO', 'NEOPOLIS']],
-        ['id' => 'nexa', 'name' => 'Nexa', 'city' => 'Minas Gerais', 'aliases' => ['NEXA']],
+        ['id' => 'nexa', 'name' => 'Nexa', 'city' => 'Vazante/MG', 'aliases' => ['NEXA']],
         ['id' => 'sogel', 'name' => 'Sogel', 'city' => 'Minas Gerais', 'aliases' => ['SOGEL']],
         ['id' => 'aterpa-vale', 'name' => 'Aterpa (Vale)', 'city' => 'Minas Gerais', 'aliases' => ['ATERPA', 'VALE']],
         ['id' => 'rivoli', 'name' => 'Rivoli', 'city' => 'BA', 'aliases' => ['RIVOLI']],
@@ -154,7 +154,10 @@ function kpi_obras_padrao(): array {
 function kpi_obras_efetivas(): array {
     $obras = kpi_base()['obras'] ?? kpi_obras_padrao();
     $extra = ['nexa' => ['VAZANTE']];
+    $cidades = ['nexa' => 'Vazante/MG'];   // a Nexa fica em Vazante/MG; corrige cadastro antigo que ficou só com "Minas Gerais"
     foreach ($obras as $i => $o) {
+        $c = $cidades[$o['id'] ?? ''] ?? null;
+        if ($c !== null && in_array(mb_strtoupper(trim((string)($o['city'] ?? ''))), ['', 'MINAS GERAIS', 'MG'], true)) $obras[$i]['city'] = $c;
         foreach ($extra[$o['id'] ?? ''] ?? [] as $a) {
             $tem = array_map(fn($x) => mb_strtoupper((string)$x), (array)($o['aliases'] ?? []));
             if (!in_array($a, $tem, true)) $obras[$i]['aliases'][] = $a;

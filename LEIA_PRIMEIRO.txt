@@ -1,3 +1,6 @@
+VERSAO 3.61.2 - NEXA = VAZANTE/MG
+- A obra Nexa passa a ter cidade Vazante/MG (corrige cadastro antigo "Minas Gerais"), alem do apelido VAZANTE. Notas que citam so o endereco em Vazante sao reconhecidas.
+
 VERSAO 3.61.1 - PAINEL ADMIN: NF DE REMESSA PARA NEXA/VAZANTE
 - A NF 7340 (remessa para o canteiro de obras da Nexa) era descartada porque a nota cita so o endereco (Av. Tancredo Neves, Vazante-MG), nao o nome "Nexa".
 - A obra Nexa agora tambem e reconhecida pelo apelido VAZANTE (acrescentado automaticamente, sem apagar apelidos ja editados).
