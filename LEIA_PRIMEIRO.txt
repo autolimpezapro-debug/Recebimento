@@ -1,3 +1,8 @@
+VERSAO 3.61.1 - PAINEL ADMIN: NF DE REMESSA PARA NEXA/VAZANTE
+- A NF 7340 (remessa para o canteiro de obras da Nexa) era descartada porque a nota cita so o endereco (Av. Tancredo Neves, Vazante-MG), nao o nome "Nexa".
+- A obra Nexa agora tambem e reconhecida pelo apelido VAZANTE (acrescentado automaticamente, sem apagar apelidos ja editados).
+- Depois de instalar, envie o PDF de novo em Painel administrativo > Notas de remessa.
+
 VERSAO 3.61.0 - COMPLETAR OS/EQUIPAMENTO DE SAIDA JA ASSINADA
 - Estoque > Saidas: saidas sem OS/equipamento mostram o aviso "sem OS/equipamento" e o link "completar".
 - Informe a OS e/ou o equipamento; vale para todos os itens da saida e aparece no Relatorio de saidas.
