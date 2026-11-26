@@ -1,3 +1,8 @@
+VERSAO 3.62.1 - TERCEIROS: MOTORISTA/PLACA/VEICULO/COLABORADOR DO HISTORICO
+- No Novo romaneio, Motorista, Placa, Veiculo, Transportadora, Solicitante e Responsavel pelo patio sugerem o que o sistema ja registrou (romaneios, DANFEs e remessas do Painel, motoristas cadastrados, usuarios, saidas do estoque, emprestimos de ferramentas).
+- Escolhendo o motorista, preenche placa/veiculo/transportadora usados por ele; escolhendo a placa, preenche o motorista. So preenche campos vazios.
+- Colaboradores mostram a funcao (cargo cadastrado ou setor). Digitar qualquer outro texto continua permitido.
+
 VERSAO 3.62.0 - TERCEIROS: ROMANEIO COM BUSCA OPCIONAL
 - No Novo romaneio: campo opcional "Pedido de compra (PC)" + botao "Trazer itens do PC" preenche a lista (SKU, material, un., qtd) e a obra, se vazia.
 - Em cada linha: digitar o SKU e sair do campo preenche material e unidade; digitar parte do nome sugere materiais do estoque.

@@ -111,6 +111,22 @@ async function terForm(id) {
   const tb = bg.querySelector('#terItens');
   const ligar = () => tb.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { if (tb.querySelectorAll('.ter-it').length > 1) b.closest('tr').remove(); });
   ligar();
+  // v3.62.1 — motorista, placa, veículo, transportadora, solicitante e responsável sugeridos do histórico (opcional; pode digitar qualquer coisa)
+  (async () => {
+    let S; try { S = await terApi('romaneios_sugestoes'); } catch { return; }
+    const campo = k => bg.querySelector(`[name="${k}"]`), norm = t => String(t || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const dl = (id, opts) => { let d = bg.querySelector('#' + id); if (!d) { d = document.createElement('datalist'); d.id = id; bg.appendChild(d); } d.innerHTML = opts.map(o => `<option value="${terH(o[0])}">${terH(o[1] || '')}</option>`).join(''); };
+    dl('terSMot', S.motoristas.map(m => [m.nome, [m.placa, m.transportadora].filter(Boolean).join(' · ')]));
+    dl('terSPla', S.placas.map(p => [p.placa, [p.motorista, p.transportadora].filter(Boolean).join(' · ')]));
+    dl('terSVei', S.veiculos.map(v => [v]));
+    dl('terSTra', S.transportadoras.map(t => [t]));
+    dl('terSCol', S.colaboradores.map(c => [c.nome, c.funcao]));
+    [['motorista', 'terSMot'], ['placa', 'terSPla'], ['veiculo', 'terSVei'], ['transportadora', 'terSTra'], ['solicitante', 'terSCol'], ['responsavel_patio', 'terSCol']].forEach(([k, l]) => { const i = campo(k); if (i) i.setAttribute('list', l); });
+    const vazio = k => campo(k) && !campo(k).value.trim(), pôr = (k, v) => { if (v && vazio(k)) campo(k).value = v; };
+    campo('motorista').addEventListener('change', () => { const m = S.motoristas.find(x => norm(x.nome) === norm(campo('motorista').value)); if (m) { pôr('placa', m.placa); pôr('veiculo', m.veiculo); pôr('transportadora', m.transportadora); } });
+    campo('placa').addEventListener('change', () => { const p = S.placas.find(x => norm(x.placa) === norm(campo('placa').value)); if (p) { pôr('motorista', p.motorista); pôr('veiculo', p.veiculo); pôr('transportadora', p.transportadora); } });
+    const sol = campo('solicitante'); if (sol) sol.title = 'Escolha na lista ou digite. A função aparece ao lado do nome.';
+  })();
   // v3.62.0 — ajuda opcional: itens do PC e preenchimento por SKU/nome. Tudo continua editável; nada disso é obrigatório.
   const terGetQ = (a, q) => terApi(a + '&' + new URLSearchParams(q).toString());
   const linhaVazia = tr => ![...tr.querySelectorAll('[data-f]')].some(i => i.value.trim());

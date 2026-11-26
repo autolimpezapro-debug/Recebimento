@@ -8,6 +8,7 @@ $romMet = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 if ($romMet === 'GET') {
     switch ($action) {
+        case 'romaneios_sugestoes': respond(['ok' => true] + rom_sugestoes());
         case 'romaneios_buscar_pc':  respond(['ok' => true] + rom_buscar_pc((int)preg_replace('/\D/', '', (string)($_GET['pc'] ?? ''))));
         case 'romaneios_buscar_sku': respond(['ok' => true] + rom_buscar_sku((string)($_GET['q'] ?? '')));
         case 'romaneios_painel': respond(['ok' => true] + rom_painel(rom_read()));
