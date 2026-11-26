@@ -1,3 +1,8 @@
+VERSAO 3.62.2 - TERCEIROS: BUSCA POR PC + SKU COM PRE-VISUALIZACAO
+- Novo romaneio: campos Pedido (PC) e SKU/nome. So PC = todos os itens do pedido; PC + SKU = so aquele item; so SKU = busca no estoque.
+- Antes de adicionar aparece uma pre-visualizacao (marque os itens e ajuste a quantidade); so entra no romaneio o que voce confirmar.
+- "Salvar e emitir" agora mostra a pre-visualizacao do romaneio (obra, transporte, itens) e avisa o que falta antes de emitir.
+
 VERSAO 3.62.1 - TERCEIROS: MOTORISTA/PLACA/VEICULO/COLABORADOR DO HISTORICO
 - No Novo romaneio, Motorista, Placa, Veiculo, Transportadora, Solicitante e Responsavel pelo patio sugerem o que o sistema ja registrou (romaneios, DANFEs e remessas do Painel, motoristas cadastrados, usuarios, saidas do estoque, emprestimos de ferramentas).
 - Escolhendo o motorista, preenche placa/veiculo/transportadora usados por ele; escolhendo a placa, preenche o motorista. So preenche campos vazios.
