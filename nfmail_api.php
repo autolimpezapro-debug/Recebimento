@@ -87,6 +87,13 @@ $res = nfm_with_lock(function () use ($action, $body, $nfmUser) {
         case 'nfmail_vincular':
             $pc = (int)($body['pc'] ?? 0); if ($pc <= 0) nfm_fail('Informe o PC.');
             $r = nfm_vincular($d, $id, $pc, $nfmUser); break;
+        case 'nfmail_frete_pc':   // liga/desliga manualmente um CT-e a um PC (quando o CT-e não cita a chave das NFs)
+            $nt = &$d['notas'][$id]; if (!$nt || $nt['tipo'] !== 'CTE') nfm_fail('CT-e não encontrado.', 404);
+            $pcf = (int)($body['pc'] ?? 0); $ix = nfm_pcs_indice();
+            if ($pcf > 0 && !isset($ix[$pcf])) nfm_fail('PC ' . $pcf . ' não existe.');
+            $nt['frete_pcs'] = $pcf > 0 ? [$pcf] : [];
+            $nt['historico'][] = ['em' => nfm_now(), 'por' => $nfmUser, 'acao' => $pcf > 0 ? 'Frete ligado ao PC ' . $pcf : 'Ligação manual do frete removida']; unset($nt);
+            $r = ['msg' => $pcf > 0 ? 'Frete ligado ao PC ' . $pcf . '.' : 'Ligação removida.']; break;
         case 'nfmail_desvincular': nfm_desvincular($d, $id, $nfmUser, nfm_str($body['motivo'] ?? '', 200)); $r = ['msg' => 'Desvinculada.']; break;
         case 'nfmail_ignorar': nfm_ignorar($d, $id, $nfmUser, (string)($body['motivo'] ?? ''), !empty($body['desfazer'])); $r = ['msg' => !empty($body['desfazer']) ? 'Voltou para pendentes.' : 'Arquivada sem PC.']; break;
         default: nfm_fail('Ação da Caixa de NFs inválida', 400);

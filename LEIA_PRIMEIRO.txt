@@ -1,3 +1,9 @@
+v3.65.1 — Caixa de NFs: gestão de fretes (CT-e/DACTE) e boletos
+- Aba "Fretes": cada CT-e mostra transportadora, valor, as NFs transportadas e o PC. O frete se liga ao PC pelas chaves das NFs citadas no CT-e (NF vinculada na Caixa ou chave já registrada no PC). Totais por transportadora no topo; "Aguardando a NF" quando a NF ainda não chegou; botão "Ligar a PC" manual para CT-e sem chave de NF.
+- A NF mostra o frete e o boleto ligados a ela; o detalhe do pedido mostra o frete no aviso "NF já recebida por e-mail".
+- Boleto/fatura/duplicata não é mais tratado como "DANFE só PDF": vai para "Arquivadas" com o selo Boleto e o número da NF citada no assunto. Se as regras não decidirem, o Gemini classifica o PDF.
+- Só XML de CT-e é lido (DACTE só em PDF fica para depois).
+
 v3.65.0 — Caixa de NFs: integração completa (CNPJ + reavaliação + IA + aviso ao conferente)
 - CNPJ primeiro: o sistema mantém um diretório de fornecedores por CNPJ (data/fornecedores_cnpj.json, aprende sozinho a cada vínculo e com os PCs que já têm NF). Se o CNPJ da nota é diferente do CNPJ do fornecedor do PC, a nota NÃO é vinculada nem sugerida a esse PC (acaba a confusão entre fornecedores de nome parecido).
 - Se o fornecedor (CNPJ confirmado) tem um ÚNICO PC em aberto sem NF, a nota vincula sozinha; com 2 ou mais, só sugere.

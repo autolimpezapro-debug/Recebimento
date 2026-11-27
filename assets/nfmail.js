@@ -93,8 +93,8 @@ function nfmRenderNotas() {
   const p = NFM.p, cont = s => nfmFiltroCont(s);
   const forns = p.fornecedores.map(f => [f.cnpj || f.nome, f.nome || nfmCnpj(f.cnpj)]).sort((a, b) => a[1].localeCompare(b[1]));
   nfmEl('nfmConteudo').innerHTML = `
-    <div class="imp-filtros prt-st">${[['TODAS', 'Todas'], ['PENDENTES', 'Falta o PC'], ['VINCULADA', 'Vinculadas'], ['PDF', 'Só PDF'], ['AVISOS', 'Com aviso'], ['CANCELADA', 'Canceladas'], ['IGNORADA', 'Arquivadas'], ['CTE', 'CT-e (frete)']].map(([v, t]) =>
-      `<button class="est-tab ${NFM.st === v ? 'active' : ''}" onclick="NFM.st='${v}';nfmRenderNotas()">${t} (${cont(v)})</button>`).join('')}</div>
+    <div class="imp-filtros prt-st">${[['TODAS', 'Todas'], ['PENDENTES', 'Falta o PC'], ['VINCULADA', 'Vinculadas'], ['PDF', 'Só PDF'], ['AVISOS', 'Com aviso'], ['CANCELADA', 'Canceladas'], ['IGNORADA', 'Arquivadas'], ['CTE', 'Fretes']].map(([v, t]) =>
+      `<button class="est-tab ${NFM.st === v ? 'active' : ''}" onclick="NFM.st='${v}';nfmRenderNotas()">${t} (${v === 'CTE' ? (NFM.p.fretes || []).length : cont(v)})</button>`).join('')}</div>
     <div class="loc-filtros prt-filtros"><input type="search" placeholder="Buscar NF, PC, fornecedor, CNPJ, chave…" value="${nfmH(NFM.q)}" oninput="NFM.q=this.value;nfmTabela()">
       <select onchange="NFM.forn=this.value;nfmTabela()"><option value="">Todos os fornecedores</option>${forns.map(([v, t]) => `<option ${v === NFM.forn ? 'selected' : ''} value="${nfmH(v)}">${nfmH(t)}</option>`).join('')}</select>
       <label class="prt-data">Emissão de <input type="date" value="${NFM.de}" onchange="NFM.de=this.value;nfmTabela()"></label>
@@ -104,7 +104,31 @@ function nfmRenderNotas() {
   nfmTabela();
 }
 function nfmFiltroCont(v) { const s = NFM.st; NFM.st = v; const q = NFM.q, f = NFM.forn, de = NFM.de, ate = NFM.ate; NFM.q = ''; NFM.forn = ''; NFM.de = ''; NFM.ate = ''; const n = nfmFiltradas().length; Object.assign(NFM, { st: s, q, forn: f, de, ate }); return n; }
+const NFM_FR = { vinculado: ['Ligado ao PC', 'ok'], aguardando_nf: ['Aguardando a NF', 'warn'], sem_nf: ['CT-e não cita NF', 'off'] };
+function nfmFretesHtml() {
+  const q = NFM.q.trim().toLowerCase();
+  const L = (NFM.p.fretes || []).filter(f => (!NFM.de || (f.emissao || '') >= NFM.de) && (!NFM.ate || (f.emissao || '') <= NFM.ate) && (!q || [f.numero, f.transportadora, f.cnpj, f.pcs.join(' '), f.nfs.map(n => n.numero + ' ' + n.fornecedor).join(' ')].join(' ').toLowerCase().includes(q)));
+  if (!L.length) return '<div class="empty">Nenhum CT-e (frete) recebido ainda.</div>';
+  const tot = L.reduce((s, f) => s + (f.cancelada ? 0 : f.valor), 0);
+  const por = {}; L.forEach(f => { if (!f.cancelada) { const k = f.transportadora || '—'; por[k] = (por[k] || 0) + f.valor; } });
+  const pode = nfmPode('anexar');
+  return `<div class="nfm-frete-res">${Object.entries(por).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, v]) => `<span><small>${nfmH(k)}</small><b>${nfmR(v)}</b></span>`).join('')}<span><small>Total filtrado</small><b>${nfmR(tot)}</b></span></div>
+  <div class="prt-scroll"><table class="orders-table prt-tab nfm-tab"><thead><tr><th>CT-e</th><th>Transportadora</th><th>Emissão</th><th>Frete</th><th>NFs transportadas</th><th>PC</th><th>Situação</th><th></th></tr></thead><tbody>${L.map(f => { const [rot, cls] = NFM_FR[f.situacao]; return `<tr class="${f.cancelada ? 'nfm-canc' : ''}">
+    <td data-l="CT-e"><b>${nfmH(f.numero || '—')}</b>${f.serie ? ` <small class="muted">s.${nfmH(f.serie)}</small>` : ''}</td>
+    <td data-l="Transportadora">${nfmH(f.transportadora || '—')}<br><small class="muted">${nfmH(nfmCnpj(f.cnpj))}</small></td>
+    <td data-l="Emissão">${nfmD(f.emissao)}</td><td data-l="Frete"><b>${f.valor ? nfmR(f.valor) : '—'}</b></td>
+    <td data-l="NFs">${f.nfs.length ? f.nfs.map(n => `${nfmH(n.numero)}${n.fornecedor ? ' <small class="muted">' + nfmH(n.fornecedor) + '</small>' : ''}${n.na_caixa ? '' : ' <small class="prt-badge warn">NF não chegou</small>'}`).join('<br>') : '—'}</td>
+    <td data-l="PC">${f.pcs.length ? f.pcs.map(pc => `<a href="#" onclick="event.preventDefault();goPage('pedidos');setTimeout(()=>openDrawer(${pc}),150)"><b>${pc}</b></a>`).join(', ') : '—'}${f.manual ? ' <small class="muted">(manual)</small>' : ''}</td>
+    <td data-l="Situação"><span class="prt-badge ${cls}">${rot}</span></td>
+    <td>${f.xml_url ? `<a class="button ghost" href="${f.xml_url}&baixar=1">XML</a>` : ''}${pode ? ` <button class="button ghost" onclick="nfmFreteLigar('${nfmH(f.id)}',${f.pcs.length && f.manual ? 0 : 1})">${f.manual ? 'Desligar PC' : 'Ligar a PC'}</button>` : ''}</td></tr>`; }).join('')}</tbody></table></div>`;
+}
+async function nfmFreteLigar(id, ligar) {
+  let pc = 0;
+  if (ligar) { pc = Number(prompt('Número do PC a que este frete pertence:')); if (!pc) return; }
+  try { const r = await nfmPost('nfmail_frete_pc', { id, pc }); nfmToast(r.mensagem); NFM.p = await nfmApi('nfmail_painel'); nfmRender(); } catch (e) { nfmToast(e.message, true); }
+}
 function nfmTabela() {
+  if (NFM.st === 'CTE') { nfmEl('nfmTabela').innerHTML = nfmFretesHtml(); return; }
   const ordem = n => (n.status === 'PENDENTE' || n.status === 'A_VINCULAR') ? 0 : 1;   // o que falta resolver fica no topo
   const L = nfmFiltradas().slice().sort((a, b) => ordem(a) - ordem(b));
   const tot = L.reduce((s, n) => s + (n.cancelada ? 0 : Number(n.valor || 0)), 0);
@@ -112,7 +136,7 @@ function nfmTabela() {
     ? `<div class="empty">Nenhuma nota recebida ainda.${NFM.p.config.ativo ? ' Assim que chegar um e-mail com XML/PDF na caixa, ele aparece aqui.' : ' Ligue a leitura na aba Configuração.'}</div>`
     : `<div class="prt-scroll"><table class="orders-table prt-tab nfm-tab"><thead><tr><th>NF / série</th><th>Fornecedor</th><th>Emissão</th><th>Valor</th><th>PC</th><th>Arquivos</th><th>Situação</th></tr></thead>
       <tbody>${L.map(n => { const [rot, cls] = NFM_ST[n.status] || [n.status, '']; return `<tr onclick="nfmAbrir('${nfmH(n.id)}')" class="${n.cancelada ? 'nfm-canc' : ''}">
-        <td data-l="NF"><b>${nfmH(n.numero || '—')}</b>${n.serie ? ` <small class="muted">s.${nfmH(n.serie)}</small>` : ''}${n.tipo === 'CTE' ? ' <small class="prt-badge">CT-e</small>' : ''}</td>
+        <td data-l="NF"><b>${nfmH(n.numero || '—')}</b>${n.serie ? ` <small class="muted">s.${nfmH(n.serie)}</small>` : ''}${n.tipo === 'CTE' ? ' <small class="prt-badge">CT-e</small>' : n.tipo === 'BOL' ? ' <small class="prt-badge off">Boleto</small>' : ''}</td>
         <td data-l="Fornecedor">${nfmH(n.emitente_nome || '—')}<br><small class="muted">${nfmH(nfmCnpj(n.emitente_cnpj))}</small></td>
         <td data-l="Emissão">${nfmD(n.emissao)}<br><small class="muted">chegou ${nfmDH(n.recebido_em)}</small></td>
         <td data-l="Valor">${n.valor ? nfmR(n.valor) : '—'}</td>
@@ -134,14 +158,16 @@ function nfmModal(titulo, html, largura) {
 async function nfmAbrir(id) {
   let n; try { n = (await nfmApi('nfmail_nota', { query: { id } })).nota; } catch (e) { return nfmToast(e.message, true); }
   const [rot, cls] = NFM_ST[n.status] || [n.status, ''];
-  const pode = nfmPode('anexar') && n.tipo !== 'CTE';
+  const pode = nfmPode('anexar') && n.tipo !== 'CTE' && n.tipo !== 'BOL';
   const sug = (n.sugestoes || []).filter(s => s.pc !== n.pc);
-  const bg = nfmModal(`${n.tipo === 'CTE' ? 'CT-e' : n.tipo === 'PDF' ? 'DANFE (só PDF)' : 'NF-e'} ${nfmH(n.numero || '')} — ${nfmH(n.emitente_nome || '')}`, `
+  const bg = nfmModal(`${n.tipo === 'CTE' ? 'CT-e' : n.tipo === 'BOL' ? 'Boleto' : n.tipo === 'PDF' ? 'DANFE (só PDF)' : 'NF-e'} ${nfmH(n.numero || '')} — ${nfmH(n.emitente_nome || '')}`, `
     <div class="nfm-linha">${n.cancelada ? '<span class="prt-badge bad">CANCELADA</span>' : ''}<span class="prt-badge ${cls}">${rot}${n.pc ? ' ' + n.pc : ''}</span>
       ${n.xml_url ? `<a class="button ghost" href="${n.xml_url}&baixar=1">⬇ XML</a>` : ''}${n.pdfs.map((p, i) => `<a class="button ghost" href="${p.url}" target="_blank" rel="noopener">📄 ${nfmH(p.nome || 'DANFE ' + (i + 1))}</a>`).join('')}
       ${pode && n.tipo === 'PDF' && n.pdfs.length && n.status !== 'VINCULADA' ? `<button class="button ghost" data-ia title="A IA lê o PDF; a chave de 44 dígitos valida">🤖 Ler PDF com IA</button>` : ''}
       ${n.pc ? `<button class="button ghost" onclick="this.closest('.rd-ass-bg').remove();goPage('pedidos');typeof openDrawer==='function'&&setTimeout(()=>openDrawer(${n.pc}),150)">Abrir PC ${n.pc}</button>` : ''}</div>
     ${n.avisos.map(a => `<div class="us-alert">${nfmH(a)}</div>`).join('')}
+    ${(n.boletos || []).length ? `<div class="prt-docs"><b>Boleto(s) desta NF:</b> ${n.boletos.map(b => b.url ? `<a href="${b.url}" target="_blank" rel="noopener">📄 boleto (${nfmDH(b.recebido_em)})</a>` : 'boleto recebido').join(' · ')}</div>` : ''}
+    ${(n.fretes || []).length ? `<div class="prt-docs"><b>Frete:</b> ${n.fretes.map(f => `CT-e ${nfmH(f.numero)} · ${nfmH(f.transportadora)} · ${nfmR(f.valor)}`).join(' · ')}</div>` : ''}
     <div class="nfm-grid">
       <div><span>Emitente</span><b>${nfmH(n.emitente_nome || '—')}</b><small>${nfmH(nfmCnpj(n.emitente_cnpj))}</small></div>
       <div><span>Destinatário</span><b>${nfmH(n.dest_nome || '—')}</b><small>${nfmH(nfmCnpj(n.dest_cnpj))}</small></div>
@@ -237,13 +263,13 @@ async function nfmSalvarCfg() {
   catch (e) { nfmToast(e.message, true); }
 }
 
-/* v3.65.0 — aviso ao conferente: "NF deste PC já chegou por e-mail" (aparece no detalhe do pedido) */
+/* v3.65.1 — aviso ao conferente: "NF deste PC já chegou por e-mail" (aparece no detalhe do pedido) */
 async function nfEmailAviso(pc) {
   const box = document.getElementById('nfEmailBox'); if (!box) return;
   try {
     const a = (await nfmApi('nfmail_aviso', { query: { pc } })).aviso; if (!a || document.getElementById('nfEmailBox') !== box) return;
     const t = { vinculada: ['ok', '📬 NF já recebida por e-mail e vinculada a este pedido'], vinculando: ['ok', '📬 NF recebida por e-mail — vinculando a este pedido'], possivel: ['warn', '📬 Chegou uma NF por e-mail que provavelmente é deste pedido (falta confirmar)'] }[a.situacao];
     box.innerHTML = `<div class="nfm-aviso ${t[0]}"><b>${t[1]}</b><span>NF ${nfmH(a.numero || '—')} · ${nfmH(a.emitente || '')}${a.valor ? ' · ' + nfmR(a.valor) : ''} · recebida em ${nfmDH(a.recebido_em)}${a.tem_xml ? ' · XML' : ''}${a.tem_pdf ? ' · PDF' : ''}</span>`
-      + `<small>Isto não é a chegada da mercadoria: confira os volumes e os itens do pedido normalmente.</small>${a.pdf_url ? `<a class="button ghost" href="${a.pdf_url}" target="_blank" rel="noopener">📄 Ver DANFE</a>` : ''}</div>`;
+      + `<small>${(a.frete || []).length ? 'Frete: ' + a.frete.map(f => nfmH(f.transportadora) + ' ' + nfmR(f.valor)).join(' · ') + '. ' : ''}Isto não é a chegada da mercadoria: confira os volumes e os itens do pedido normalmente.</small>${a.pdf_url ? `<a class="button ghost" href="${a.pdf_url}" target="_blank" rel="noopener">📄 Ver DANFE</a>` : ''}</div>`;
   } catch (e) { /* sem Caixa de NFs ou sem permissão: não mostra nada */ }
 }
