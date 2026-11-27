@@ -27,6 +27,7 @@ if ($nfmMet === 'GET') {
             $csv = nfm_csv(nfm_read());
             header('Content-Type: text/csv; charset=utf-8'); header('Cache-Control: no-store');
             header('Content-Disposition: attachment; filename="caixa-de-nfs-' . date('Ymd-Hi') . '.csv"'); echo $csv; exit;
+        case 'nfmail_aviso': respond(['ok' => true, 'aviso' => nfm_aviso_pc((int)($_GET['pc'] ?? 0))]);
         case 'nfmail_config': respond(['ok' => true, 'config' => nfm_config_publica()]);
     }
     nfm_fail('Ação da Caixa de NFs inválida', 400);
@@ -57,6 +58,20 @@ switch ($action) {
             $n = count($im->buscar('ALL')); $im->sair();
             respond(['ok' => true, 'mensagem' => 'Conectado! A pasta ' . ($c['pasta'] ?: 'INBOX') . ' tem ' . $n . ' e-mail(s).']);
         } catch (Throwable $e) { respond(['ok' => false, 'error' => $e->getMessage()], 422); }
+    case 'nfmail_ia_ler':   // lê o PDF (DANFE) com o Gemini; a chave de 44 dígitos valida
+        @set_time_limit(120);
+        $iid = (string)($body['id'] ?? ''); $nt = nfm_read()['notas'][$iid] ?? null;
+        if (!$nt) nfm_fail('Nota não encontrada.', 404);
+        if (empty($nt['pdfs'])) nfm_fail('Esta nota não tem PDF para ler.');
+        try { $lido = nfm_ia_extrair($nt); } catch (Throwable $e) { nfm_fail($e->getMessage()); }
+        $res = nfm_with_lock(function () use ($iid, $lido) {
+            $d = nfm_read(); $n = &$d['notas'][$iid];
+            nfm_ia_aplicar($n, $lido); nfm_ia_unir_duplicada($d, $iid);
+            if ($n['status'] === 'PENDENTE' && (nfm_config()['vincular_auto'] ?? true)) nfm_reavaliar_pendentes($d);
+            unset($n); nfm_write($d);
+            return ['mensagem' => 'PDF lido pela IA.', 'nota' => nfm_nota_view($d['notas'][$iid])];
+        });
+        respond(['ok' => true] + $res);
     case 'nfmail_sincronizar':   // botão "Verificar agora" ou tela aberta (auto = respeita o intervalo)
         @set_time_limit(120);
         $r = nfm_sincronizar(!empty($body['auto']) ? 'tela' : 'manual', empty($body['auto']));

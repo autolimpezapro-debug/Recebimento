@@ -1,3 +1,11 @@
+v3.65.0 — Caixa de NFs: integração completa (CNPJ + reavaliação + IA + aviso ao conferente)
+- CNPJ primeiro: o sistema mantém um diretório de fornecedores por CNPJ (data/fornecedores_cnpj.json, aprende sozinho a cada vínculo e com os PCs que já têm NF). Se o CNPJ da nota é diferente do CNPJ do fornecedor do PC, a nota NÃO é vinculada nem sugerida a esse PC (acaba a confusão entre fornecedores de nome parecido).
+- Se o fornecedor (CNPJ confirmado) tem um ÚNICO PC em aberto sem NF, a nota vincula sozinha; com 2 ou mais, só sugere.
+- Nota que chega antes do PC: a cada 5 min (tela aberta ou cron) as pendentes são reavaliadas e vinculam sozinhas quando o PC passa a existir.
+- PDF sem XML: o Gemini lê a DANFE; só vale se a chave de 44 dígitos passar no dígito verificador (CNPJ, número e série passam a vir da chave). Sem chave válida, nunca vincula sozinha. Botão "🤖 Ler PDF com IA" na nota. Se o XML da mesma NF já existe, o PDF é unido a ele. Exige a chave Gemini já configurada (Importar pedidos).
+- Conferente: no detalhe do pedido aparece "📬 NF já recebida por e-mail" (com link da DANFE) quando há nota vinculada ou provável. Não significa que a mercadoria chegou.
+- Cron (cada 10 min):  php -q /CAMINHO/DO/SISTEMA/nfmail_worker.php  (também lê PDFs e reavalia).
+
 v3.64.7 — Varredura: Rastreios — copiar código sem JS inline (evita injeção por código malformado) e tratamento de falha da área de transferência.
 
 v3.64.6 — Recebimento: os itens do pedido seguem SEMPRE a descrição do PC. Removido o botão "Sugerir insumos do XML da NF"; a caixa de itens vem preenchida com o texto do PC e os itens da NF ficam só como consulta.

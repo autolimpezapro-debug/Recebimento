@@ -139,6 +139,7 @@ async function nfmAbrir(id) {
   const bg = nfmModal(`${n.tipo === 'CTE' ? 'CT-e' : n.tipo === 'PDF' ? 'DANFE (só PDF)' : 'NF-e'} ${nfmH(n.numero || '')} — ${nfmH(n.emitente_nome || '')}`, `
     <div class="nfm-linha">${n.cancelada ? '<span class="prt-badge bad">CANCELADA</span>' : ''}<span class="prt-badge ${cls}">${rot}${n.pc ? ' ' + n.pc : ''}</span>
       ${n.xml_url ? `<a class="button ghost" href="${n.xml_url}&baixar=1">⬇ XML</a>` : ''}${n.pdfs.map((p, i) => `<a class="button ghost" href="${p.url}" target="_blank" rel="noopener">📄 ${nfmH(p.nome || 'DANFE ' + (i + 1))}</a>`).join('')}
+      ${pode && n.tipo === 'PDF' && n.pdfs.length && n.status !== 'VINCULADA' ? `<button class="button ghost" data-ia title="A IA lê o PDF; a chave de 44 dígitos valida">🤖 Ler PDF com IA</button>` : ''}
       ${n.pc ? `<button class="button ghost" onclick="this.closest('.rd-ass-bg').remove();goPage('pedidos');typeof openDrawer==='function'&&setTimeout(()=>openDrawer(${n.pc}),150)">Abrir PC ${n.pc}</button>` : ''}</div>
     ${n.avisos.map(a => `<div class="us-alert">${nfmH(a)}</div>`).join('')}
     <div class="nfm-grid">
@@ -172,6 +173,7 @@ async function nfmAbrir(id) {
   bg.querySelectorAll('[data-pc]').forEach(b => b.onclick = () => vinc(b.dataset.pc));
   const man = bg.querySelector('[data-pcman]'); if (man) { bg.querySelector('[data-vinc]').onclick = () => vinc(man.value); man.onkeydown = e => { if (e.key === 'Enter') vinc(man.value); }; }
   const acao = async (a, corpo) => { try { const r = await nfmPost(a, { id: n.id, ...corpo }); nfmToast(r.mensagem); bg.remove(); NFM.p = await nfmApi('nfmail_painel'); nfmRender(); } catch (e) { nfmToast(e.message, true); } };
+  bg.querySelector('[data-ia]')?.addEventListener('click', async ev => { const b = ev.currentTarget; b.disabled = true; b.textContent = 'Lendo…'; try { const r = await nfmPost('nfmail_ia_ler', { id: n.id }); nfmToast(r.mensagem); bg.remove(); NFM.p = await nfmApi('nfmail_painel'); nfmRender(); nfmAbrir(n.id); } catch (e) { nfmToast(e.message, true); b.disabled = false; b.textContent = '🤖 Ler PDF com IA'; } });
   bg.querySelector('[data-ign]')?.addEventListener('click', () => { const m = prompt('Motivo para arquivar sem PC (ex.: nota de serviço, não é da empresa, duplicada):'); if (m) acao('nfmail_ignorar', { motivo: m }); });
   bg.querySelector('[data-volta]')?.addEventListener('click', () => acao('nfmail_ignorar', { desfazer: true }));
   bg.querySelector('[data-desv]')?.addEventListener('click', () => { const m = prompt('Motivo para desvincular do PC ' + n.pc + ':\n(os dados já copiados para o PC continuam lá — corrija no pedido se preciso)'); if (m !== null) acao('nfmail_desvincular', { motivo: m }); });
@@ -233,4 +235,15 @@ async function nfmTestar() {
 async function nfmSalvarCfg() {
   try { await nfmPost('nfmail_config_salvar', nfmCfgDados()); nfmToast('Configuração salva.'); NFM.p = await nfmApi('nfmail_painel'); nfmRender(); if (NFM.p.config.ativo) nfmVerificar(false); }
   catch (e) { nfmToast(e.message, true); }
+}
+
+/* v3.65.0 — aviso ao conferente: "NF deste PC já chegou por e-mail" (aparece no detalhe do pedido) */
+async function nfEmailAviso(pc) {
+  const box = document.getElementById('nfEmailBox'); if (!box) return;
+  try {
+    const a = (await nfmApi('nfmail_aviso', { query: { pc } })).aviso; if (!a || document.getElementById('nfEmailBox') !== box) return;
+    const t = { vinculada: ['ok', '📬 NF já recebida por e-mail e vinculada a este pedido'], vinculando: ['ok', '📬 NF recebida por e-mail — vinculando a este pedido'], possivel: ['warn', '📬 Chegou uma NF por e-mail que provavelmente é deste pedido (falta confirmar)'] }[a.situacao];
+    box.innerHTML = `<div class="nfm-aviso ${t[0]}"><b>${t[1]}</b><span>NF ${nfmH(a.numero || '—')} · ${nfmH(a.emitente || '')}${a.valor ? ' · ' + nfmR(a.valor) : ''} · recebida em ${nfmDH(a.recebido_em)}${a.tem_xml ? ' · XML' : ''}${a.tem_pdf ? ' · PDF' : ''}</span>`
+      + `<small>Isto não é a chegada da mercadoria: confira os volumes e os itens do pedido normalmente.</small>${a.pdf_url ? `<a class="button ghost" href="${a.pdf_url}" target="_blank" rel="noopener">📄 Ver DANFE</a>` : ''}</div>`;
+  } catch (e) { /* sem Caixa de NFs ou sem permissão: não mostra nada */ }
 }
