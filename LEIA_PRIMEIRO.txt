@@ -1,3 +1,5 @@
+v3.64.7 — Varredura: Rastreios — copiar código sem JS inline (evita injeção por código malformado) e tratamento de falha da área de transferência.
+
 v3.64.6 — Recebimento: os itens do pedido seguem SEMPRE a descrição do PC. Removido o botão "Sugerir insumos do XML da NF"; a caixa de itens vem preenchida com o texto do PC e os itens da NF ficam só como consulta.
 
 v3.64.5 — Inventário SAP: opções "usar o saldo do SAP também nos importados" e "zerar itens que não estão na planilha" (SAP = verdade). Prévia lista o que será zerado.

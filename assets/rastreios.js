@@ -61,6 +61,7 @@ function rtrRender() {
   document.querySelectorAll('#terRastreios [data-sit]').forEach(b => b.onclick = () => { RTR.sit = b.dataset.sit; document.querySelectorAll('#terRastreios [data-sit]').forEach(x => x.classList.toggle('on', x === b)); rtrLista(); });
   rtrLista();
 }
+document.addEventListener('click', e => { const c = e.target.closest && e.target.closest('[data-cp]'); if (c) { const v = c.dataset.cp, falha = () => terToast('Copie manualmente: ' + v); try { navigator.clipboard.writeText(v).then(() => terToast('Código copiado'), falha); } catch (_) { falha(); } } });
 function rtrLista() {
   const L = rtrFiltrados(), pode = rtrPode('editar'), box = rtrEl('rtrLista');
   if (!L.length) { box.innerHTML = '<div class="rtr-vazio"><b>🚚</b>Nenhum envio neste filtro.</div>'; return; }
@@ -72,7 +73,7 @@ function rtrLista() {
     const lk = r.link_final ? `<a class="button ghost" href="${terH(r.link_final)}" target="_blank" rel="noopener noreferrer">🔎 Rastrear</a>` : '';
     const ac = pode ? (ent ? `<button class="button ghost" onclick="rtrReabrir('${id}')" title="Reabrir">↩</button>` : `<button class="button primary" onclick="rtrEntregar('${id}')">✔ Entregue</button>`) + `<button class="button ghost" onclick="rtrForm('${id}')" title="Editar">✏</button>` + (rtrPode('criar') ? `<button class="button ghost" onclick="rtrDup('${id}')" title="Duplicar: novo envio com os mesmos dados">⧉ Duplicar</button>` : '') : '';
     return `<article class="rtr-card ${r.atrasado ? 'late' : ''} ${ent ? 'done' : ''}" style="--c:${cor}">
-      <div class="rtr-main"><div class="rtr-top">${st}<span class="rtr-carrier" style="--c:${cor}">${terH(r.transportadora) || 'sem transportadora'}</span>${r.codigo ? `<code class="rtr-code" title="Copiar" onclick="navigator.clipboard&&navigator.clipboard.writeText('${terH(r.codigo)}');terToast('Código copiado')">${terH(r.codigo)}</code>` : '<span class="rtr-nocode">sem código</span>'}</div>
+      <div class="rtr-main"><div class="rtr-top">${st}<span class="rtr-carrier" style="--c:${cor}">${terH(r.transportadora) || 'sem transportadora'}</span>${r.codigo ? `<code class="rtr-code" title="Copiar" data-cp="${terH(r.codigo)}">${terH(r.codigo)}</code>` : '<span class="rtr-nocode">sem código</span>'}</div>
         <h4 class="rtr-tit" onclick="rtrDetalhe('${id}')" title="Ver detalhes">${terH(r.produto) || '—'}</h4><p>${terH(r.fornecedor) || '—'}${r.pedido ? ` · PC ${terH(r.pedido)}` : ''}${r.romaneio ? ` · ${terH(r.romaneio)}` : ''} <small>${id}</small></p></div>
       <div class="rtr-line"><div class="rtr-dates"><span>${rtrData(r.data_envio)}</span><b>${r.dias != null ? r.dias + (r.dias === 1 ? ' dia' : ' dias') : ''}</b><span>${ent ? rtrData(r.data_entrega) : 'a caminho'}</span></div>${r.data_previsao ? `<div class="rtr-prev ${r.atrasado || (ent && !r.no_prazo) ? 'late' : ''}">📅 Previsão ${rtrData(r.data_previsao)}${r.atrasado ? ` · ${r.dias_atraso} dia(s) de atraso` : ent ? (r.no_prazo ? ' · entregue no prazo' : ` · entregue com ${r.dias_atraso} dia(s) de atraso`) : ''}</div>` : ''}<div class="rtr-prog"><i style="width:${pct}%"></i></div>${ent && r.recebedor ? `<small>Recebido por ${terH(r.recebedor)}</small>` : ''}</div>
       <div class="rtr-ac">${lk}${ac}</div>
