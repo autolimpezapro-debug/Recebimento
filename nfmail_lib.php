@@ -380,7 +380,7 @@ function nfm_parecido(string $a, string $b): float {
     }
     return min(1.0, $n / min(count($A), count($B)));
 }
-/* ---- Diretório de fornecedores por CNPJ (v3.65.2): aprende sozinho a cada vínculo/NF; é a base da checagem CNPJ-primeiro ---- */
+/* ---- Diretório de fornecedores por CNPJ (v3.65.3): aprende sozinho a cada vínculo/NF; é a base da checagem CNPJ-primeiro ---- */
 const NFM_FORN = DATA_DIR . '/fornecedores_cnpj.json';
 function nfm_nome_chave(string $n): string { return implode(' ', nfm_norm_nome($n)); }
 function nfm_forn_dir(): array {
@@ -769,17 +769,32 @@ function nfm_vincular(array &$d, string $id, int $pc, string $usuario, bool $aut
     return $r;
 }
 
-/* ---- NF que cobre vários PCs (v3.65.2): fornecedor que entrega primeiro e fatura depois (ex.: loja de parafusos) ---- */
-function nfm_vincular_extra(array &$d, string $id, int $pc, string $usuario): array {
+/* ---- NF que cobre vários PCs (v3.65.3): fornecedor que entrega primeiro e fatura depois (ex.: loja de parafusos) ---- */
+function nfm_vincular_extra(array &$d, string $id, int $pc, string $usuario, bool $forcar = false): array {
     if (!isset($d['notas'][$id])) nfm_fail('Nota não encontrada.', 404);
     $n = &$d['notas'][$id];
     if ($n['status'] !== 'VINCULADA') nfm_fail('Vincule primeiro o PC principal.');
     if ($pc === (int)$n['pc'] || in_array($pc, $n['pcs_extra'] ?? [], true)) return ['ok' => true, 'msg' => 'PC ' . $pc . ' já estava ligado a esta NF.'];
+    // proteções: fornecedor diferente e PC que já tem outra NF não entram sem confirmação explícita
+    $ix = nfm_pcs_indice(); $p = $ix[$pc] ?? null;
+    if (!$p) nfm_fail('PC ' . $pc . ' não existe.');
+    $cn = nfm_dig($n['emitente_cnpj'] ?? '');
+    if (!$forcar && $p['cnpj'] !== '' && $cn !== '' && $p['cnpj'] !== $cn) nfm_fail('CNPJ diferente: o PC ' . $pc . ' é de "' . $p['fornecedor'] . '", outro fornecedor. Confirme para ligar mesmo assim.');
+    if (!$forcar && $p['cnpj'] === '' && $p['fornecedor'] !== '' && nfm_parecido((string)$n['emitente_nome'], $p['fornecedor']) < 0.5) nfm_fail('CNPJ diferente: não consegui confirmar que o PC ' . $pc . ' ("' . $p['fornecedor'] . '") é deste fornecedor. Confirme para ligar mesmo assim.');
+    if ($p['chave'] !== '' && $p['chave'] !== $n['chave']) nfm_fail('O PC ' . $pc . ' já tem a NF ' . ($p['numero'] ?: 'de outra chave') . '. Não é possível ligar outra NF a ele.');
     $r = nfm_aplicar_no_pc($n, $pc, $usuario, true);
     if (!$r['ok']) nfm_fail($r['msg']);
     $n['pcs_extra'][] = $pc; sort($n['pcs_extra']);
     $n['historico'][] = ['em' => nfm_now(), 'por' => $usuario, 'acao' => 'NF também cobre o PC ' . $pc . ' — ' . $r['msg']];
     return $r;
+}
+/** Desliga UM pedido extra (os dados já copiados para o PC continuam lá). */
+function nfm_desvincular_extra(array &$d, string $id, int $pc, string $usuario): void {
+    if (!isset($d['notas'][$id])) nfm_fail('Nota não encontrada.', 404);
+    $n = &$d['notas'][$id];
+    if (!in_array($pc, $n['pcs_extra'] ?? [], true)) nfm_fail('O PC ' . $pc . ' não é um pedido extra desta NF.');
+    $n['pcs_extra'] = array_values(array_diff($n['pcs_extra'], [$pc]));
+    $n['historico'][] = ['em' => nfm_now(), 'por' => $usuario, 'acao' => 'PC ' . $pc . ' retirado da NF (chave/número já copiados para o PC continuam lá; corrija no pedido se preciso)'];
 }
 /** PCs do mesmo fornecedor (CNPJ) ainda sem NF: candidatos para o faturamento consolidado — inclui os já recebidos. */
 function nfm_abertos_do_fornecedor(array $n, array $idx): array {
@@ -898,7 +913,7 @@ function nfm_servir(array $d): void {
 
 
 
-/* ---- Boleto e frete (v3.65.2) ---- */
+/* ---- Boleto e frete (v3.65.3) ---- */
 function nfm_eh_boleto(string $nome, string $assunto): bool {
     $t = $nome . ' ' . $assunto;
     if (preg_match('/danfe|dacte|nf-?e\b|xml/i', $nome) && !preg_match('/boleto/i', $nome)) return false;
@@ -945,7 +960,7 @@ function nfm_frete_do_pc(int $pc): array {
     return $r;
 }
 
-/* ---- Reavaliação automática (v3.65.2): nota que chegou antes do PC é vinculada assim que o PC existe ---- */
+/* ---- Reavaliação automática (v3.65.3): nota que chegou antes do PC é vinculada assim que o PC existe ---- */
 function nfm_reavaliar_pendentes(array &$d, ?array $idx = null, bool $auto = true): int {
     if (!$auto) return 0;
     $idx = $idx ?? nfm_pcs_indice(); if (!$idx) return 0;
@@ -962,7 +977,7 @@ function nfm_reavaliar_pendentes(array &$d, ?array $idx = null, bool $auto = tru
     return $c;
 }
 
-/* ---- Leitura de DANFE em PDF pelo Gemini (v3.65.2): a IA só LÊ; a chave de 44 dígitos (dígito verificador) é quem valida ---- */
+/* ---- Leitura de DANFE em PDF pelo Gemini (v3.65.3): a IA só LÊ; a chave de 44 dígitos (dígito verificador) é quem valida ---- */
 function nfm_ia_disponivel(): bool {
     if (!empty($GLOBALS['NFM_IA_STUB'])) return true;
     if (!function_exists('rd_gemini_ready')) { $f = __DIR__ . '/gemini_import.php'; if (is_file($f)) require_once $f; }

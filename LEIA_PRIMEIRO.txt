@@ -1,3 +1,9 @@
+v3.65.3 — Proteções na NF para vários pedidos
+- Antes de ligar, o sistema pede confirmação mostrando o número e o valor da NF e a lista de PCs.
+- PC de outro fornecedor (CNPJ diferente, ou nome que não confere) é BLOQUEADO; só entra se você confirmar de novo na segunda mensagem.
+- PC que já tem outra NF nunca recebe esta NF (sem opção de forçar).
+- Cada pedido extra tem um ✕ para retirar da NF (com confirmação); tudo fica no histórico da nota.
+
 v3.65.2 — Caixa de NFs: uma NF para vários pedidos (faturamento consolidado)
 - Para fornecedores que entregam primeiro e faturam depois (ex.: loja de parafusos, faturamento mínimo): abra a NF → "Esta NF cobre vários pedidos?". A lista traz os PCs do mesmo fornecedor (CNPJ) ainda sem NF, inclusive os já recebidos; marque os pedidos (ou digite os números) e clique "Ligar a NF aos PCs marcados".
 - O primeiro PC recebe todos os dados; nos demais entram só chave, número, série, XML e DANFE (valor e itens ficam só na NF, para não somar errado). Cada PC mostra "NF já recebida por e-mail".

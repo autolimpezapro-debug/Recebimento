@@ -92,8 +92,9 @@ $res = nfm_with_lock(function () use ($action, $body, $nfmUser) {
             $lista = array_values(array_unique(array_filter(array_map('intval', (array)($body['pcs'] ?? [])), fn($x) => $x > 0)));
             if (!$lista || count($lista) > 60) nfm_fail('Informe de 1 a 60 PCs.');
             if (($d['notas'][$id]['status'] ?? '') !== 'VINCULADA') { $r0 = nfm_vincular($d, $id, array_shift($lista), $nfmUser); }
-            foreach ($lista as $x) nfm_vincular_extra($d, $id, $x, $nfmUser);
+            foreach ($lista as $x) nfm_vincular_extra($d, $id, $x, $nfmUser, !empty($body['forcar']));
             $r = ['msg' => 'NF ligada a ' . (1 + count($d['notas'][$id]['pcs_extra'] ?? [])) . ' pedido(s).']; break;
+        case 'nfmail_desvincular_extra': nfm_desvincular_extra($d, $id, (int)($body['pc'] ?? 0), $nfmUser); $r = ['msg' => 'PC retirado da NF.']; break;
         case 'nfmail_frete_pc':   // liga/desliga manualmente um CT-e a um PC (quando o CT-e não cita a chave das NFs)
             $nt = &$d['notas'][$id]; if (!$nt || $nt['tipo'] !== 'CTE') nfm_fail('CT-e não encontrado.', 404);
             $pcf = (int)($body['pc'] ?? 0); $ix = nfm_pcs_indice();
