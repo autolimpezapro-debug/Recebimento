@@ -1,3 +1,8 @@
+v3.65.2 — Caixa de NFs: uma NF para vários pedidos (faturamento consolidado)
+- Para fornecedores que entregam primeiro e faturam depois (ex.: loja de parafusos, faturamento mínimo): abra a NF → "Esta NF cobre vários pedidos?". A lista traz os PCs do mesmo fornecedor (CNPJ) ainda sem NF, inclusive os já recebidos; marque os pedidos (ou digite os números) e clique "Ligar a NF aos PCs marcados".
+- O primeiro PC recebe todos os dados; nos demais entram só chave, número, série, XML e DANFE (valor e itens ficam só na NF, para não somar errado). Cada PC mostra "NF já recebida por e-mail".
+- Só acontece quando você manda: o vínculo automático continua sendo 1 NF = 1 PC.
+
 v3.65.1 — Caixa de NFs: gestão de fretes (CT-e/DACTE) e boletos
 - Aba "Fretes": cada CT-e mostra transportadora, valor, as NFs transportadas e o PC. O frete se liga ao PC pelas chaves das NFs citadas no CT-e (NF vinculada na Caixa ou chave já registrada no PC). Totais por transportadora no topo; "Aguardando a NF" quando a NF ainda não chegou; botão "Ligar a PC" manual para CT-e sem chave de NF.
 - A NF mostra o frete e o boleto ligados a ela; o detalhe do pedido mostra o frete no aviso "NF já recebida por e-mail".

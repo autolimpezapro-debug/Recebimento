@@ -414,7 +414,7 @@ function rd_rota(string $action): ?array {
             'espelhos_salvar' => ['estoque', 'criar'], 'espelhos_status' => ['estoque', 'editar'],
             'nfmail_painel' => ['pedidos', 'listar'], 'nfmail_nota' => ['pedidos', 'detalhe'], 'nfmail_arquivo' => ['pedidos', 'baixar'], 'nfmail_csv' => ['pedidos', 'exportar'],
             'nfmail_config' => ['pedidos', 'admin'], 'nfmail_config_salvar' => ['pedidos', 'admin'], 'nfmail_testar' => ['pedidos', 'admin'],
-            'nfmail_sincronizar' => ['pedidos', 'anexar'], 'nfmail_ia_ler' => ['pedidos', 'anexar'], 'nfmail_frete_pc' => ['pedidos', 'anexar'], 'nfmail_aviso' => ['pedidos', 'listar'], 'nfmail_vincular' => ['pedidos', 'anexar'], 'nfmail_desvincular' => ['pedidos', 'editar'], 'nfmail_ignorar' => ['pedidos', 'editar'],
+            'nfmail_sincronizar' => ['pedidos', 'anexar'], 'nfmail_ia_ler' => ['pedidos', 'anexar'], 'nfmail_frete_pc' => ['pedidos', 'anexar'], 'nfmail_vincular_varios' => ['pedidos', 'anexar'], 'nfmail_aviso' => ['pedidos', 'listar'], 'nfmail_vincular' => ['pedidos', 'anexar'], 'nfmail_desvincular' => ['pedidos', 'editar'], 'nfmail_ignorar' => ['pedidos', 'editar'],
             'locacoes_painel' => ['estoque', 'listar'], 'locacoes_csv' => ['estoque', 'listar'],
             'locacoes_salvar' => ['estoque', 'editar'], 'locacoes_transferir' => ['estoque', 'criar'], 'locacoes_desfazer_transferencia' => ['estoque', 'editar'],
             'locacoes_extra' => ['estoque', 'criar'], 'locacoes_devolver' => ['estoque', 'criar'], 'locacoes_reabrir' => ['estoque', 'editar'],

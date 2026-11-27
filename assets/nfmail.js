@@ -185,6 +185,11 @@ async function nfmAbrir(id) {
       ${sug.length ? `<div class="nfm-sug">${sug.map(s => `<button class="button ghost" data-pc="${s.pc}" title="${nfmH(s.motivo)}"><b>PC ${s.pc}</b> <small>${nfmH(s.fornecedor || '')} · ${nfmH(s.motivo)}${s.ja_tem_nf ? ' · já tem NF ' + nfmH(s.ja_tem_nf) : ''}</small></button>`).join('')}</div>` : ''}
       <div class="nfm-manual"><input type="number" inputmode="numeric" min="1" placeholder="Nº do PC" data-pcman><button class="button primary" data-vinc>Vincular</button></div>
       <p class="muted" style="font-size:12px;margin:6px 0 0">Ao vincular, o sistema só <b>preenche o que está vazio</b> no PC (XML, chave, número, série, emitente, valor, itens e DANFE). Se o PC já tem outra NF, nada é alterado nele.</p></div>` : ''}
+    ${pode && n.tipo === 'NFE' && !n.cancelada ? `<details class="prt-det nfm-multi" ${(n.pcs_extra || []).length ? 'open' : ''}><summary>Esta NF cobre vários pedidos? (fornecedor que entrega e fatura depois)</summary>
+      ${(n.pcs_extra || []).length ? `<p class="muted" style="font-size:12.5px">Também cobre: <b>${n.pcs_extra.join(', ')}</b></p>` : ''}
+      ${(n.abertos_fornecedor || []).length ? `<div class="nfm-sug" style="max-height:170px;overflow:auto">${n.abertos_fornecedor.map(a => `<label class="button ghost" style="cursor:pointer"><input type="checkbox" data-mpc value="${a.pc}"> <b>PC ${a.pc}</b> <small>${a.recebido ? 'já recebido' : 'em aberto'}${a.solicitante ? ' · ' + nfmH(a.solicitante) : ''}</small></label>`).join('')}</div>` : '<p class="muted" style="font-size:12.5px">Nenhum outro PC sem NF deste fornecedor (CNPJ). Digite os números abaixo.</p>'}
+      <div class="nfm-manual"><input placeholder="Outros PCs: 4210, 4215…" data-mpcs><button class="button primary" data-multi>Ligar a NF aos PCs marcados</button></div>
+      <p class="muted" style="font-size:12px;margin:6px 0 0">O primeiro PC recebe todos os dados; nos demais o sistema só registra chave, número, série, XML e DANFE (o valor e os itens ficam só na NF).</p></details>` : ''}
     <details class="prt-det"><summary>Histórico</summary><ul class="prt-hist">${n.historico.map(h => `<li>${nfmDH(h.em)} · ${nfmH(h.por)} — ${nfmH(h.acao)}</li>`).join('')}</ul></details>
     <div class="rd-ass-acoes">
       ${nfmPode('editar') && n.status === 'VINCULADA' ? '<button class="button ghost" data-desv>Desvincular</button>' : ''}
@@ -199,6 +204,11 @@ async function nfmAbrir(id) {
   bg.querySelectorAll('[data-pc]').forEach(b => b.onclick = () => vinc(b.dataset.pc));
   const man = bg.querySelector('[data-pcman]'); if (man) { bg.querySelector('[data-vinc]').onclick = () => vinc(man.value); man.onkeydown = e => { if (e.key === 'Enter') vinc(man.value); }; }
   const acao = async (a, corpo) => { try { const r = await nfmPost(a, { id: n.id, ...corpo }); nfmToast(r.mensagem); bg.remove(); NFM.p = await nfmApi('nfmail_painel'); nfmRender(); } catch (e) { nfmToast(e.message, true); } };
+  bg.querySelector('[data-multi]')?.addEventListener('click', async () => {
+    const pcs = [...bg.querySelectorAll('[data-mpc]:checked')].map(x => Number(x.value)).concat(String(bg.querySelector('[data-mpcs]').value).split(/[^\d]+/).filter(Boolean).map(Number));
+    if (!pcs.length) return nfmToast('Marque ou digite ao menos um PC.', true);
+    try { const r = await nfmPost('nfmail_vincular_varios', { id: n.id, pcs }); nfmToast(r.mensagem); bg.remove(); NFM.p = await nfmApi('nfmail_painel'); nfmRender(); nfmAbrir(n.id); } catch (e) { nfmToast(e.message, true); }
+  });
   bg.querySelector('[data-ia]')?.addEventListener('click', async ev => { const b = ev.currentTarget; b.disabled = true; b.textContent = 'Lendo…'; try { const r = await nfmPost('nfmail_ia_ler', { id: n.id }); nfmToast(r.mensagem); bg.remove(); NFM.p = await nfmApi('nfmail_painel'); nfmRender(); nfmAbrir(n.id); } catch (e) { nfmToast(e.message, true); b.disabled = false; b.textContent = '🤖 Ler PDF com IA'; } });
   bg.querySelector('[data-ign]')?.addEventListener('click', () => { const m = prompt('Motivo para arquivar sem PC (ex.: nota de serviço, não é da empresa, duplicada):'); if (m) acao('nfmail_ignorar', { motivo: m }); });
   bg.querySelector('[data-volta]')?.addEventListener('click', () => acao('nfmail_ignorar', { desfazer: true }));
@@ -263,7 +273,7 @@ async function nfmSalvarCfg() {
   catch (e) { nfmToast(e.message, true); }
 }
 
-/* v3.65.1 — aviso ao conferente: "NF deste PC já chegou por e-mail" (aparece no detalhe do pedido) */
+/* v3.65.2 — aviso ao conferente: "NF deste PC já chegou por e-mail" (aparece no detalhe do pedido) */
 async function nfEmailAviso(pc) {
   const box = document.getElementById('nfEmailBox'); if (!box) return;
   try {

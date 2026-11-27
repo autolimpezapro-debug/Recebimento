@@ -20,6 +20,7 @@ if ($nfmMet === 'GET') {
             $n = nfm_read()['notas'][(string)($_GET['id'] ?? '')] ?? null;
             if (!$n) nfm_fail('Nota não encontrada.', 404);
             $v = nfm_nota_view($n);
+            if ($n['tipo'] === 'NFE') $v['abertos_fornecedor'] = nfm_abertos_do_fornecedor($n, nfm_pcs_indice(read_items()));
             if ($n['status'] !== 'VINCULADA' && $n['tipo'] !== 'CTE') { $dec = nfm_decidir($n, nfm_pcs_indice(read_items())); $v['sugestoes'] = $dec['sugestoes']; if ($n['status'] === 'PENDENTE' && !in_array($n['motivo'], ['desvinculada'], true) && strpos($n['motivo'], 'PC ') !== 0) $v['motivo'] = $dec['motivo']; }
             respond(['ok' => true, 'nota' => $v]);
         case 'nfmail_arquivo': nfm_servir(nfm_read());
@@ -87,6 +88,12 @@ $res = nfm_with_lock(function () use ($action, $body, $nfmUser) {
         case 'nfmail_vincular':
             $pc = (int)($body['pc'] ?? 0); if ($pc <= 0) nfm_fail('Informe o PC.');
             $r = nfm_vincular($d, $id, $pc, $nfmUser); break;
+        case 'nfmail_vincular_varios':   // uma NF para vários PCs (fornecedor que fatura depois / faturamento mínimo)
+            $lista = array_values(array_unique(array_filter(array_map('intval', (array)($body['pcs'] ?? [])), fn($x) => $x > 0)));
+            if (!$lista || count($lista) > 60) nfm_fail('Informe de 1 a 60 PCs.');
+            if (($d['notas'][$id]['status'] ?? '') !== 'VINCULADA') { $r0 = nfm_vincular($d, $id, array_shift($lista), $nfmUser); }
+            foreach ($lista as $x) nfm_vincular_extra($d, $id, $x, $nfmUser);
+            $r = ['msg' => 'NF ligada a ' . (1 + count($d['notas'][$id]['pcs_extra'] ?? [])) . ' pedido(s).']; break;
         case 'nfmail_frete_pc':   // liga/desliga manualmente um CT-e a um PC (quando o CT-e não cita a chave das NFs)
             $nt = &$d['notas'][$id]; if (!$nt || $nt['tipo'] !== 'CTE') nfm_fail('CT-e não encontrado.', 404);
             $pcf = (int)($body['pc'] ?? 0); $ix = nfm_pcs_indice();

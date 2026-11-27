@@ -380,7 +380,7 @@ function nfm_parecido(string $a, string $b): float {
     }
     return min(1.0, $n / min(count($A), count($B)));
 }
-/* ---- Diretório de fornecedores por CNPJ (v3.65.1): aprende sozinho a cada vínculo/NF; é a base da checagem CNPJ-primeiro ---- */
+/* ---- Diretório de fornecedores por CNPJ (v3.65.2): aprende sozinho a cada vínculo/NF; é a base da checagem CNPJ-primeiro ---- */
 const NFM_FORN = DATA_DIR . '/fornecedores_cnpj.json';
 function nfm_nome_chave(string $n): string { return implode(' ', nfm_norm_nome($n)); }
 function nfm_forn_dir(): array {
@@ -716,7 +716,7 @@ function nfm_sincronizar(string $origem = 'manual', bool $forcar = true): array 
 /* Vínculo com o PC (somente no contexto da API: usa read_items/write_items) */
 /* ------------------------------------------------------------------ */
 /** Preenche no PC só o que está vazio. Devolve texto do que foi feito (ou aviso). */
-function nfm_aplicar_no_pc(array $n, int $pc, string $usuario): array {
+function nfm_aplicar_no_pc(array $n, int $pc, string $usuario, bool $extra = false): array {
     $fp = @fopen(DATA_DIR . '/.write.lock', 'c');
     if (!$fp || !flock($fp, LOCK_EX)) return ['ok' => false, 'msg' => 'Pedidos ocupados, tente de novo.'];
     try {
@@ -733,6 +733,7 @@ function nfm_aplicar_no_pc(array $n, int $pc, string $usuario): array {
             $campos = ['chaveNF' => $n['chave'], 'numeroNF' => $n['numero'], 'serieNF' => $n['serie'], 'cnpjEmitente' => $n['emitente_cnpj'], 'emissaoNF' => $n['emissao'],
                 'valorNF' => $n['valor'] ? number_format((float)$n['valor'], 2, '.', '') : '',
                 'itensNF' => implode("\n", array_map(fn($x) => implode(' | ', [$x['codigo'], $x['descricao'], number_format((float)$x['qtd'], 4, '.', ''), $x['un'], number_format((float)$x['valor'], 2, '.', '')]), $n['itens']))];
+            if ($extra) { unset($campos['valorNF'], $campos['itensNF']); }   // NF consolidada: valor/itens são da nota toda, não deste PC
             foreach ($campos as $k => $v) if ((string)($it[$k] ?? '') === '' && (string)$v !== '') { $it[$k] = $v; $feito[] = $k; }
             if (in_array('chaveNF', $feito, true) && empty($it['origemNF'])) $it['origemNF'] = 'XML';
         }
@@ -744,7 +745,7 @@ function nfm_aplicar_no_pc(array $n, int $pc, string $usuario): array {
             }
         }
         if ($feito) {
-            mark_action($it, 'NF ' . ($n['numero'] ?: '') . ' recebida por e-mail');
+            mark_action($it, 'NF ' . ($n['numero'] ?: '') . ' recebida por e-mail' . ($extra ? ' (NF consolidada, vários PCs)' : ''));
             unset($it);
             write_items($items);
             append_event($pc, 'anexo', 'Caixa de NFs: NF ' . ($n['numero'] ?: '?') . ' vinculada (' . implode(', ', array_map(fn($f) => ['chaveNF' => 'chave', 'numeroNF' => 'número', 'serieNF' => 'série', 'cnpjEmitente' => 'emitente', 'emissaoNF' => 'emissão', 'valorNF' => 'valor', 'itensNF' => 'itens'][$f] ?? $f, $feito)) . ')');
@@ -767,6 +768,27 @@ function nfm_vincular(array &$d, string $id, int $pc, string $usuario, bool $aut
     $n['historico'][] = ['em' => nfm_now(), 'por' => $auto ? 'automático' : $usuario, 'acao' => 'Vinculada ao PC ' . $pc . ' — ' . $r['msg']];
     return $r;
 }
+
+/* ---- NF que cobre vários PCs (v3.65.2): fornecedor que entrega primeiro e fatura depois (ex.: loja de parafusos) ---- */
+function nfm_vincular_extra(array &$d, string $id, int $pc, string $usuario): array {
+    if (!isset($d['notas'][$id])) nfm_fail('Nota não encontrada.', 404);
+    $n = &$d['notas'][$id];
+    if ($n['status'] !== 'VINCULADA') nfm_fail('Vincule primeiro o PC principal.');
+    if ($pc === (int)$n['pc'] || in_array($pc, $n['pcs_extra'] ?? [], true)) return ['ok' => true, 'msg' => 'PC ' . $pc . ' já estava ligado a esta NF.'];
+    $r = nfm_aplicar_no_pc($n, $pc, $usuario, true);
+    if (!$r['ok']) nfm_fail($r['msg']);
+    $n['pcs_extra'][] = $pc; sort($n['pcs_extra']);
+    $n['historico'][] = ['em' => nfm_now(), 'por' => $usuario, 'acao' => 'NF também cobre o PC ' . $pc . ' — ' . $r['msg']];
+    return $r;
+}
+/** PCs do mesmo fornecedor (CNPJ) ainda sem NF: candidatos para o faturamento consolidado — inclui os já recebidos. */
+function nfm_abertos_do_fornecedor(array $n, array $idx): array {
+    $cn = nfm_dig($n['emitente_cnpj'] ?? ''); if ($cn === '') return [];
+    $ja = array_merge([(int)($n['pc'] ?? 0)], $n['pcs_extra'] ?? []); $out = [];
+    foreach ($idx as $pc => $p) if ($p['cnpj'] === $cn && $p['chave'] === '' && !in_array($pc, $ja, true)) $out[] = ['pc' => $pc, 'fornecedor' => $p['fornecedor'], 'recebido' => $p['recebido'], 'solicitante' => $p['solicitante']];
+    usort($out, fn($a, $b) => $b['pc'] <=> $a['pc']);
+    return array_slice($out, 0, 60);
+}
 /** Aplica os vínculos automáticos pendentes e completa PCs de notas que receberam PDF depois. */
 function nfm_aplicar_pendentes(array &$d): int {
     $n = 0;
@@ -780,7 +802,7 @@ function nfm_aplicar_pendentes(array &$d): int {
 function nfm_desvincular(array &$d, string $id, string $usuario, string $motivo): void {
     if (!isset($d['notas'][$id])) nfm_fail('Nota não encontrada.', 404);
     $n = &$d['notas'][$id];
-    $pc = $n['pc']; $n['pc'] = 0; $n['status'] = 'PENDENTE'; $n['motivo'] = 'desvinculada';
+    $pc = $n['pc']; $n['pc'] = 0; $n['pcs_extra'] = []; $n['status'] = 'PENDENTE'; $n['motivo'] = 'desvinculada';
     $n['historico'][] = ['em' => nfm_now(), 'por' => $usuario, 'acao' => 'Desvinculada do PC ' . $pc . ($motivo ? ' — ' . $motivo : '') . ' (os dados já copiados para o PC continuam lá; corrija no pedido se preciso)'];
 }
 function nfm_ignorar(array &$d, string $id, string $usuario, string $motivo, bool $desfazer = false): void {
@@ -876,7 +898,7 @@ function nfm_servir(array $d): void {
 
 
 
-/* ---- Boleto e frete (v3.65.1) ---- */
+/* ---- Boleto e frete (v3.65.2) ---- */
 function nfm_eh_boleto(string $nome, string $assunto): bool {
     $t = $nome . ' ' . $assunto;
     if (preg_match('/danfe|dacte|nf-?e\b|xml/i', $nome) && !preg_match('/boleto/i', $nome)) return false;
@@ -923,7 +945,7 @@ function nfm_frete_do_pc(int $pc): array {
     return $r;
 }
 
-/* ---- Reavaliação automática (v3.65.1): nota que chegou antes do PC é vinculada assim que o PC existe ---- */
+/* ---- Reavaliação automática (v3.65.2): nota que chegou antes do PC é vinculada assim que o PC existe ---- */
 function nfm_reavaliar_pendentes(array &$d, ?array $idx = null, bool $auto = true): int {
     if (!$auto) return 0;
     $idx = $idx ?? nfm_pcs_indice(); if (!$idx) return 0;
@@ -940,7 +962,7 @@ function nfm_reavaliar_pendentes(array &$d, ?array $idx = null, bool $auto = tru
     return $c;
 }
 
-/* ---- Leitura de DANFE em PDF pelo Gemini (v3.65.1): a IA só LÊ; a chave de 44 dígitos (dígito verificador) é quem valida ---- */
+/* ---- Leitura de DANFE em PDF pelo Gemini (v3.65.2): a IA só LÊ; a chave de 44 dígitos (dígito verificador) é quem valida ---- */
 function nfm_ia_disponivel(): bool {
     if (!empty($GLOBALS['NFM_IA_STUB'])) return true;
     if (!function_exists('rd_gemini_ready')) { $f = __DIR__ . '/gemini_import.php'; if (is_file($f)) require_once $f; }
@@ -1036,7 +1058,7 @@ function nfm_aviso_pc(int $pc): ?array {
     foreach (nfm_read()['notas'] as $n) {
         if (in_array(($n['tipo'] ?? ''), ['CTE', 'BOL'], true) || !empty($n['cancelada'])) continue;
         $st = $n['status'] ?? ''; $cert = null;
-        if ($st === 'VINCULADA' && (int)$n['pc'] === $pc) $cert = 'vinculada';
+        if ($st === 'VINCULADA' && ((int)$n['pc'] === $pc || in_array($pc, $n['pcs_extra'] ?? [], true))) $cert = 'vinculada';
         elseif (($st === 'PENDENTE' || $st === 'A_VINCULAR')) {
             if ((int)($n['pc_alvo'] ?? 0) === $pc) $cert = 'vinculando';
             else foreach (($n['sugestoes'] ?? []) as $sg) if ((int)$sg['pc'] === $pc && (int)$sg['peso'] >= 60) $cert = 'possivel';
